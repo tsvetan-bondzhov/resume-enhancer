@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume Enhancer — UX Design Directions</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; box-sizing: border-box; }
+  body { background: #f4f4f5; }
+  .direction { display: none; }
+  .direction.active { display: block; }
+  .tab-btn { transition: all 0.15s; }
+  .tab-btn.active { background: #2563eb; color: white; }
+  .tab-btn:not(.active):hover { background: #e4e4e7; }
+  .ai-dot { animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .diff-add { background: #d1fae5; border-left: 3px solid #059669; padding: 2px 6px; border-radius: 2px; }
+  .diff-change { background: #fef3c7; border-left: 3px solid #d97706; padding: 2px 6px; border-radius: 2px; }
+  .resume-shadow { box-shadow: 0 4px 24px 0 rgba(0,0,0,0.10), 0 1px 4px 0 rgba(0,0,0,0.06); }
+  .sidebar-item { transition: background 0.1s; cursor: pointer; }
+  .sidebar-item:hover { background: #f4f4f5; }
+  .sidebar-item.active { background: #eff6ff; border-left: 3px solid #2563eb; }
+  .chat-bubble-user { background: #2563eb; color: white; border-radius: 16px 16px 4px 16px; }
+  .chat-bubble-ai { background: white; border: 1px solid #e4e4e7; border-radius: 16px 16px 16px 4px; }
+  .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #71717a; }
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 500; }
+  .mockup-frame { background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e4e4e7; height: 640px; display: flex; flex-direction: column; }
+  .nav-header { height: 48px; border-bottom: 1px solid #e4e4e7; display: flex; align-items: center; padding: 0 16px; gap: 12px; flex-shrink: 0; background: white; }
+  .toolbar { height: 44px; border-bottom: 1px solid #e4e4e7; display: flex; align-items: center; padding: 0 12px; gap: 8px; flex-shrink: 0; background: white; }
+  .btn-primary { background: #2563eb; color: white; border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .btn-secondary { background: white; color: #3f3f46; border: 1px solid #e4e4e7; border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .btn-ghost { background: transparent; color: #71717a; border-radius: 6px; padding: 6px 10px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .btn-ghost:hover { background: #f4f4f5; }
+  .resume-canvas { background: white; border-radius: 4px; padding: 28px 24px; font-size: 11.5px; line-height: 1.55; overflow-y: auto; flex: 1; }
+  .resume-name { font-size: 18px; font-weight: 700; color: #18181b; letter-spacing: -0.01em; }
+  .resume-contact { color: #71717a; font-size: 11px; margin-top: 2px; }
+  .resume-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #3f3f46; border-bottom: 1px solid #e4e4e7; margin: 12px 0 6px; padding-bottom: 3px; }
+  .resume-job-title { font-weight: 600; font-size: 12px; color: #18181b; }
+  .resume-job-meta { color: #71717a; font-size: 11px; }
+  .resume-bullet { color: #3f3f46; font-size: 11.5px; padding-left: 12px; position: relative; margin-bottom: 3px; }
+  .resume-bullet::before { content: "•"; position: absolute; left: 2px; color: #71717a; }
+  .tag { background: #f4f4f5; color: #3f3f46; padding: 2px 7px; border-radius: 4px; font-size: 11px; display: inline-block; margin: 2px 2px 2px 0; }
+</style>
+</head>
+<body class="p-6">
+
+<!-- Header -->
+<div class="max-w-7xl mx-auto">
+  <div class="mb-6">
+    <h1 class="text-2xl font-semibold text-zinc-900">Resume Enhancer — UX Design Directions</h1>
+    <p class="text-zinc-500 text-sm mt-1">6 design directions for the core editor experience. Evaluate layout, information hierarchy, and interaction style.</p>
+  </div>
+
+  <!-- Evaluation criteria -->
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-800">
+    <strong>As you explore, consider:</strong> Which layout feels most intuitive for the editor + chat combination? Which visual weight matches the "serious tool" aesthetic? Which navigation pattern keeps resume state clearest?
+  </div>
+
+  <!-- Tab navigation -->
+  <div class="flex flex-wrap gap-2 mb-6">
+    <button class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium" onclick="showDir(0, this)">D1: Command Center</button>
+    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium" onclick="showDir(1, this)">D2: Document First</button>
+    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium" onclick="showDir(2, this)">D3: Chat Native</button>
+    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium" onclick="showDir(3, this)">D4: Minimal Studio</button>
+    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium" onclick="showDir(4, this)">D5: Power Sidebar</button>
+    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium" onclick="showDir(5, this)">D6: Dashboard Hub</button>
+  </div>
+
+  <!-- ======== DIRECTION 1: Command Center ======== -->
+  <div class="direction active" id="dir-0">
+    <div class="grid grid-cols-3 gap-4 mb-4">
+      <div class="col-span-2">
+        <h2 class="text-lg font-semibold text-zinc-900 mb-1">D1: Command Center</h2>
+        <p class="text-zinc-500 text-sm">Three-column peer layout. Editor and chat are equal partners. Global nav on left. Cursor/Linear aesthetic — dense, keyboard-first, professional.</p>
+      </div>
+      <div class="text-sm text-zinc-500 space-y-1">
+        <div><span class="font-medium text-zinc-700">Layout:</span> 3-column, equal-weight editor + chat</div>
+        <div><span class="font-medium text-zinc-700">Nav:</span> Icon sidebar (left)</div>
+        <div><span class="font-medium text-zinc-700">Density:</span> Medium-dense</div>
+        <div><span class="font-medium text-zinc-700">Best for:</span> Power users, keyboard-first flow</div>
+      </div>
+    </div>
+    <div class="mockup-frame">
+      <!-- Nav header -->
+      <div class="nav-header">
+        <div class="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
+          <span class="text-white text-xs font-bold">RE</span>
+        </div>
+        <span class="text-sm font-semibold text-zinc-900 flex-1">Resume Enhancer</span>
+        <span class="badge bg-zinc-100 text-zinc-600 text-xs">Jordan Chen</span>
+      </div>
+      <!-- Body -->
+      <div class="flex flex-1 overflow-hidden">
+        <!-- Icon sidebar -->
+        <div class="w-12 border-r border-zinc-200 bg-zinc-50 flex flex-col items-center py-3 gap-1 flex-shrink-0">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center" title="Resumes">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:bg-zinc-100" title="Profile">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          </div>
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:bg-zinc-100" title="Templates">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z"/></svg>
+          </div>
+          <div class="flex-1"></div>
+          <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold">JC</div>
+        </div>
+        <!-- Resume list -->
+        <div class="w-48 border-r border-zinc-200 bg-white flex flex-col flex-shrink-0">
+          <div class="p-3 border-b border-zinc-200">
+            <div class="section-label mb-2">My Resumes</div>
+            <button class="btn-primary w-full text-xs py-1.5">+ New Resume</button>
+          </div>
+          <div class="flex-1 overflow-y-auto">
+            <div class="sidebar-item active px-3 py-2.5">
+              <div class="text-xs font-semibold text-zinc-800">Backend - Fintech</div>
+              <div class="text-xs text-zinc-400 mt-0.5">Tailored · May 13</div>
+            </div>
+            <div class="sidebar-item px-3 py-2.5">
+              <div class="text-xs font-medium text-zinc-600">General Engineer</div>
+              <div class="text-xs text-zinc-400 mt-0.5">Base · May 10</div>
+            </div>
+            <div class="sidebar-item px-3 py-2.5">
+              <div class="text-xs font-medium text-zinc-600">ML Engineer - FAANG</div>
+              <div class="text-xs text-zinc-400 mt-0.5">Tailored · May 8</div>
+            </div>
+          </div>
+        </div>
+        <!-- Editor center -->
+        <div class="flex-1 flex flex-col overflow-hidden bg-zinc-100">
+          <!-- Toolbar -->
+          <div class="toolbar bg-white">
+            <span class="text-sm font-semibold text-zinc-800 flex-1">Backend - Fintech - May 2026</span>
+            <button class="btn-ghost text-xs">Minimal Template</button>
+            <div class="w-px h-5 bg-zinc-200"></div>
+            <button class="btn-secondary text-xs">Export ↓</button>
+            <button class="btn-primary text-xs">Save</button>
+          </div>
+          <!-- Resume preview -->
+          <div class="flex-1 overflow-y-auto flex justify-center p-4">
+            <div class="resume-canvas resume-shadow w-80 flex-shrink-0">
+              <div class="resume-name">Jordan Chen</div>
+              <div class="resume-contact">jordan@email.com · github.com/jchen · San Francisco, CA</div>
+              <div class="resume-section-title">Experience</div>
+              <div class="resume-job-title">Backend Engineering Intern — <span class="font-normal">FinCo</span></div>
+              <div class="resume-job-meta">May 2025 – Aug 2025</div>
+              <div class="mt-1">
+                <div class="resume-bullet diff-add">Built <strong>distributed payment processing</strong> pipeline handling 50k txn/day using <strong>REST APIs</strong></div>
+                <div class="resume-bullet diff-change">Implemented <strong>CI/CD pipeline</strong> reducing deployment time by 40%</div>
+                <div class="resume-bullet">Collaborated with 4-person team on microservices architecture</div>
+              </div>
+              <div class="resume-section-title">Skills</div>
+              <div class="mt-1">
+                <span class="tag diff-add">Distributed Systems</span><span class="tag diff-add">REST APIs</span><span class="tag">Python</span><span class="tag">Java</span><span class="tag diff-change">CI/CD</span><span class="tag">PostgreSQL</span>
+              </div>
+              <div class="resume-section-title">Education</div>
+              <div class="resume-job-title">B.S. Computer Science — Stanford</div>
+              <div class="resume-job-meta">2022–2026 · GPA 3.8</div>
+            </div>
+          </div>
+        </div>
+        <!-- Chat panel -->
+        <div class="w-72 border-l border-zinc-200 bg-white flex flex-col flex-shrink-0">
+          <div class="p-3 border-b border-zinc-200 flex items-center gap-2">
+            <div class="ai-dot w-2 h-2 rounded-full bg-blue-400"></div>
+            <span class="text-sm font-semibold text-zinc-800">AI Assistant</span>
+          </div>
+          <div class="flex-1 overflow-y-auto p-3 space-y-3">
+            <div class="chat-bubble-ai p-2.5 text-xs text-zinc-700">Tailored to the Fintech Backend role. Highlighted your distributed systems experience and promoted REST APIs. <span class="text-emerald-600 font-medium">4 sections updated.</span></div>
+            <div class="chat-bubble-user p-2.5 text-xs ml-4">Put model deployment back as second bullet under ML Experience</div>
+            <div class="chat-bubble-ai p-2.5 text-xs text-zinc-700">Done — moved model deployment to second bullet. Kept the distributed systems lead since it matches their primary requirement.</div>
+          </div>
+          <div class="p-3 border-t border-zinc-200">
+            <div class="flex gap-2">
+              <input class="flex-1 border border-zinc-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-400" placeholder="Ask AI or paste job description…" />
+              <button class="btn-primary text-xs px-3">↑</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-3 p-3 bg-zinc-50 rounded-lg border border-zinc-200 text-xs text-zinc-600">
+      <strong>D1 characteristics:</strong> Cursor-inspired equal-column split. Resume list always visible. Icon-only global nav keeps width minimal. Chat and editor feel like co-equal tools. Best when users are managing multiple resumes and switching frequently.
+    </div>
+  </div>
+
+  <!-- ======== DIRECTION 2: Document First ======== -->
+  <div class="direction" id="dir-1">
+    <div class="grid grid-cols-3 gap-4 mb-4">
+      <div class="col-span-2">
+        <h2 class="text-lg font-semibold text-zinc-900 mb-1">D2: Document First</h2>
+        <p class="text-zinc-500 text-sm">The resume canvas dominates. Chat is a collapsible right drawer. Navigation is in a slim topbar. Maximum focus on the document itself.</p>
+      </div>
+      <div class="text-sm text-zinc-500 space-y-1">
+        <div><span class="font-medium text-zinc-700">Layout:</span> Wide center canvas, chat as drawer</div>
+        <div><span class="font-medium text-zinc-700">Nav:</span> Top navigation bar</div>
+        <div><span class="font-medium text-zinc-700">Density:</span> Airy, document-centric</div>
+        <div><span class="font-medium text-zinc-700">Best for:</span> Users focused on the document output</div>
+      </div>
+    </div>
+    <div class="mockup-frame">
+      <!-- Top nav -->
+      <div class="nav-header border-b border-zinc-200">
+        <div class="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
+          <span class="text-white text-xs font-bold">RE</span>
+        </div>
+        <span class="text-sm font-semibold text-zinc-900">Resume Enhancer</span>
+        <div class="flex gap-1 ml-4">
+          <button class="btn-ghost text-xs bg-blue-50 text-blue-700">Resumes</button>
+          <button class="btn-ghost text-xs">Profile</button>
+          <button class="btn-ghost text-xs">Templates</button>
+        </div>
+        <div class="flex-1"></div>
+        <button class="btn-secondary text-xs">Export ↓</button>
+        <button class="btn-primary text-xs">Save</button>
+        <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold ml-2">JC</div>
+      </div>
+      <!-- Sub-toolbar -->
+      <div class="toolbar bg-zinc-50 border-b border-zinc-200">
+        <select class="text-xs border border-zinc-200 rounded px-2 py-1 bg-white text-zinc-600">
+          <option>Backend - Fintech - May 2026</option>
+        </select>
+        <div class="w-px h-5 bg-zinc-200 mx-1"></div>
+        <button class="btn-ghost text-xs">Minimal Template</button>
+        <button class="btn-ghost text-xs">✦ Tailor to Job</button>
+        <button class="btn-ghost text-xs">✦ Enhance</button>
+        <div class="flex-1"></div>
+        <button class="btn-secondary text-xs flex items-center gap-1">
+          <div class="ai-dot w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+          Chat
+        </button>
+      </div>
+      <!-- Body -->
+      <div class="flex flex-1 overflow-hidden">
+        <!-- Wide resume canvas -->
+        <div class="flex-1 bg-zinc-100 overflow-y-auto flex justify-center p-6">
+          <div class="resume-canvas resume-shadow w-96 flex-shrink-0">
+            <div class="resume-name">Jordan Chen</div>
+            <div class="resume-contact">jordan@email.com · github.com/jchen · San Francisco, CA</div>
+            <div class="resume-section-title">Experience</div>
+            <div class="resume-job-title">Backend Engineering Intern — <span class="font-normal">FinCo</span></div>
+            <div class="resume-job-meta">May 2025 – Aug 2025</div>
+            <div class="mt-1">
+              <div class="resume-bullet diff-add">Built <strong>distributed payment processing</strong> pipeline handling 50k txn/day</div>
+              <div class="resume-bullet diff-change">Implemented <strong>CI/CD pipeline</strong> reducing deployment time by 40%</div>
+              <div class="resume-bullet">Collaborated with cross-functional engineering team</div>
+            </div>
+            <div class="resume-section-title">Projects</div>
+            <div class="resume-job-title">Capstone: Distributed Cache</div>
+            <div class="resume-job-meta">Jan 2026 – May 2026</div>
+            <div class="mt-1">
+              <div class="resume-bullet diff-add">Designed <strong>REST API</strong> serving 10k requests/sec with 99.9% uptime</div>
+            </div>
+            <div class="resume-section-title">Skills</div>
+            <div class="mt-1">
+              <span class="tag diff-add">Distributed Systems</span><span class="tag diff-add">REST APIs</span><span class="tag">Python</span><span class="tag">Java</span><span class="tag diff-change">CI/CD</span>
+            </div>
+          </div>
+        </div>
+        <!-- Chat drawer (shown open) -->
+        <div class="w-80 border-l border-zinc-200 bg-white flex flex-col flex-shrink-0">
+          <div class="p-3 border-b border-zinc-200 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="ai-dot w-2 h-2 rounded-full bg-blue-400"></div>
+              <span class="text-sm font-semibold text-zinc-800">AI Chat</span>
+            </div>
+            <button class="text-zinc-400 text-xs hover:text-zinc-600">✕ Close</button>
+          </div>
+          <div class="flex-1 overflow-y-auto p-3 space-y-3">
+            <div class="chat-bubble-ai p-2.5 text-xs text-zinc-700">I've tailored your resume to the fintech backend role. Highlighted distributed systems experience and added REST API to skills. Want me to adjust anything?</div>
+            <div class="chat-bubble-user p-2.5 text-xs ml-6">Can you make the capstone sound more impactful?</div>
+            <div class="chat-bubble-ai p-2.5 text-xs text-zinc-700">Updated — reframed to emphasize scale and reliability metrics. The "99.9% uptime" addition directly echoes their SLA requirements in the JD.</div>
+          </div>
+          <div class="p-3 border-t border-zinc-200">
+            <textarea class="w-full border border-zinc-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-400 resize-none" rows="2" placeholder="Message AI…"></textarea>
+            <button class="btn-primary w-full text-xs mt-2">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-3 p-3 bg-zinc-50 rounded-lg border border-zinc-200 text-xs text-zinc-600">
+      <strong>D2 characteristics:</strong> Document canvas is the hero — widest view of any direction. Top nav keeps global navigation out of the editing experience. Chat drawer can be dismissed entirely for distraction-free editing. AI actions (Tailor, Enhance) in toolbar reduce reliance on knowing to type in chat.
+    </div>
+  </div>
+
+  <!-- ======== DIRECTION 3: Chat Native ======== -->
+  <div class="direction" id="dir-2">
+    <div class="grid grid-cols-3 gap-4 mb-4">
+      <div class="col-span-2">
+        <h2 class="text-lg font-semibold text-zinc-900 mb-1">D3: Chat Native</h2>
+        <p class="text-zinc-500 text-sm">Chat is the primary interface. The resume preview is the right panel. Users interact primarily through conversation — the document is the output, not the workspace.</p>
+      </div>
+      <div class="text-sm text-zinc-500 space-y-1">
+        <div><span class="font-medium text-zinc-700">Layout:</span> Chat-primary, resume as output panel</div>
+        <div><span class="font-medium text-zinc-700">Nav:</span> Left sidebar with resume list</div>
+        <div><span class="font-medium text-zinc-700">Density:</span> Conversational, relaxed</div>
+        <div><span class="font-medium text-zinc-700">Best for:</span> ChatGPT-familiar users, conversational workers</div>
+      </div>
+    </div>
+    <div class="mockup-frame">
+      <div class="nav-header">
+        <div class="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
+          <span class="text-white text-xs font-bold">RE</span>
+        </div>
+        <span class="text-sm font-semibold text-zinc-900 flex-1">Resume Enhancer</span>
+        <button class="btn-secondary text-xs">Export ↓</button>
+        <button class="btn-primary text-xs">Save</button>
+      </div>
+      <div class="flex flex-1 overflow-hidden">
+        <!-- Narrow sidebar -->
+        <div class="w-44 border-r border-zinc-200 bg-white flex flex-col flex-shrink-0">
+          <div class="p-3 border-b border-zinc-100">
+            <button class="btn-primary w-full text-xs py-1.5">+ New Resume</button>
+          </div>
+          <div class="flex-1 overflow-y-auto">
+            <div class="section-label px-3 pt-2 pb-1">Resumes</div>
+            <div class="sidebar-item active px-3 py-2">
+              <div class="text-xs font-semibold text-zinc-800">Backend - Fintech</div>
+              <div class="text-xs text-zinc-400">Tailored · today</div>
+            </div>
+            <div class="sidebar-item px-3 py-2">
+              <div class="text-xs text-zinc-600">General Engineer</div>
+              <div class="text-xs text-zinc-400">Base · May 10</div>
+            </div>
+            <div class="sidebar-item px-3 py-2">
+              <div class="text-xs text-zinc-600">ML Engineer</div>
+              <div class="text-xs text-zinc-400">Tailored · May 8</div>
+            </div>
+            <div class="section-label px-3 pt-3 pb-1">Quick</div>
+            <div class="sidebar-item px-3 py-2 text-xs text-zinc-500">📋 My Profile</div>
+            <div class="sidebar-item px-3 py-2 text-xs text-zinc-500">🗂 Templates</div>
+          </div>
+        </div>
+        <!-- Chat (primary) -->
+        <div class="flex-1 flex flex-col bg-zinc-50 border-r border-zinc-200">
+          <div class="p-3 border-b border-zinc-200 bg-white flex items-center gap-2">
+            <div class="ai-dot w-2 h-2 rounded-full bg-blue-400"></div>
+            <span class="text-sm font-semibold text-zinc-800">AI Assistant — Backend - Fintech</span>
+          </div>
+          <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="flex gap-2">
+              <div class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs flex-shrink-0 mt-0.5">AI</div>
+              <div class="chat-bubble-ai p-3 text-xs text-zinc-700 max-w-sm">Hi Jordan! I've reviewed your resume and the fintech backend job description. I've made several targeted updates — distributed systems experience is now front and center, and your skills section reorders to match what they prioritize. <span class="text-emerald-600 font-medium">4 changes made →</span></div>
+            </div>
+            <div class="flex gap-2 justify-end">
+              <div class="chat-bubble-user p-3 text-xs max-w-xs">Can you reframe my internship bullets to sound more backend-focused? Less "I helped with" more "I built"</div>
+              <div class="w-6 h-6 rounded-full bg-zinc-300 flex items-center justify-center text-zinc-600 text-xs flex-shrink-0 mt-0.5">JC</div>
+            </div>
+            <div class="flex gap-2">
+              <div class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs flex-shrink-0 mt-0.5">AI</div>
+              <div class="chat-bubble-ai p-3 text-xs text-zinc-700 max-w-sm">Done. Changed 3 bullets from passive to active voice, leading with the technical action. Also quantified the payment pipeline — "50k transactions/day" is a concrete number that'll stand out to engineering reviewers.</div>
+            </div>
+          </div>
+          <div class="p-3 border-t border-zinc-200 bg-white">
+            <div class="flex gap-2">
+              <input class="flex-1 border border-zinc-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-400 bg-white" placeholder="Ask AI, paste a job description, or request changes…" />
+              <button class="btn-primary text-xs px-3 rounded-xl">↑</button>
+            </div>
+          </div>
+        </div>
+        <!-- Resume preview (output panel) -->
+        <div class="w-64 bg-zinc-100 flex flex-col flex-shrink-0">
+          <div class="p-2 border-b border-zinc-200 bg-white flex items-center justify-between">
+            <span class="text-xs font-semibold text-zinc-600">Preview</span>
+            <button class="text-xs text-blue-600 font-medium">Edit directly</button>
+          </div>
+          <div class="flex-1 overflow-y-auto p-3">
+            <div class="resume-canvas resume-shadow text-zinc-800" style="font-size:10px; padding: 16px 14px;">
+              <div style="font-size:14px; font-weight:700;">Jordan Chen</div>
+              <div style="font-size:10px; color:#71717a;">jordan@email.com · github.com/jchen</div>
+              <div class="resume-section-title" style="font-size:9px;">Experience</div>
+              <div style="font-size:10px; font-weight:600;">Backend Intern — FinCo</div>
+              <div style="font-size:9.5px; color:#71717a;">May–Aug 2025</div>
+              <div class="mt-1 space-y-1">
+                <div class="resume-bullet diff-add" style="font-size:10px;">Built distributed payment pipeline, 50k txn/day</div>
+                <div class="resume-bullet diff-change" style="font-size:10px;">Implemented CI/CD, −40% deploy time</div>
+              </div>
+              <div class="resume-section-title" style="font-size:9px;">Skills</div>
+              <div><span class="tag diff-add" style="font-size:9px;">Distributed Systems</span><span class="tag diff-add" style="font-size:9px;">REST APIs</span><span class="tag" style="font-size:9px;">Python</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-3 p-3 bg-zinc-50 rounded-lg border border-zinc-200 text-xs text-zinc-600">
+      <strong>D3 characteristics:</strong> Conversation is the primary workspace — ChatGPT muscle memory applies directly. Resume is the output, always visible but not the focus. "Edit directly" escape hatch for users who want cursor-level control. Lower learning curve for AI-first users; may frustrate document-first users.
+    </div>
+  </div>
+
+  <!-- ======== DIRECTION 4: Minimal Studio ======== -->
+  <div class="direction" id="dir-3">
+    <div class="grid grid-cols-3 gap-4 mb-4">
+      <div class="col-span-2">
+        <h2 class="text-lg font-semibold text-zinc-900 mb-1">D4: Minimal Studio</h2>
+        <p class="text-zinc-500 text-sm">Full-bleed resume canvas with floating action bar. Chat opens as an overlay. Maximum visual focus on the document. Clean, distraction-free.</p>
+      </div>
+      <div class="text-sm text-zinc-500 space-y-1">
+        <div><span class="font-medium text-zinc-700">Layout:</span> Full-bleed canvas, floating UI</div>
+        <div><span class="font-medium text-zinc-700">Nav:</span> Minimal topbar + floating toolbar</div>
+        <div><span class="font-medium text-zinc-700">Density:</span> Very low — spacious, gallery feel</div>
+        <div><span class="font-medium text-zinc-700">Best for:</span> Design-conscious users, Canva-familiar</div>
+      </div>
+    </div>
+    <div class="mockup-frame bg-zinc-100">
+      <div class="nav-header bg-white/90 backdrop-blur">
+        <div class="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
+          <span class="text-white text-xs font-bold">RE</span>
+        </div>
+        <button class="text-zinc-400 hover:text-zinc-700 ml-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <span class="text-sm font-medium text-zinc-700 flex-1 ml-2">Backend - Fintech - May 2026</span>
+        <span class="text-xs text-zinc-400">Minimal Template</span>
+        <div class="w-px h-5 bg-zinc-200 mx-2"></div>
+        <button class="btn-secondary text-xs">Export ↓</button>
+        <button class="btn-primary text-xs">Save</button>
+      </div>
+      <!-- Full bleed canvas -->
+      <div class="flex-1 overflow-y-auto flex justify-center items-start pt-6 px-8 pb-16 relative">
+        <div class="resume-canvas resume-shadow w-96 flex-shrink-0">
+          <div class="resume-name">Jordan Chen</div>
+          <div class="resume-contact">jordan@email.com · github.com/jchen · San Francisco, CA</div>
+          <div class="resume-section-title">Experience</div>
+          <div class="resume-job-title">Backend Engineering Intern — <span class="font-normal">FinCo</span></div>
+          <div class="resume-job-meta">May 2025 – Aug 2025</div>
+          <div class="mt-1">
+            <div class="resume-bullet diff-add">Built <strong>distributed payment processing</strong> pipeline (50k txn/day)</div>
+            <div class="resume-bullet diff-change">Implemented <strong>CI/CD pipeline</strong>, reduced deploy time 40%</div>
+            <div class="resume-bullet">Collaborated with cross-functional engineering team on API design</div>
+          </div>
+          <div class="resume-section-title">Projects</div>
+          <div class="resume-job-title">Distributed Cache — Capstone</div>
+          <div class="resume-job-meta">Jan–May 2026</div>
+          <div class="mt-1">
+            <div class="resume-bullet diff-add">Designed <strong>REST API</strong>, 10k req/sec, 99.9% uptime</div>
+          </div>
+          <div class="resume-section-title">Skills</div>
+          <div class="mt-1">
+            <span class="tag diff-add">Distributed Systems</span><span class="tag diff-add">REST APIs</span><span class="tag">Python</span><span class="tag">Java</span><span class="tag diff-change">CI/CD</span><span class="tag">PostgreSQL</span>
+          </div>
+          <div class="resume-section-title">Education</div>
+          <div class="resume-job-title">B.S. Computer Science — Stanford</div>
+          <div class="resume-job-meta">2022–2026 · GPA 3.8</div>
+        </div>
+        <!-- Floating action bar -->
+        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white border border-zinc-200 rounded-2xl shadow-lg px-4 py-2.5 flex items-center gap-3">
+          <button class="btn-ghost text-xs flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            Edit
+          </button>
+          <div class="w-px h-4 bg-zinc-200"></div>
+          <button class="text-xs font-medium text-blue-600 flex items-center gap-1.5">
+            <div class="ai-dot w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+            ✦ Tailor to Job
+          </button>
+          <div class="w-px h-4 bg-zinc-200"></div>
+          <button class="btn-ghost text-xs flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+            Chat
+          </button>
+          <div class="w-px h-4 bg-zinc-200"></div>
+          <button class="btn-ghost text-xs">Export ↓</button>
+        </div>
+      </div>
+    </div>
+    <div class="mt-3 p-3 bg-zinc-50 rounded-lg border border-zinc-200 text-xs text-zinc-600">
+      <strong>D4 characteristics:</strong> Most visually striking — the document is the entire experience. Floating toolbar surfaces only the most-needed actions without cluttering. Chat opens as overlay when needed. Risk: resume list / navigation is one step further away. Best for single-resume focused sessions.
+    </div>
+  </div>
+
+  <!-- ======== DIRECTION 5: Power Sidebar ======== -->
+  <div class="direction" id="dir-4">
+    <div class="grid grid-cols-3 gap-4 mb-4">
+      <div class="col-span-2">
+        <h2 class="text-lg font-semibold text-zinc-900 mb-1">D5: Power Sidebar</h2>
+        <p class="text-zinc-500 text-sm">Wide left sidebar combines resume list, section controls, and AI actions. Resume preview center. No separate chat panel — AI interaction happens inline in the sidebar.</p>
+      </div>
+      <div class="text-sm text-zinc-500 space-y-1">
+        <div><span class="font-medium text-zinc-700">Layout:</span> Wide sidebar + center canvas</div>
+        <div><span class="font-medium text-zinc-700">Nav:</span> Sidebar-integrated</div>
+        <div><span class="font-medium text-zinc-700">Density:</span> Medium, sidebar-heavy</div>
+        <div><span class="font-medium text-zinc-700">Best for:</span> Power users managing sections and versions</div>
+      </div>
+    </div>
+    <div class="mockup-frame">
+      <div class="nav-header">
+        <div class="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
+          <span class="text-white text-xs font-bold">RE</span>
+        </div>
+        <span class="text-sm font-semibold text-zinc-900 flex-1">Resume Enhancer</span>
+        <button class="btn-secondary text-xs">Export ↓</button>
+        <button class="btn-primary text-xs">Save As</button>
+        <button class="btn-primary text-xs">Save</button>
+      </div>
+      <div class="flex flex-1 overflow-hidden">
+        <!-- Wide sidebar -->
+        <div class="w-64 border-r border-zinc-200 bg-white flex flex-col flex-shrink-0">
+          <!-- Resume name + switch -->
+          <div class="p-3 border-b border-zinc-200">
+            <div class="text-xs font-semibold text-zinc-800 mb-1">Backend - Fintech - May 2026</div>
+            <select class="text-xs w-full border border-zinc-200 rounded px-2 py-1 text-zinc-600 bg-white">
+              <option>Backend - Fintech - May 2026</option>
+              <option>General Engineer</option>
+              <option>ML Engineer - FAANG</option>
+            </select>
+          </div>
+          <!-- Sections -->
+          <div class="p-3 border-b border-zinc-200">
+            <div class="section-label mb-2">Sections</div>
+            <div class="space-y-1">
+              <div class="flex items-center gap-2 text-xs py-1 px-2 bg-zinc-50 rounded">
+                <input type="checkbox" checked class="w-3 h-3 accent-blue-600" />
+                <span class="flex-1 text-zinc-700 font-medium">Experience</span>
+                <button class="text-zinc-400 hover:text-zinc-600">⋮</button>
+              </div>
+              <div class="flex items-center gap-2 text-xs py-1 px-2 rounded">
+                <input type="checkbox" checked class="w-3 h-3 accent-blue-600" />
+                <span class="flex-1 text-zinc-700">Projects</span>
+                <button class="text-zinc-400 hover:text-zinc-600">⋮</button>
+              </div>
+              <div class="flex items-center gap-2 text-xs py-1 px-2 rounded">
+                <input type="checkbox" checked class="w-3 h-3 accent-blue-600" />
+                <span class="flex-1 text-zinc-700">Skills</span>
+                <button class="text-zinc-400 hover:text-zinc-600">⋮</button>
+              </div>
+              <div class="flex items-center gap-2 text-xs py-1 px-2 rounded opacity-50">
+                <input type="checkbox" class="w-3 h-3 accent-blue-600" />
+                <span class="flex-1 text-zinc-500 line-through">Certifications</span>
+              </div>
+            </div>
+          </div>
+          <!-- AI quick actions -->
+          <div class="p-3 border-b border-zinc-200">
+            <div class="section-label mb-2">AI Actions</div>
+            <button class="w-full text-left text-xs px-2 py-1.5 rounded bg-blue-50 text-blue-700 font-medium mb-1">✦ Tailor to Job Description</button>
+            <button class="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-zinc-50 text-zinc-600">✦ Enhance Resume</button>
+            <button class="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-zinc-50 text-zinc-600">✦ Open Chat</button>
+          </div>
+          <!-- Recent AI activity -->
+          <div class="p-3 flex-1 overflow-y-auto">
+            <div class="section-label mb-2">Recent Changes</div>
+            <div class="space-y-2">
+              <div class="text-xs p-2 bg-emerald-50 border border-emerald-200 rounded text-emerald-700">+ Added "Distributed Systems" to skills</div>
+              <div class="text-xs p-2 bg-amber-50 border border-amber-200 rounded text-amber-700">~ Reframed 2 experience bullets</div>
+              <div class="text-xs p-2 bg-amber-50 border border-amber-200 rounded text-amber-700">~ Reordered skills section</div>
+            </div>
+          </div>
+        </div>
+        <!-- Center canvas -->
+        <div class="flex-1 bg-zinc-100 overflow-y-auto flex justify-center p-5">
+          <div class="resume-canvas resume-shadow w-80 flex-shrink-0">
+            <div class="resume-name">Jordan Chen</div>
+            <div class="resume-contact">jordan@email.com · github.com/jchen · San Francisco, CA</div>
+            <div class="resume-section-title">Experience</div>
+            <div class="resume-job-title">Backend Engineering Intern — <span class="font-normal">FinCo</span></div>
+            <div class="resume-job-meta">May 2025 – Aug 2025</div>
+            <div class="mt-1">
+              <div class="resume-bullet diff-add">Built <strong>distributed payment processing</strong> pipeline (50k txn/day)</div>
+              <div class="resume-bullet diff-change">Implemented <strong>CI/CD pipeline</strong>, −40% deploy time</div>
+              <div class="resume-bullet">Collaborated with engineering team on microservices design</div>
+            </div>
+            <div class="resume-section-title">Skills</div>
+            <div class="mt-1">
+              <span class="tag diff-add">Distributed Systems</span><span class="tag diff-add">REST APIs</span><span class="tag">Python</span><span class="tag">Java</span>
+            </div>
+            <div class="resume-section-title">Education</div>
+            <div class="resume-job-title">B.S. Computer Science — Stanford</div>
+            <div class="resume-job-meta">2022–2026 · GPA 3.8</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-3 p-3 bg-zinc-50 rounded-lg border border-zinc-200 text-xs text-zinc-600">
+      <strong>D5 characteristics:</strong> Section management (show/hide, reorder) is front and center — ideal for Priya's multi-version power use case. Change log in the sidebar gives clear AI audit trail. Risk: sidebar is dense; less space for the resume canvas than other directions. Chat is one click away but not persistently visible.
+    </div>
+  </div>
+
+  <!-- ======== DIRECTION 6: Dashboard Hub ======== -->
+  <div class="direction" id="dir-5">
+    <div class="grid grid-cols-3 gap-4 mb-4">
+      <div class="col-span-2">
+        <h2 class="text-lg font-semibold text-zinc-900 mb-1">D6: Dashboard Hub</h2>
+        <p class="text-zinc-500 text-sm">Starts at a dashboard overview of all resumes, then enters a focused editor. Separate "modes" — dashboard, editor, profile — with clear context switching.</p>
+      </div>
+      <div class="text-sm text-zinc-500 space-y-1">
+        <div><span class="font-medium text-zinc-700">Layout:</span> Dashboard + modal editor experience</div>
+        <div><span class="font-medium text-zinc-700">Nav:</span> Top tabs between modes</div>
+        <div><span class="font-medium text-zinc-700">Density:</span> Low on dashboard, high in editor</div>
+        <div><span class="font-medium text-zinc-700">Best for:</span> New users, overview-oriented thinkers</div>
+      </div>
+    </div>
+    <div class="mockup-frame">
+      <div class="nav-header">
+        <div class="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
+          <span class="text-white text-xs font-bold">RE</span>
+        </div>
+        <span class="text-sm font-semibold text-zinc-900 ml-1">Resume Enhancer</span>
+        <div class="flex gap-1 ml-6 border-b border-transparent">
+          <button class="px-3 py-1 text-xs font-medium text-blue-600 border-b-2 border-blue-600">Resumes</button>
+          <button class="px-3 py-1 text-xs text-zinc-500 hover:text-zinc-700">Profile</button>
+          <button class="px-3 py-1 text-xs text-zinc-500 hover:text-zinc-700">Templates</button>
+        </div>
+        <div class="flex-1"></div>
+        <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold">JC</div>
+      </div>
+      <!-- Dashboard body -->
+      <div class="flex-1 overflow-y-auto bg-zinc-50 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-semibold text-zinc-900">Good afternoon, Jordan 👋</h2>
+            <p class="text-xs text-zinc-500 mt-0.5">3 resumes · 2 tailored this week</p>
+          </div>
+          <button class="btn-primary text-xs">+ New Resume</button>
+        </div>
+        <!-- Resume cards -->
+        <div class="grid grid-cols-3 gap-3 mb-5">
+          <!-- Card 1 (active/featured) -->
+          <div class="bg-white border-2 border-blue-200 rounded-xl p-4 cursor-pointer hover:border-blue-400 transition-colors relative">
+            <div class="badge bg-blue-100 text-blue-700 text-xs mb-2">✦ Tailored</div>
+            <div class="text-sm font-semibold text-zinc-800">Backend - Fintech</div>
+            <div class="text-xs text-zinc-400 mt-0.5 mb-3">Minimal Template · Updated today</div>
+            <!-- Mini resume preview -->
+            <div class="bg-zinc-50 rounded p-2 text-zinc-600 border border-zinc-200" style="font-size:8.5px; line-height:1.4;">
+              <div style="font-weight:700; font-size:10px;">Jordan Chen</div>
+              <div style="color:#71717a; font-size:8px;">Backend Engineer</div>
+              <div style="border-top:1px solid #e4e4e7; margin:4px 0 2px; font-size:8px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#71717a;">Experience</div>
+              <div>Backend Intern — FinCo</div>
+              <div style="color:#71717a; font-size:7.5px;">May–Aug 2025</div>
+            </div>
+            <div class="mt-3 flex gap-1.5">
+              <button class="btn-primary text-xs flex-1 py-1">Open</button>
+              <button class="btn-secondary text-xs px-2 py-1">↓</button>
+            </div>
+          </div>
+          <!-- Card 2 -->
+          <div class="bg-white border border-zinc-200 rounded-xl p-4 cursor-pointer hover:border-zinc-300 transition-colors">
+            <div class="badge bg-zinc-100 text-zinc-600 text-xs mb-2">Base</div>
+            <div class="text-sm font-semibold text-zinc-800">General Engineer</div>
+            <div class="text-xs text-zinc-400 mt-0.5 mb-3">Minimal Template · May 10</div>
+            <div class="bg-zinc-50 rounded p-2 text-zinc-600 border border-zinc-200" style="font-size:8.5px; line-height:1.4;">
+              <div style="font-weight:700; font-size:10px;">Jordan Chen</div>
+              <div style="color:#71717a; font-size:8px;">Software Engineer</div>
+              <div style="border-top:1px solid #e4e4e7; margin:4px 0 2px; font-size:8px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#71717a;">Experience</div>
+              <div>Software Intern — Corp</div>
+            </div>
+            <div class="mt-3 flex gap-1.5">
+              <button class="btn-secondary text-xs flex-1 py-1">Open</button>
+              <button class="btn-secondary text-xs px-2 py-1">↓</button>
+            </div>
+          </div>
+          <!-- New card -->
+          <div class="border-2 border-dashed border-zinc-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-colors text-center">
+            <div class="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400 text-lg mb-2">+</div>
+            <div class="text-xs font-medium text-zinc-500">New Resume</div>
+            <div class="text-xs text-zinc-400 mt-0.5">From profile or upload</div>
+          </div>
+        </div>
+        <!-- Quick AI action banner -->
+        <div class="bg-blue-600 rounded-xl p-4 flex items-center gap-4">
+          <div class="flex-1">
+            <div class="text-sm font-semibold text-white">Ready to tailor?</div>
+            <div class="text-xs text-blue-200 mt-0.5">Open a resume and paste a job description — AI will rewrite it in seconds.</div>
+          </div>
+          <button class="bg-white text-blue-700 font-medium text-xs px-3 py-2 rounded-lg whitespace-nowrap">Open Editor ✦</button>
+        </div>
+      </div>
+    </div>
+    <div class="mt-3 p-3 bg-zinc-50 rounded-lg border border-zinc-200 text-xs text-zinc-600">
+      <strong>D6 characteristics:</strong> Strong onboarding story — Jordan lands here and immediately sees her work. Resume cards with mini previews make the library scannable. Risk: extra step to get into the editor; experienced users may find the dashboard unnecessary. AI action banner is a strong first-time user nudge toward the aha moment.
+    </div>
+  </div>
+
+  <!-- Summary comparison -->
+  <div class="mt-8 bg-white rounded-xl border border-zinc-200 p-5">
+    <h3 class="text-base font-semibold text-zinc-900 mb-3">Direction Comparison</h3>
+    <div class="overflow-x-auto">
+      <table class="text-xs w-full">
+        <thead>
+          <tr class="border-b border-zinc-200">
+            <th class="text-left py-2 pr-4 font-semibold text-zinc-700">Direction</th>
+            <th class="text-left py-2 pr-4 font-semibold text-zinc-700">Document focus</th>
+            <th class="text-left py-2 pr-4 font-semibold text-zinc-700">Chat visibility</th>
+            <th class="text-left py-2 pr-4 font-semibold text-zinc-700">State clarity</th>
+            <th class="text-left py-2 pr-4 font-semibold text-zinc-700">Onboarding</th>
+            <th class="text-left py-2 font-semibold text-zinc-700">Best persona</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-zinc-100">
+          <tr><td class="py-2 pr-4 font-medium">D1: Command Center</td><td class="py-2 pr-4">High</td><td class="py-2 pr-4">Always visible</td><td class="py-2 pr-4">★★★★★</td><td class="py-2 pr-4">Medium</td><td class="py-2">Priya, Marcus</td></tr>
+          <tr><td class="py-2 pr-4 font-medium">D2: Document First</td><td class="py-2 pr-4">Very high</td><td class="py-2 pr-4">Drawer (open/close)</td><td class="py-2 pr-4">★★★★☆</td><td class="py-2 pr-4">High</td><td class="py-2">Jordan, Marcus</td></tr>
+          <tr><td class="py-2 pr-4 font-medium">D3: Chat Native</td><td class="py-2 pr-4">Medium</td><td class="py-2 pr-4">Always visible</td><td class="py-2 pr-4">★★★☆☆</td><td class="py-2 pr-4">Very high</td><td class="py-2">Marcus, Jordan</td></tr>
+          <tr><td class="py-2 pr-4 font-medium">D4: Minimal Studio</td><td class="py-2 pr-4">Maximum</td><td class="py-2 pr-4">Overlay on demand</td><td class="py-2 pr-4">★★★☆☆</td><td class="py-2 pr-4">Low</td><td class="py-2">Design-conscious</td></tr>
+          <tr><td class="py-2 pr-4 font-medium">D5: Power Sidebar</td><td class="py-2 pr-4">High</td><td class="py-2 pr-4">One click away</td><td class="py-2 pr-4">★★★★★</td><td class="py-2 pr-4">Medium</td><td class="py-2">Priya</td></tr>
+          <tr><td class="py-2 pr-4 font-medium">D6: Dashboard Hub</td><td class="py-2 pr-4">High (in editor)</td><td class="py-2 pr-4">In editor view</td><td class="py-2 pr-4">★★★★☆</td><td class="py-2 pr-4">Very high</td><td class="py-2">Jordan (new user)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showDir(idx, btn) {
+  document.querySelectorAll('.direction').forEach(d => d.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('dir-' + idx).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
