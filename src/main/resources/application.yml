@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: resume-enhancer
+  profiles:
+    active: dev
+  datasource:
+    url: jdbc:postgresql://localhost:5432/resumeenhancer
+    username: myuser
+    password: secret
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  cache:
+    type: caffeine
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/logs
+    metrics:
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/metrics
+  management:
+    tracing:
+      sampling:
+        probability: 1.0
+
+app:
+  jwt:
+    secret: "change-this-in-production-minimum-256-bit-secret-key-here"
+    expiration-ms: 3600000

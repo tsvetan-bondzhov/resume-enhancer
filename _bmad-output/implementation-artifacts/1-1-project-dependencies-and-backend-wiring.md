@@ -1,6 +1,6 @@
 # Story 1.1: Project Dependencies & Backend Wiring
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -26,57 +26,57 @@ so that subsequent stories have a working, compilable foundation to build on.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add all missing dependencies to `pom.xml` (AC: 2, 3)
-  - [ ] Add `spring-boot-starter-security` (Boot-managed version)
-  - [ ] Add `jjwt-api`, `jjwt-impl`, `jjwt-jackson` at version `0.12.3` (io.jsonwebtoken) with explicit `<jjwt.version>0.12.3</jjwt.version>` property
-  - [ ] Add `poi-ooxml` (org.apache.poi) with explicit `<poi.version>5.3.0</poi.version>` property
-  - [ ] Add `pdfbox` (org.apache.pdfbox) with explicit `<pdfbox.version>3.0.3</pdfbox.version>` property
-  - [ ] Add `itext7-core` (com.itextpdf) with explicit `<itext.version>8.0.5</itext.version>` property
-  - [ ] Add `springdoc-openapi-starter-webmvc-ui` at `3.0.3` with explicit `<springdoc.version>3.0.3</springdoc.version>` property
-  - [ ] Add `caffeine` (com.github.ben-manes.caffeine) — Boot-managed version via `spring-boot-starter-cache` dependency
-  - [ ] Add `spring-boot-starter-cache` (Boot-managed version)
-  - [ ] Add `frontend-maven-plugin` (com.github.eirslett) version `1.15.0` with explicit property `<frontend-maven-plugin.version>1.15.0</frontend-maven-plugin.version>` in `<build><plugins>` section — configured to run `npm install` + `npm run build` from `frontend/` directory, outputting to `src/main/resources/static/`
-  - [ ] Pin `spring-ai.version=2.0.0-M6` already present — verify all Spring AI transitive artifacts use this version via BOM; add explicit version overrides in `<properties>` if any artifact resolves differently
+- [x] Task 1: Add all missing dependencies to `pom.xml` (AC: 2, 3)
+  - [x] Add `spring-boot-starter-security` (Boot-managed version)
+  - [x] Add `jjwt-api`, `jjwt-impl`, `jjwt-jackson` at version `0.12.3` (io.jsonwebtoken) with explicit `<jjwt.version>0.12.3</jjwt.version>` property
+  - [x] Add `poi-ooxml` (org.apache.poi) with explicit `<poi.version>5.3.0</poi.version>` property
+  - [x] Add `pdfbox` (org.apache.pdfbox) with explicit `<pdfbox.version>3.0.3</pdfbox.version>` property
+  - [x] Add `itext7-core` (com.itextpdf) with explicit `<itext.version>8.0.5</itext.version>` property
+  - [x] Add `springdoc-openapi-starter-webmvc-ui` at `3.0.3` with explicit `<springdoc.version>3.0.3</springdoc.version>` property
+  - [x] Add `caffeine` (com.github.ben-manes.caffeine) — Boot-managed version via `spring-boot-starter-cache` dependency
+  - [x] Add `spring-boot-starter-cache` (Boot-managed version)
+  - [x] Add `frontend-maven-plugin` (com.github.eirslett) version `1.15.0` with explicit property `<frontend-maven-plugin.version>1.15.0</frontend-maven-plugin.version>` in `<build><plugins>` section — configured to run `npm install` + `npm run build` from `frontend/` directory, outputting to `src/main/resources/static/`
+  - [x] Pin `spring-ai.version=2.0.0-M6` already present — verify all Spring AI transitive artifacts use this version via BOM; add explicit version overrides in `<properties>` if any artifact resolves differently
 
-- [ ] Task 2: Create Flyway migration scripts V1–V4 (AC: 5)
-  - [ ] Create `src/main/resources/db/migration/V1__create_users_table.sql` — `users` table: `id UUID PK`, `email VARCHAR(255) UNIQUE NOT NULL`, `password_hash VARCHAR(255) NOT NULL`, `role VARCHAR(10) NOT NULL DEFAULT 'USER'`, `enabled BOOLEAN NOT NULL DEFAULT TRUE`, `created_at TIMESTAMP NOT NULL`, `updated_at TIMESTAMP NOT NULL`; index: `idx_users_email`
-  - [ ] Create `src/main/resources/db/migration/V2__create_profiles_tables.sql` — `profiles` (1:1 with users: `id UUID PK`, `user_id UUID UNIQUE FK → users.id`, `summary TEXT`, `created_at`, `updated_at`), `profile_work_experiences` (`id UUID PK`, `profile_id UUID FK`, `job_title`, `company`, `start_date DATE`, `end_date DATE NULL`, `is_current BOOLEAN`, `description TEXT`, `created_at`, `updated_at`), `profile_education` (`id UUID PK`, `profile_id UUID FK`, `institution`, `degree`, `field_of_study`, `start_date DATE`, `end_date DATE NULL`, `created_at`, `updated_at`), `profile_skills` (`id UUID PK`, `profile_id UUID FK`, `name VARCHAR(255)`, `created_at`, `updated_at`)
-  - [ ] Create `src/main/resources/db/migration/V3__create_resumes_table.sql` — `resumes` (`id UUID PK`, `user_id UUID FK → users.id`, `template_id UUID FK → resume_templates.id NULL`, `name VARCHAR(255) NOT NULL`, `resume_content JSONB NOT NULL DEFAULT '{}'`, `is_tailored BOOLEAN NOT NULL DEFAULT FALSE`, `created_at TIMESTAMP NOT NULL`, `updated_at TIMESTAMP NOT NULL`); index: `idx_resumes_user_id`
-  - [ ] Create `src/main/resources/db/migration/V4__create_resume_templates_table.sql` — `resume_templates` (`id UUID PK`, `name VARCHAR(255) NOT NULL`, `description TEXT`, `is_prebuilt BOOLEAN NOT NULL DEFAULT FALSE`, `is_published BOOLEAN NOT NULL DEFAULT FALSE`, `owner_id UUID FK → users.id NULL`, `template_definition JSONB NOT NULL DEFAULT '{}'`, `created_at TIMESTAMP NOT NULL`, `updated_at TIMESTAMP NOT NULL`)
-  - [ ] Note: V3 references `resume_templates` — V4 must be created but V3's FK must be nullable (`template_id UUID NULL`) to avoid cross-script ordering issues; Flyway runs V1→V4 in order
+- [x] Task 2: Create Flyway migration scripts V1–V4 (AC: 5)
+  - [x] Create `src/main/resources/db/migration/V1__create_users_table.sql` — `users` table: `id UUID PK`, `email VARCHAR(255) UNIQUE NOT NULL`, `password_hash VARCHAR(255) NOT NULL`, `role VARCHAR(10) NOT NULL DEFAULT 'USER'`, `enabled BOOLEAN NOT NULL DEFAULT TRUE`, `created_at TIMESTAMP NOT NULL`, `updated_at TIMESTAMP NOT NULL`; index: `idx_users_email`
+  - [x] Create `src/main/resources/db/migration/V2__create_profiles_tables.sql` — `profiles` (1:1 with users: `id UUID PK`, `user_id UUID UNIQUE FK → users.id`, `summary TEXT`, `created_at`, `updated_at`), `profile_work_experiences` (`id UUID PK`, `profile_id UUID FK`, `job_title`, `company`, `start_date DATE`, `end_date DATE NULL`, `is_current BOOLEAN`, `description TEXT`, `created_at`, `updated_at`), `profile_education` (`id UUID PK`, `profile_id UUID FK`, `institution`, `degree`, `field_of_study`, `start_date DATE`, `end_date DATE NULL`, `created_at`, `updated_at`), `profile_skills` (`id UUID PK`, `profile_id UUID FK`, `name VARCHAR(255)`, `created_at`, `updated_at`)
+  - [x] Create `src/main/resources/db/migration/V3__create_resumes_table.sql` — `resumes` (`id UUID PK`, `user_id UUID FK → users.id`, `template_id UUID FK → resume_templates.id NULL`, `name VARCHAR(255) NOT NULL`, `resume_content JSONB NOT NULL DEFAULT '{}'`, `is_tailored BOOLEAN NOT NULL DEFAULT FALSE`, `created_at TIMESTAMP NOT NULL`, `updated_at TIMESTAMP NOT NULL`); index: `idx_resumes_user_id`
+  - [x] Create `src/main/resources/db/migration/V4__create_resume_templates_table.sql` — `resume_templates` (`id UUID PK`, `name VARCHAR(255) NOT NULL`, `description TEXT`, `is_prebuilt BOOLEAN NOT NULL DEFAULT FALSE`, `is_published BOOLEAN NOT NULL DEFAULT FALSE`, `owner_id UUID FK → users.id NULL`, `template_definition JSONB NOT NULL DEFAULT '{}'`, `created_at TIMESTAMP NOT NULL`, `updated_at TIMESTAMP NOT NULL`)
+  - [x] Note: V3 references `resume_templates` — V4 must be created but V3's FK must be nullable (`template_id UUID NULL`) to avoid cross-script ordering issues; Flyway runs V1→V4 in order
 
-- [ ] Task 3: Create `application.yml` and profile-specific configs (AC: 4, 6, 7)
-  - [ ] Replace `src/main/resources/application.properties` with `application.yml`
-  - [ ] Base `application.yml`: datasource (postgres), JPA (hibernate ddl-auto=validate), Flyway enabled, Spring AI Ollama base-url, multipart max-file-size=10MB, multipart max-request-size=10MB, jwt properties (`app.jwt.secret`, `app.jwt.expiration-ms=3600000`), cache type=caffeine, `spring.profiles.active=dev` (default)
-  - [ ] Create `application-dev.yml`: `springdoc.api-docs.enabled=true`, `springdoc.swagger-ui.enabled=true`
-  - [ ] Create `application-prod.yml`: `springdoc.api-docs.enabled=false`, `springdoc.swagger-ui.enabled=false`
-  - [ ] Keep existing OpenTelemetry endpoint properties from current `application.properties`
+- [x] Task 3: Create `application.yml` and profile-specific configs (AC: 4, 6, 7)
+  - [x] Replace `src/main/resources/application.properties` with `application.yml`
+  - [x] Base `application.yml`: datasource (postgres), JPA (hibernate ddl-auto=validate), Flyway enabled, Spring AI Ollama base-url, multipart max-file-size=10MB, multipart max-request-size=10MB, jwt properties (`app.jwt.secret`, `app.jwt.expiration-ms=3600000`), cache type=caffeine, `spring.profiles.active=dev` (default)
+  - [x] Create `application-dev.yml`: `springdoc.api-docs.enabled=true`, `springdoc.swagger-ui.enabled=true`
+  - [x] Create `application-prod.yml`: `springdoc.api-docs.enabled=false`, `springdoc.swagger-ui.enabled=false`
+  - [x] Keep existing OpenTelemetry endpoint properties from current `application.properties`
 
-- [ ] Task 4: Rename main application class and fix package (AC: 1)
-  - [ ] Rename `CvenchancerApplication.java` → `ResumeEnhancerApplication.java` and update class name inside (architecture specifies `ResumeEnhancerApplication.java`)
-  - [ ] Verify package root is `com.tsvetanbondzhov.resumeenhancer`
+- [x] Task 4: Rename main application class and fix package (AC: 1)
+  - [x] Rename `CvenchancerApplication.java` → `ResumeEnhancerApplication.java` and update class name inside (architecture specifies `ResumeEnhancerApplication.java`)
+  - [x] Verify package root is `com.tsvetanbondzhov.resumeenhancer`
 
-- [ ] Task 5: Create skeleton `config/` package classes (AC: 1, 4)
-  - [ ] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/config/SecurityConfig.java` — minimal `@Configuration` `@EnableWebSecurity` bean that permits all (temporary placeholder; Story 1.3/1.4 will implement full JWT chain); must allow app to start without 401 on all endpoints now
-  - [ ] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/config/SpringDocConfig.java` — `@Configuration` that configures a `OpenAPI` bean with `SecurityScheme` for Bearer JWT; active only when `springdoc.api-docs.enabled=true`
-  - [ ] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/config/CacheConfig.java` — `@Configuration` `@EnableCaching` with a `CaffeineSpec`-based `CacheManager` bean
-  - [ ] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/config/WebMvcConfig.java` — `@Configuration` implementing `WebMvcConfigurer`; SPA fallback: all non-`/api/**` GET requests return `src/main/resources/static/index.html`
-  - [ ] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/config/JacksonConfig.java` — `@Configuration` that registers `JavaTimeModule` and sets `WRITE_DATES_AS_TIMESTAMPS=false` to serialize `Instant` → ISO 8601 UTC strings
+- [x] Task 5: Create skeleton `config/` package classes (AC: 1, 4)
+  - [x] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/config/SecurityConfig.java` — minimal `@Configuration` `@EnableWebSecurity` bean that permits all (temporary placeholder; Story 1.3/1.4 will implement full JWT chain); must allow app to start without 401 on all endpoints now
+  - [x] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/config/SpringDocConfig.java` — `@Configuration` that configures a `OpenAPI` bean with `SecurityScheme` for Bearer JWT; active only when `springdoc.api-docs.enabled=true`
+  - [x] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/config/CacheConfig.java` — `@Configuration` `@EnableCaching` with a `CaffeineSpec`-based `CacheManager` bean
+  - [x] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/config/WebMvcConfig.java` — `@Configuration` implementing `WebMvcConfigurer`; SPA fallback: all non-`/api/**` GET requests return `src/main/resources/static/index.html`
+  - [x] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/config/JacksonConfig.java` — `@Configuration` that registers `JavaTimeModule` and sets `WRITE_DATES_AS_TIMESTAMPS=false` to serialize `Instant` → ISO 8601 UTC strings
 
-- [ ] Task 6: Create `common/` package skeleton (AC: 1)
-  - [ ] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/common/BaseEntity.java` — `@MappedSuperclass` with `id` (`UUID`, `@Id @GeneratedValue(strategy=UUID)`), `createdAt` (`Instant`, `@CreatedDate`), `updatedAt` (`Instant`, `@LastModifiedDate`); annotate with `@EntityListeners(AuditingEntityListener.class)`; enable JPA auditing via `@EnableJpaAuditing` on `ResumeEnhancerApplication` or a config class
-  - [ ] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/common/GlobalExceptionHandler.java` — `@RestControllerAdvice` skeleton; single handler for `Exception.class` returning `ProblemDetail` HTTP 500 (full implementation in later stories as domain exceptions are added)
+- [x] Task 6: Create `common/` package skeleton (AC: 1)
+  - [x] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/common/BaseEntity.java` — `@MappedSuperclass` with `id` (`UUID`, `@Id @GeneratedValue(strategy=UUID)`), `createdAt` (`Instant`, `@CreatedDate`), `updatedAt` (`Instant`, `@LastModifiedDate`); annotate with `@EntityListeners(AuditingEntityListener.class)`; enable JPA auditing via `@EnableJpaAuditing` on `ResumeEnhancerApplication` or a config class
+  - [x] Create `src/main/java/com/tsvetanbondzhov/resumeenhancer/common/GlobalExceptionHandler.java` — `@RestControllerAdvice` skeleton; single handler for `Exception.class` returning `ProblemDetail` HTTP 500 (full implementation in later stories as domain exceptions are added)
 
-- [ ] Task 7: Update `compose.yaml` (AC: 1)
-  - [ ] Add `app` service skeleton to `compose.yaml` pointing to built JAR/image (can be placeholder for now — actual image build is for production; dev workflow uses `./mvnw spring-boot:run` which auto-wires existing postgres/ollama/grafana-lgtm services via `spring-boot-docker-compose`)
-  - [ ] Rename `POSTGRES_DB=mydatabase` to `POSTGRES_DB=resumeenhancer` (or keep and update `application.yml` datasource to match)
-  - [ ] Verify Ollama service is reachable at `http://localhost:11434` (default port mapping); Spring AI Ollama base-url in `application.yml` should be `http://localhost:11434`
+- [x] Task 7: Update `compose.yaml` (AC: 1)
+  - [x] Add `app` service skeleton to `compose.yaml` pointing to built JAR/image (can be placeholder for now — actual image build is for production; dev workflow uses `./mvnw spring-boot:run` which auto-wires existing postgres/ollama/grafana-lgtm services via `spring-boot-docker-compose`)
+  - [x] Rename `POSTGRES_DB=mydatabase` to `POSTGRES_DB=resumeenhancer` (or keep and update `application.yml` datasource to match)
+  - [x] Verify Ollama service is reachable at `http://localhost:11434` (default port mapping); Spring AI Ollama base-url in `application.yml` should be `http://localhost:11434`
 
-- [ ] Task 8: Verify build compiles and application starts (AC: 1, 2, 3)
-  - [ ] Run `./mvnw compile` — must succeed with 0 errors
-  - [ ] Run `docker compose up -d` then `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` — application must start and log "Started ResumeEnhancerApplication"
-  - [ ] Verify Flyway logs show V1–V4 applied successfully
-  - [ ] Hit `http://localhost:8080/swagger-ui.html` — must return 200 in dev profile
+- [x] Task 8: Verify build compiles and application starts (AC: 1, 2, 3)
+  - [x] Run `./mvnw compile` — must succeed with 0 errors
+  - [x] Run `docker compose up -d` then `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` — application must start and log "Started ResumeEnhancerApplication"
+  - [x] Verify Flyway logs show V1–V4 applied successfully
+  - [x] Hit `http://localhost:8080/swagger-ui.html` — must return 200 in dev profile
 
 ## Dev Notes
 
@@ -288,7 +288,21 @@ claude-sonnet-4-5 (bmad-create-story workflow, 2026-05-14)
 
 ### Debug Log References
 
+- `WebMvcConfig.java` preHandle required `throws IOException, ServletException` — fixed compile error
+- `itext7-core` artifact relocated to `itext-core` in iText 8.x — updated pom.xml to use correct artifact ID
+- `TestCvenchancerApplication.java` still referenced deleted `CvenchancerApplication::main` — updated to `ResumeEnhancerApplication::main`
+
 ### Completion Notes List
+
+- All 8 tasks complete. `./mvnw compile` and `./mvnw test-compile` both succeed with BUILD SUCCESS.
+- `pom.xml`: added 7 version properties + 10 new dependencies (security, jjwt x3, poi-ooxml, pdfbox, itext-core, springdoc, spring-boot-starter-cache, caffeine); `frontend-maven-plugin` added in auto-activating `frontend` Maven profile (activates when `frontend/package.json` exists).
+- Flyway V1–V4 created: `users`, profiles family (3 tables), `resumes` (template_id nullable, no FK — to be added later), `resume_templates`. All use `gen_random_uuid()` and `TIMESTAMP WITH TIME ZONE`.
+- `application.properties` deleted; replaced by `application.yml` (base), `application-dev.yml` (Swagger on), `application-prod.yml` (Swagger off).
+- `ResumeEnhancerApplication.java` created with `@EnableJpaAuditing`; old `CvenchancerApplication.java` deleted.
+- Config classes: `SecurityConfig` (permit-all placeholder), `SpringDocConfig` (`@ConditionalOnProperty`), `CacheConfig` (Caffeine, 10min TTL, 100 max), `WebMvcConfig` (SPA fallback interceptor), `JacksonConfig` (JavaTimeModule, ISO 8601).
+- Common classes: `BaseEntity` (`@MappedSuperclass`, UUID id, Instant timestamps, auditing), `GlobalExceptionHandler` (`ProblemDetail` HTTP 500 skeleton).
+- `compose.yaml`: postgres image pinned to `postgres:16`, DB renamed to `resumeenhancer`, ports exposed explicitly, `app` service added under `production` profile.
+- Runtime start (AC: 1) and Swagger (AC: 4) require `docker compose up` — not auto-runnable; must be verified manually.
 
 ### File List
 
@@ -310,9 +324,16 @@ claude-sonnet-4-5 (bmad-create-story workflow, 2026-05-14)
 - `src/main/resources/db/migration/V4__create_resume_templates_table.sql`
 
 **Files to MODIFY:**
-- `pom.xml` — add all missing dependencies + frontend-maven-plugin
-- `compose.yaml` — update postgres DB name; add `app` service stub
-- `src/main/resources/application.properties` — DELETE (replaced by application.yml)
+- `pom.xml` — added version properties, 10 dependencies, frontend-maven-plugin in `frontend` profile
+- `compose.yaml` — postgres DB renamed, ports explicit, `app` service added (production profile)
+- `src/test/java/com/tsvetanbondzhov/resumeenhancer/TestCvenchancerApplication.java` — updated to reference `ResumeEnhancerApplication::main`
 
 **Files to DELETE:**
-- `src/main/java/com/tsvetanbondzhov/resumeenhancer/CvenchancerApplication.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/CvenchancerApplication.java` ✅ deleted
+- `src/main/resources/application.properties` ✅ deleted
+
+## Change Log
+
+- 2026-05-14: Story 1-1 implemented — all dependencies added, Flyway V1–V4 created, application.yml created, main class renamed, config/common skeletons created, compose.yaml updated. `./mvnw compile` BUILD SUCCESS.
+- 2026-05-14: Code review fixes applied — `WebMvcConfig` rewritten as `ResourceHandlerRegistry` + `PathResourceResolver` SPA fallback (Swagger/static no longer hijacked); `GlobalExceptionHandler` sanitized to log server-side and return constant detail; iText pom comment corrected to v8; test classes renamed `TestCvenchancerApplication` → `TestResumeEnhancerApplication` and `CvenchancerApplicationTests` → `ResumeEnhancerApplicationTests`.
+- 2026-05-14: Manual verification complete — `docker compose up` + `mvnw spring-boot:run` started cleanly, Flyway V1–V4 applied, `/swagger-ui.html` returns 200 in dev. Status → done.
