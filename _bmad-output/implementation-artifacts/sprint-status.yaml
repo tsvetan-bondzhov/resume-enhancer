@@ -1,0 +1,103 @@
+# generated: 2026-05-14
+# last_updated: 2026-05-14
+# project: resume-enhancer
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-05-14
+last_updated: 2026-05-14
+project: resume-enhancer
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # ─── Epic 1: Foundation — Project Infrastructure & Authentication ───
+  epic-1: in-progress
+  1-1-project-dependencies-and-backend-wiring: ready-for-dev
+  1-2-frontend-scaffold-and-design-token-foundation: ready-for-dev
+  1-3-user-registration: ready-for-dev
+  1-4-user-sign-in-and-sign-out: backlog
+  1-5-protected-routes-and-application-shell: backlog
+  epic-1-retrospective: optional
+
+  # ─── Epic 2: Experience Profile Management ───
+  epic-2: backlog
+  2-1-profile-domain-model-and-crud-api: backlog
+  2-2-profile-page-ui-manual-entry: backlog
+  2-3-file-upload-infrastructure-and-resume-parsing: backlog
+  2-4-resume-upload-to-seed-profile: backlog
+  epic-2-retrospective: optional
+
+  # ─── Epic 3: Resume Management & Template Selection ───
+  epic-3: backlog
+  3-1-resumedocument-model-and-resume-crud-api: backlog
+  3-2-template-management-api-and-prebuilt-library: backlog
+  3-3-dashboard-resume-gallery: backlog
+  3-4-resume-editor-layout-and-resumecanvas: backlog
+  3-5-inline-section-editing-and-section-visibility: backlog
+  3-6-resume-save-save-as-and-name-management: backlog
+  3-7-template-gallery-and-template-switching: backlog
+  3-8-resume-deletion-with-undo-and-confirm-dialogs: backlog
+  epic-3-retrospective: optional
+
+  # ─── Epic 4: AI Enhancement & Conversational Chat ───
+  epic-4: backlog
+  4-1-ai-streaming-spike-spring-ai-ollama-sse-end-to-end: backlog
+  4-2-documentpatchservice-and-useresumestore-applypatch: backlog
+  4-3-ai-chat-panel-and-sse-streaming-integration: backlog
+  4-4-ai-enhancement-suggestions-with-accept-reject: backlog
+  4-5-ai-job-description-tailoring: backlog
+  4-6-ai-qa-chat-without-document-edits: backlog
+  4-7-accessibility-audit-and-focus-management-for-ai-features: backlog
+  epic-4-retrospective: optional
+
+  # ─── Epic 5: Export & Document Generation ───
+  epic-5: backlog
+  5-1-documentrenderer-interface-and-pdfrenderer: backlog
+  5-2-docxrenderer-and-export-download-ux: backlog
+  epic-5-retrospective: optional
+
+  # ─── Epic 6: Administration & Observability ───
+  epic-6: backlog
+  6-1-admin-user-management-api-and-ui: backlog
+  6-2-admin-template-management-api-and-ui: backlog
+  6-3-opentelemetry-span-propagation-through-sse-and-log-correlation: backlog
+  6-4-grafana-dashboard-provisioning: backlog
+  epic-6-retrospective: optional
+
+  # ─── Epic 7: Custom Template Authoring (Deferred) ───
+  epic-7: backlog
+  7-1-custom-template-data-model-and-crud-api: backlog
+  7-2-custom-template-authoring-ui: backlog
+  epic-7-retrospective: optional
