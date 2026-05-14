@@ -1143,17 +1143,17 @@ So that I can maintain template quality and control which templates are availabl
 **When** unit tests are run
 **Then** `TemplateServiceTest.java` adds coverage for create, update, delete, publish, and unpublish (Mockito mocks); cache eviction behavior is verified; `TemplateControllerIntegrationTest.java` adds admin-path tests and confirms non-admin 403 on all mutation endpoints
 
-### Story 6.3: OpenTelemetry Span Propagation Through SSE & Grafana Dashboards
+### Story 6.3: OpenTelemetry Span Propagation Through SSE & Log Correlation
 
 As an operator,
-I want distributed traces for all user-initiated operations visible in Grafana, including AI SSE streaming paths,
-So that I can observe, debug, and measure system behavior across the full request lifecycle.
+I want all user-initiated operations — including AI SSE streaming paths — to produce distributed traces with correlated log entries,
+So that I can link logs to traces and debug the full request lifecycle without relying on the Grafana UI.
 
 **Acceptance Criteria:**
 
-**Given** `spring-boot-starter-opentelemetry` is in `pom.xml` and the Grafana + OTel Collector service is in `compose.yaml`
+**Given** `spring-boot-starter-opentelemetry` is in `pom.xml`
 **When** a user initiates any non-AI operation (login, profile save, resume CRUD, export)
-**Then** a complete distributed trace is generated with spans for: HTTP request, service layer, repository layer; the trace is queryable in Grafana and correlates to the request's `traceId` (NFR17)
+**Then** a complete distributed trace is generated with spans for: HTTP request, service layer, repository layer; each span carries a `traceId` that also appears in the correlated log lines (NFR17, NFR18)
 
 **Given** a user initiates an AI operation (chat, tailor, enhance) that uses `SseEmitter`
 **When** the SSE async thread runs
@@ -1163,17 +1163,37 @@ So that I can observe, debug, and measure system behavior across the full reques
 **When** application logs are inspected
 **Then** every log line emitted during the SSE async thread includes the `traceId` and `spanId` correlation fields; log entries from the HTTP thread and the async SSE thread are linkable via the same `traceId` (NFR18)
 
-**Given** the Grafana service is running via `docker compose up`
-**When** the Grafana UI is accessed
-**Then** a pre-configured dashboard is visible that shows: request rate, p99 latency per endpoint, AI inference duration, error rate; traces are searchable by `traceId`; the dashboard is defined as a JSON provisioning file in `compose.yaml` (not manual UI setup)
-
 **Given** an AI operation results in an error (Ollama unavailable, patch parse failure)
 **When** the error span is recorded
-**Then** the span's status is set to `ERROR` with a descriptive message; the error is visible in the Grafana trace view alongside the originating request span
+**Then** the span's status is set to `ERROR` with a descriptive message; the error is visible in any OTel-compatible trace view alongside the originating request span
 
 **Given** the OTel propagation implementation is complete
 **When** integration tests run
 **Then** `ChatControllerIntegrationTest.java` includes at least one test verifying that a trace ID generated during the HTTP phase is present in the async SSE emission logs (using a test log appender or in-memory span exporter)
+
+### Story 6.4: Grafana Dashboard Provisioning
+
+As an operator,
+I want a pre-configured Grafana dashboard provisioned as code in the Docker Compose setup,
+So that I can immediately observe request rates, latencies, AI inference durations, and error rates without manual Grafana UI configuration.
+
+**Acceptance Criteria:**
+
+**Given** the Grafana + OTel Collector service is defined in `compose.yaml`
+**When** `docker compose up` is run
+**Then** the Grafana service starts with the OTel Collector as a data source auto-provisioned; no manual data source setup is required (NFR17)
+
+**Given** the Grafana data source is configured
+**When** the Grafana UI is accessed at `http://localhost:3000`
+**Then** a pre-configured dashboard is immediately visible showing: request rate per endpoint, p99 latency per endpoint, AI inference duration (SSE stream duration), error rate; traces are searchable by `traceId`
+
+**Given** the dashboard is defined as code
+**When** the repository is inspected
+**Then** the dashboard is stored as a Grafana JSON provisioning file committed to the repository (e.g. `grafana/provisioning/dashboards/resume-enhancer.json`); it is mounted into the Grafana container via `compose.yaml` volume — no manual UI setup is ever required to reproduce it
+
+**Given** Story 6.3 OTel span propagation is complete and the app is running via `docker compose up`
+**When** a sequence of operations is performed (login → create resume → tailor → export)
+**Then** all four operation types appear as traces in the Grafana dashboard; AI inference spans are correctly nested under their HTTP request spans
 
 ---
 

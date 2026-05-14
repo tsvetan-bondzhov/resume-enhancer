@@ -37,6 +37,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Zustand — state management
 - Native `EventSource` API — SSE client (no library)
 - Native `fetch` via thin `apiClient` wrapper (no Axios)
+- `@dnd-kit/core` + `@dnd-kit/sortable` — drag-to-reorder for `SectionsPanel` (required by UX-DR7; add in Story 3.5)
 
 **Infrastructure**
 - Docker Compose: `app`, `postgres` (PG16), `ollama`, `grafana`
