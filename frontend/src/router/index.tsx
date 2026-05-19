@@ -1,0 +1,63 @@
+import { lazy, Suspense } from "react"
+import {
+  createBrowserRouter,
+  Navigate,
+  Outlet,
+} from "react-router-dom"
+import { useAuthStore } from "@/stores/useAuthStore"
+import { Skeleton } from "@/components/ui/skeleton"
+import LoginPage from "@/pages/LoginPage"
+import SignupPage from "@/pages/SignupPage"
+import DashboardPage from "@/pages/DashboardPage"
+import EditorPage from "@/pages/EditorPage"
+import ProfilePage from "@/pages/ProfilePage"
+
+const AdminPage = lazy(() => import("@/pages/AdminPage"))
+
+function ProtectedRoute({ requireAdmin = false }: { requireAdmin?: boolean }) {
+  const { token, user } = useAuthStore()
+  if (!token) return <Navigate to="/login" replace />
+  if (requireAdmin && user?.role !== "ADMIN") return <Navigate to="/" replace />
+  return <Outlet />
+}
+
+export const router = createBrowserRouter([
+  {
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/signup",
+    element: <SignupPage />,
+  },
+  {
+    element: <ProtectedRoute />,
+    children: [
+      {
+        path: "/",
+        element: <DashboardPage />,
+      },
+      {
+        path: "/resumes/:id",
+        element: <EditorPage />,
+      },
+      {
+        path: "/profile",
+        element: <ProfilePage />,
+      },
+    ],
+  },
+  {
+    element: <ProtectedRoute requireAdmin />,
+    children: [
+      {
+        path: "/admin",
+        element: (
+          <Suspense fallback={<Skeleton className="h-screen w-full" />}>
+            <AdminPage />
+          </Suspense>
+        ),
+      },
+    ],
+  },
+])
