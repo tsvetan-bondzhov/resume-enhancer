@@ -112,6 +112,12 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 ### Code Quality & Style Rules
 
+**Frontend Linter**
+- ESLint config: `frontend/eslint.config.js` — covers `**/*.{ts,tsx}`
+- `src/components/ui/` is excluded from ESLint — shadcn-managed, never edit these files
+- Router files that intentionally mix component + non-component exports (e.g. `router/index.tsx`) use `/* eslint-disable react-refresh/only-export-components */` at file level
+- Stub no-op parameters in stores use `// eslint-disable-next-line @typescript-eslint/no-unused-vars` inline — remove when stub is implemented
+
 **Naming Conventions**
 - DB: `snake_case` plural tables (`users`, `resumes`, `resume_templates`); `snake_case` columns (`created_at`, `user_id`); FK: `<table_singular>_id`; indexes: `idx_<table>_<column>`
 - Flyway scripts: `V<N>__<description_snake_case>.sql` (e.g. `V1__create_users_table.sql`)
@@ -143,6 +149,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Start services: `docker compose up` (postgres, ollama, grafana)
 - Start backend: `./mvnw spring-boot:run` from project root — auto-wires Docker Compose services
 - Start frontend: `cd frontend && npm run dev` — Vite on `:5173`, `/api/**` proxied to `:8080`
+- Lint frontend: `cd frontend && npm run lint` — must pass with 0 errors before marking any story `review`
 - Backend must be running before frontend dev server makes API calls
 
 **Production Build**

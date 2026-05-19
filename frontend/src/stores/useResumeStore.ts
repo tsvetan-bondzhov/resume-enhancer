@@ -28,6 +28,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
     set((state) => ({ ...state, currentResume: resume })),
   setSaving: (isSaving) => set((state) => ({ ...state, isSaving })),
   setExporting: (isExporting) => set((state) => ({ ...state, isExporting })),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   applyPatch: (_patch) => {
     // No-op stub — fully implemented in Story 4.2
   },

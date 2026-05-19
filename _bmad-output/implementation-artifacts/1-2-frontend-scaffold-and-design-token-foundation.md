@@ -1,6 +1,6 @@
 # Story 1.2: Frontend Scaffold & Design Token Foundation
 
-Status: review
+Status: done
 
 ## Story
 
@@ -381,6 +381,20 @@ cascade (bmad-create-story workflow, 2026-05-14)
 ### Change Log
 
 - 2026-05-14: Story 1.2 implemented — full frontend scaffold with design tokens, stores, routing, and build pipeline
+
+### Review Findings
+
+- [x] [Review][Decision] F3: Dual 401 redirect paths — `apiClient.ts` calls `window.location.href = '/login'` imperatively AND `ProtectedRoute` uses `<Navigate>` reactively on token clear; on 401, both can fire causing a double redirect race condition — decide: keep imperative redirect in apiClient (simpler, safe for v1) or rely solely on Zustand + ProtectedRoute reactive redirect?
+- [x] [Review][Decision] F7: AC12 maven phase ordering risk — `maven-resources-plugin` copy-frontend-dist runs at `generate-resources` phase which may execute before `frontend-maven-plugin` produces `frontend/dist/`; verify correct phase ordering or adjust binding
+- [x] [Review][Decision] F12: `tw-animate-css` and `shadcn` CSS imports in `index.css` — confirm both packages exist as runtime deps in `frontend/package.json` (base-nova style deps, not in original spec)
+- [x] [Review][Patch] F1: `apiClient.ts` error branch `res.json()` can throw `SyntaxError` on non-JSON 500/HTML responses — wrap in try/catch [frontend/src/lib/apiClient.ts]
+- [x] [Review][Patch] F2: `apiClient.ts` sends `Content-Type: application/json` on bodyless `DELETE` requests — omit Content-Type when no body [frontend/src/lib/apiClient.ts]
+- [x] [Review][Patch] F5: AC2 partial — `--background: oklch(1 0 0)` is pure white not zinc-50; correct value is `oklch(0.985 0.002 248)` [frontend/src/index.css]
+- [x] [Review][Patch] F8: `main.tsx` imports `App.tsx` with explicit `.tsx` extension — non-idiomatic, remove extension [frontend/src/main.tsx]
+- [x] [Review][Patch] F9: `index.css` missing newline at end of file [frontend/src/index.css]
+- [x] [Review][Defer] F4: `sseClient.ts` — `EventSource` cannot send JWT auth header; token must be passed as query param if SSE endpoint requires auth — deferred, architectural constraint known, address when SSE auth is required in Story 4.x
+- [x] [Review][Defer] F10: No 404/catch-all route in router — deferred, Story 1.5 application shell scope [frontend/src/router/index.tsx]
+- [x] [Review][Defer] F11: `apiClient.ts` missing `patch` HTTP method — deferred, add when first PATCH endpoint is consumed in Story 4.2 [frontend/src/lib/apiClient.ts]
 
 ### File List
 

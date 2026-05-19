@@ -240,12 +240,12 @@
 							<execution>
 								<id>npm install</id>
 								<goals><goal>npm</goal></goals>
-								<phase>generate-resources</phase>
+								<phase>prepare-package</phase>
 							</execution>
 							<execution>
 								<id>npm run build</id>
 								<goals><goal>npm</goal></goals>
-								<phase>generate-resources</phase>
+								<phase>prepare-package</phase>
 								<configuration>
 									<arguments>run build</arguments>
 								</configuration>
@@ -258,7 +258,7 @@
 						<executions>
 							<execution>
 								<id>copy-frontend-dist</id>
-								<phase>generate-resources</phase>
+								<phase>prepare-package</phase>
 								<goals><goal>copy-resources</goal></goals>
 								<configuration>
 									<outputDirectory>${project.build.directory}/classes/static</outputDirectory>

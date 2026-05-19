@@ -16,22 +16,28 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = useAuthStore.getState().token
+  const hasBody = init?.body !== undefined
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   })
   if (res.status === 401) {
     useAuthStore.getState().clearAuth()
-    window.location.href = "/login"
     throw new ApiError(401, "Unauthorized")
   }
   if (!res.ok) {
-    const err = await res.json()
-    throw new ApiError(res.status, err.detail ?? res.statusText)
+    let detail = res.statusText
+    try {
+      const err = await res.json()
+      detail = err.detail ?? detail
+    } catch {
+      // response body is not JSON (e.g. HTML error page) — use statusText
+    }
+    throw new ApiError(res.status, detail)
   }
   if (res.status === 204) return undefined as T
   return res.json()
