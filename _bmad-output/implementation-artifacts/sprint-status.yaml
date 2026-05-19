@@ -45,7 +45,7 @@ development_status:
   # ─── Epic 1: Foundation — Project Infrastructure & Authentication ───
   epic-1: in-progress
   1-1-project-dependencies-and-backend-wiring: done
-  1-2-frontend-scaffold-and-design-token-foundation: ready-for-dev
+  1-2-frontend-scaffold-and-design-token-foundation: review
   1-3-user-registration: ready-for-dev
   1-4-user-sign-in-and-sign-out: backlog
   1-5-protected-routes-and-application-shell: backlog

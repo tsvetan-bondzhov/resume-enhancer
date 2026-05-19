@@ -30,9 +30,9 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - `spring-boot-starter-webmvc` (servlet stack — NOT reactive/WebFlux)
 
 **Frontend** (scaffolded under `frontend/`)
-- React 18, TypeScript strict mode, Vite (`@vitejs/plugin-react`)
+- React 19, TypeScript strict mode, Vite (`@vitejs/plugin-react`)
 - Tailwind CSS v4 via `@tailwindcss/vite` plugin
-- shadcn/ui (Radix UI primitives) — WCAG 2.1 AA
+- shadcn/ui (Base UI primitives, base-nova style) — WCAG 2.1 AA
 - React Router v6 (`react-router-dom`)
 - Zustand — state management
 - Native `EventSource` API — SSE client (no library)

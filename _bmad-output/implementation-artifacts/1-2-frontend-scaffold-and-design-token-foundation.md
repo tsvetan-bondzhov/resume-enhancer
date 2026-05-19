@@ -1,6 +1,6 @@
 # Story 1.2: Frontend Scaffold & Design Token Foundation
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -36,85 +36,85 @@ so that all frontend stories have a consistent visual foundation and component l
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Scaffold frontend with shadcn/ui CLI (AC: 1, 2, 3)
-  - [ ] Run `npx shadcn@latest init -t vite` from project root — creates `frontend/` subdirectory; when prompted: project name → `frontend`, base color → `zinc`
-  - [ ] Install shadcn/ui components: `npx shadcn@latest add button input textarea dialog sheet toast tabs badge collapsible checkbox skeleton` (run from `frontend/`)
-  - [ ] Install additional npm dependencies: `npm install react-router-dom zustand` (from `frontend/`)
-  - [ ] Install Vitest and testing libraries: `npm install -D vitest @vitest/ui jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event` (from `frontend/`)
+- [x] Task 1: Scaffold frontend with shadcn/ui CLI (AC: 1, 2, 3)
+  - [x] Run `npx shadcn@latest init -t vite` from project root — creates `frontend/` subdirectory; when prompted: project name → `frontend`, base color → `zinc`
+  - [x] Install shadcn/ui components: `npx shadcn@latest add button input textarea dialog sheet toast tabs badge collapsible checkbox skeleton` (run from `frontend/`)
+  - [x] Install additional npm dependencies: `npm install react-router-dom zustand` (from `frontend/`)
+  - [x] Install Vitest and testing libraries: `npm install -D vitest @vitest/ui jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event` (from `frontend/`)
 
-- [ ] Task 2: Configure Tailwind design token foundation (AC: 2)
-  - [ ] In `frontend/src/index.css` (or Tailwind CSS v4 config): set `--font-sans: "Inter", system-ui, sans-serif`; import Inter from Google Fonts or use `@fontsource/inter` package
-  - [ ] Verify shadcn/ui's CSS variables are configured with zinc base: `--background: zinc-50`; `--foreground: zinc-900`; `--muted-foreground: zinc-500`; `--border: zinc-200`; `--primary: blue-600`
-  - [ ] Tailwind CSS v4 uses `@tailwindcss/vite` plugin — confirm it is present in `vite.config.ts`; do NOT use `tailwind.config.js` (v4 is CSS-first config); extend tokens in `index.css` using `@theme` block
-  - [ ] Add `border-radius: var(--radius-md)` override to match UX-DR12 `border radius: md`
-  - [ ] Install Inter font: `npm install @fontsource/inter` and import in `src/index.css`
+- [x] Task 2: Configure Tailwind design token foundation (AC: 2)
+  - [x] In `frontend/src/index.css` (or Tailwind CSS v4 config): set `--font-sans: "Inter", system-ui, sans-serif`; import Inter from Google Fonts or use `@fontsource/inter` package
+  - [x] Verify shadcn/ui's CSS variables are configured with zinc base: `--background: zinc-50`; `--foreground: zinc-900`; `--muted-foreground: zinc-500`; `--border: zinc-200`; `--primary: blue-600`
+  - [x] Tailwind CSS v4 uses `@tailwindcss/vite` plugin — confirm it is present in `vite.config.ts`; do NOT use `tailwind.config.js` (v4 is CSS-first config); extend tokens in `index.css` using `@theme` block
+  - [x] Add `border-radius: var(--radius-md)` override to match UX-DR12 `border radius: md`
+  - [x] Install Inter font: `npm install @fontsource/inter` and import in `src/index.css`
 
-- [ ] Task 3: Configure Vite — proxy, path alias, Vitest (AC: 5, 6, 7)
-  - [ ] `vite.config.ts`: add `server.proxy: { '/api': { target: 'http://localhost:8080', changeOrigin: true } }`
-  - [ ] `vite.config.ts`: verify `@/` → `src/` alias is present (shadcn init adds it); if not: `resolve.alias: { '@': path.resolve(__dirname, './src') }`
-  - [ ] `vite.config.ts`: add `test` block: `{ globals: true, environment: 'jsdom', setupFiles: ['./src/test/setup.ts'] }`
-  - [ ] Create `frontend/src/test/setup.ts`: `import '@testing-library/jest-dom'`
-  - [ ] `tsconfig.app.json`: add `"paths": { "@/*": ["./src/*"] }` (if not already added by shadcn init)
-  - [ ] `package.json`: add `"test": "vitest"` and `"test:ui": "vitest --ui"` scripts
+- [x] Task 3: Configure Vite — proxy, path alias, Vitest (AC: 5, 6, 7)
+  - [x] `vite.config.ts`: add `server.proxy: { '/api': { target: 'http://localhost:8080', changeOrigin: true } }`
+  - [x] `vite.config.ts`: verify `@/` → `src/` alias is present (shadcn init adds it); if not: `resolve.alias: { '@': path.resolve(__dirname, './src') }`
+  - [x] `vite.config.ts`: add `test` block: `{ globals: true, environment: 'jsdom', setupFiles: ['./src/test/setup.ts'] }`
+  - [x] Create `frontend/src/test/setup.ts`: `import '@testing-library/jest-dom'`
+  - [x] `tsconfig.app.json`: add `"paths": { "@/*": ["./src/*"] }` (if not already added by shadcn init)
+  - [x] `package.json`: add `"test": "vitest"` and `"test:ui": "vitest --ui"` scripts
 
-- [ ] Task 4: Create `types/api.ts` foundation (AC: 11)
-  - [ ] Create `frontend/src/types/api.ts` with initial DTO interfaces:
+- [x] Task 4: Create `types/api.ts` foundation (AC: 11)
+  - [x] Create `frontend/src/types/api.ts` with initial DTO interfaces:
     - `AuthResponse { token: string; user: UserDto }`
     - `UserDto { id: string; email: string; role: 'USER' | 'ADMIN' }`
     - `ApiErrorResponse { type: string; title: string; status: number; detail: string; instance: string }` (RFC 7807 ProblemDetail shape)
-  - [ ] All date fields: type `string` — parse with `new Date()` only at display time (never `Date` type in DTOs)
-  - [ ] No `any` — strict TypeScript mode enforced
+  - [x] All date fields: type `string` — parse with `new Date()` only at display time (never `Date` type in DTOs)
+  - [x] No `any` — strict TypeScript mode enforced
 
-- [ ] Task 5: Create Zustand stores (AC: 8)
-  - [ ] Create `frontend/src/stores/useAuthStore.ts`:
+- [x] Task 5: Create Zustand stores (AC: 8)
+  - [x] Create `frontend/src/stores/useAuthStore.ts`:
     ```ts
     interface AuthState { token: string | null; user: UserDto | null; setAuth: (token: string, user: UserDto) => void; clearAuth: () => void }
     ```
     Token stored in-memory only — never `localStorage` or `sessionStorage`
-  - [ ] Create `frontend/src/stores/useResumeStore.ts`: initial shape `{ resumes: ResumeDto[]; currentResume: ResumeDto | null; isSaving: boolean; isExporting: boolean; setCurrentResume: ...; applyPatch: ... }` — stub `applyPatch` as no-op for now (implemented fully in Story 4.2)
-  - [ ] Create `frontend/src/stores/useChatStore.ts`: initial shape `{ messages: ChatMessage[]; isStreaming: boolean; addMessage: ...; setStreaming: ... }`
-  - [ ] Create `frontend/src/stores/useProfileStore.ts`: initial shape `{ profile: ProfileDto | null; isSaving: boolean; setProfile: ... }`
-  - [ ] All stores use immutable update pattern: `set(state => ({ ...state, field: newValue }))` — never mutate directly
-  - [ ] Add stub types to `types/api.ts`: `ResumeDto`, `ChatMessage`, `ProfileDto` (minimal shape, expanded in later stories)
+  - [x] Create `frontend/src/stores/useResumeStore.ts`: initial shape `{ resumes: ResumeDto[]; currentResume: ResumeDto | null; isSaving: boolean; isExporting: boolean; setCurrentResume: ...; applyPatch: ... }` — stub `applyPatch` as no-op for now (implemented fully in Story 4.2)
+  - [x] Create `frontend/src/stores/useChatStore.ts`: initial shape `{ messages: ChatMessage[]; isStreaming: boolean; addMessage: ...; setStreaming: ... }`
+  - [x] Create `frontend/src/stores/useProfileStore.ts`: initial shape `{ profile: ProfileDto | null; isSaving: boolean; setProfile: ... }`
+  - [x] All stores use immutable update pattern: `set(state => ({ ...state, field: newValue }))` — never mutate directly
+  - [x] Add stub types to `types/api.ts`: `ResumeDto`, `ChatMessage`, `ProfileDto` (minimal shape, expanded in later stories)
 
-- [ ] Task 6: Create `lib/apiClient.ts` and `lib/sseClient.ts` (AC: 9)
-  - [ ] `frontend/src/lib/apiClient.ts`:
+- [x] Task 6: Create `lib/apiClient.ts` and `lib/sseClient.ts` (AC: 9)
+  - [x] `frontend/src/lib/apiClient.ts`:
     - Reads `VITE_API_BASE_URL` env var (default `''` — relies on Vite proxy in dev; set to actual URL in prod)
     - Injects `Authorization: Bearer <token>` from `useAuthStore.getState().token` on every request
     - On 401 response: calls `useAuthStore.getState().clearAuth()` then `window.location.href = '/login'`
     - Returns typed response or throws `ApiError extends Error { status: number; detail: string }`
     - No raw `fetch()` allowed anywhere else — all HTTP through this wrapper
-  - [ ] `frontend/src/lib/sseClient.ts`:
+  - [x] `frontend/src/lib/sseClient.ts`:
     - Exports `createSseConnection(url: string, handlers: { onToken, onPatch, onDone, onError }): () => void`
     - Opens `new EventSource(url)` internally; returns a cleanup function that calls `.close()`
     - Handles exactly 4 event types: `token`, `patch`, `done`, `error` — no others
     - No raw `EventSource` allowed outside this file
-  - [ ] Create `.env.example` in `frontend/`: `VITE_API_BASE_URL=`
+  - [x] Create `.env.example` in `frontend/`: `VITE_API_BASE_URL=`
 
-- [ ] Task 7: Create router with ProtectedRoute (AC: 10)
-  - [ ] Create `frontend/src/router/index.tsx`:
+- [x] Task 7: Create router with ProtectedRoute (AC: 10)
+  - [x] Create `frontend/src/router/index.tsx`:
     - `ProtectedRoute` component: checks `useAuthStore().token`; if null → `<Navigate to="/login" replace />`; if role check needed (admin): also check `user.role === 'ADMIN'`
     - Route tree: `/login` (public), `/signup` (public), `/` (protected → `DashboardPage`), `/resumes/:id` (protected → `EditorPage`), `/profile` (protected → `ProfilePage`), `/admin` (protected + ADMIN role → lazy `AdminPage`)
     - `AdminPage` must be lazy-loaded: `const AdminPage = lazy(() => import('@/pages/AdminPage'))` wrapped in `<Suspense fallback={<Skeleton />}>`
-  - [ ] Create stub page components (minimal — just return a `<div>` with page name for now):
+  - [x] Create stub page components (minimal — just return a `<div>` with page name for now):
     - `frontend/src/pages/LoginPage.tsx`
     - `frontend/src/pages/SignupPage.tsx`
     - `frontend/src/pages/DashboardPage.tsx`
     - `frontend/src/pages/EditorPage.tsx`
     - `frontend/src/pages/ProfilePage.tsx`
     - `frontend/src/pages/AdminPage.tsx`
-  - [ ] Wire `App.tsx` to use `<RouterProvider router={router} />` from React Router v6
+  - [x] Wire `App.tsx` to use `<RouterProvider router={router} />` from React Router v6
 
-- [ ] Task 8: Create `.env.example` and verify maven plugin integration (AC: 12)
-  - [ ] Create `frontend/.env.example` with `VITE_API_BASE_URL=`
-  - [ ] Verify `frontend-maven-plugin` in `pom.xml` (added in Story 1.1) picks up `frontend/` directory correctly
-  - [ ] If Story 1.1 is not yet complete and `frontend-maven-plugin` is absent: add `<plugin>` declaration to `pom.xml` now (same config as Story 1.1 Dev Notes); otherwise skip
-  - [ ] Run `cd frontend && npm run build` — verify `dist/` is generated without errors
+- [x] Task 8: Create `.env.example` and verify maven plugin integration (AC: 12)
+  - [x] Create `frontend/.env.example` with `VITE_API_BASE_URL=`
+  - [x] Verify `frontend-maven-plugin` in `pom.xml` (added in Story 1.1) picks up `frontend/` directory correctly
+  - [x] If Story 1.1 is not yet complete and `frontend-maven-plugin` is absent: add `<plugin>` declaration to `pom.xml` now (same config as Story 1.1 Dev Notes); otherwise skip
+  - [x] Run `cd frontend && npm run build` — verify `dist/` is generated without errors
 
-- [ ] Task 9: Verify end-to-end scaffold health (AC: 1, 6)
-  - [ ] Run `npm run dev` from `frontend/` — Vite starts on `:5173`, no TypeScript errors
-  - [ ] Run `npm run test` from `frontend/` — Vitest starts, exits with 0 failures
-  - [ ] Verify `@/` imports resolve correctly in at least one file (e.g., import in `App.tsx`)
+- [x] Task 9: Verify end-to-end scaffold health (AC: 1, 6)
+  - [x] Run `npm run dev` from `frontend/` — Vite starts on `:5173`, no TypeScript errors
+  - [x] Run `npm run test` from `frontend/` — Vitest starts, exits with 0 failures
+  - [x] Verify `@/` imports resolve correctly in at least one file (e.g., import in `App.tsx`)
 
 ## Dev Notes
 
@@ -359,12 +359,33 @@ cascade (bmad-create-story workflow, 2026-05-14)
 
 ### Debug Log References
 
+- TS1294 fix: `erasableSyntaxOnly` disallows parameter properties in classes — used explicit field declarations in `ApiError`
+- TS2769 fix: `test` field in vite.config.ts not recognized — added `/// <reference types="vitest" />` and `"vitest/config"` to tsconfig.node.json types
+- shadcn `toast` component deprecated — used `sonner` instead
+- shadcn defaulted to `base-nova` style (Base UI + React 19) — user approved keeping this over Radix + React 18
+- Vitest exits with code 1 when no test files — added `--passWithNoTests` flag
+
 ### Completion Notes List
+
+- Frontend scaffolded with `npx shadcn@latest init -t vite --no-monorepo -n frontend -d`
+- shadcn/ui components installed: button, input, textarea, dialog, sheet, sonner (replaces deprecated toast), tabs, badge, collapsible, checkbox, skeleton
+- Design tokens configured: Inter font, blue-600 primary (oklch), 0.375rem border radius
+- Vite proxy /api → localhost:8080, @/ path alias, Vitest configured
+- 4 Zustand stores created with immutable update patterns, token in-memory only
+- apiClient.ts with Bearer token injection + 401 handling, sseClient.ts with 4 event types
+- React Router v6 with ProtectedRoute (auth + admin role check), AdminPage lazy-loaded
+- All 6 stub pages created, App.tsx wired with RouterProvider
+- maven-resources-plugin added to copy frontend/dist/ → target/classes/static/
+- Build passes (`tsc -b && vite build`), Vitest exits cleanly, dev server starts on :5173
+
+### Change Log
+
+- 2026-05-14: Story 1.2 implemented — full frontend scaffold with design tokens, stores, routing, and build pipeline
 
 ### File List
 
-**Files to CREATE:**
-- `frontend/` directory (entire scaffold via `npx shadcn@latest init -t vite`)
+**Files CREATED:**
+- `frontend/` directory (entire scaffold via shadcn CLI)
 - `frontend/src/types/api.ts`
 - `frontend/src/stores/useAuthStore.ts`
 - `frontend/src/stores/useResumeStore.ts`
@@ -372,21 +393,24 @@ cascade (bmad-create-story workflow, 2026-05-14)
 - `frontend/src/stores/useProfileStore.ts`
 - `frontend/src/lib/apiClient.ts`
 - `frontend/src/lib/sseClient.ts`
-- `frontend/src/lib/utils.ts` (stub)
+- `frontend/src/lib/utils.ts` (shadcn-managed)
 - `frontend/src/router/index.tsx`
-- `frontend/src/pages/LoginPage.tsx` (stub)
-- `frontend/src/pages/SignupPage.tsx` (stub)
-- `frontend/src/pages/DashboardPage.tsx` (stub)
-- `frontend/src/pages/EditorPage.tsx` (stub)
-- `frontend/src/pages/ProfilePage.tsx` (stub)
-- `frontend/src/pages/AdminPage.tsx` (stub)
+- `frontend/src/pages/LoginPage.tsx`
+- `frontend/src/pages/SignupPage.tsx`
+- `frontend/src/pages/DashboardPage.tsx`
+- `frontend/src/pages/EditorPage.tsx`
+- `frontend/src/pages/ProfilePage.tsx`
+- `frontend/src/pages/AdminPage.tsx`
 - `frontend/src/test/setup.ts`
 - `frontend/.env.example`
+- `frontend/src/hooks/.gitkeep`
+- `frontend/src/components/ui/` (button, input, textarea, dialog, sheet, sonner, tabs, badge, collapsible, checkbox, skeleton)
+- `frontend/src/components/theme-provider.tsx` (shadcn-generated)
 
-**Files to MODIFY:**
-- `frontend/vite.config.ts` — add proxy, verify alias, add test block
-- `frontend/tsconfig.app.json` — verify `@/` path alias
-- `frontend/package.json` — add `test` and `test:ui` scripts
-- `frontend/src/index.css` — add `@fontsource/inter` import, `@theme` token overrides
-- `frontend/src/App.tsx` — wire `<RouterProvider>`
-- `pom.xml` — add `frontend-maven-plugin` if not added by Story 1.1
+**Files MODIFIED:**
+- `frontend/vite.config.ts` — added proxy, test block, vitest reference
+- `frontend/tsconfig.node.json` — added vitest/config to types
+- `frontend/package.json` — added test scripts, dependencies
+- `frontend/src/index.css` — Inter font, blue-600 primary, 0.375rem radius
+- `frontend/src/App.tsx` — wired RouterProvider
+- `pom.xml` — added maven-resources-plugin to copy frontend/dist/ to static/
