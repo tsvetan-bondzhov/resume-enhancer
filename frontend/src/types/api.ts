@@ -1,6 +1,11 @@
 export interface AuthResponse {
   token: string
-  user: UserDto
+  user?: UserDto
+}
+
+export interface SignupRequest {
+  email: string
+  password: string
 }
 
 export interface UserDto {

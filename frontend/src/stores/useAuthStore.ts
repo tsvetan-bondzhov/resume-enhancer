@@ -4,7 +4,7 @@ import type { UserDto } from "@/types/api"
 interface AuthState {
   token: string | null
   user: UserDto | null
-  setAuth: (token: string, user: UserDto) => void
+  setAuth: (token: string, user: UserDto | null) => void
   clearAuth: () => void
 }
 

@@ -42,5 +42,7 @@ spring:
 
 app:
   jwt:
-    secret: "change-this-in-production-minimum-256-bit-secret-key-here"
+    # Base64-encoded secret key (min 256 bits / 32 bytes for HMAC-SHA256)
+    # Override in production via environment variable APP_JWT_SECRET
+    secret: "dGhpcy1pcy1hLXNlY3VyZS1zZWNyZXQta2V5LWZvci1qd3QtdG9rZW4tZ2Vu"
     expiration-ms: 3600000

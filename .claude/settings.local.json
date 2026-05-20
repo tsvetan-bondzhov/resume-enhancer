@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(bmad-agent-dev)",
+      "Bash(python3 *)",
+      "Bash(python *)",
+      "Skill(bmad-dev-story)",
+      "Skill(bmad-code-review)",
+      "Bash(mvn dependency:tree -Dincludes=\"org.springframework:spring-webflux\" --quiet)"
+    ]
+  }
+}

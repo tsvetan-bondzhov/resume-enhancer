@@ -5,12 +5,14 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ""
 export class ApiError extends Error {
   status: number
   detail: string
+  errors?: Record<string, string[]>
 
-  constructor(status: number, detail: string) {
+  constructor(status: number, detail: string, errors?: Record<string, string[]>) {
     super(detail)
     this.name = "ApiError"
     this.status = status
     this.detail = detail
+    this.errors = errors
   }
 }
 
@@ -31,13 +33,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     let detail = res.statusText
+    let errors: Record<string, string[]> | undefined
     try {
-      const err = await res.json()
-      detail = err.detail ?? detail
+      const body = await res.json()
+      detail = body.detail ?? detail
+      if (body.errors && typeof body.errors === "object") {
+        errors = body.errors as Record<string, string[]>
+      }
     } catch {
       // response body is not JSON (e.g. HTML error page) — use statusText
     }
-    throw new ApiError(res.status, detail)
+    throw new ApiError(res.status, detail, errors)
   }
   if (res.status === 204) return undefined as T
   return res.json()
