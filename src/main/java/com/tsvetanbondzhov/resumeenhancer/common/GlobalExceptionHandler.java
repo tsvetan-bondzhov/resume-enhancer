@@ -19,6 +19,16 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(DomainAuthException.class)
+    public ProblemDetail handleDomainAuth(DomainAuthException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNAUTHORIZED,
+                ex.getMessage()
+        );
+        problem.setTitle("Unauthorized");
+        return problem;
+    }
+
     @ExceptionHandler(DomainConflictException.class)
     public ProblemDetail handleDomainConflict(DomainConflictException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(

@@ -2,6 +2,7 @@ package com.tsvetanbondzhov.resumeenhancer.auth;
 
 import com.tsvetanbondzhov.resumeenhancer.auth.domain.User;
 import com.tsvetanbondzhov.resumeenhancer.auth.dto.AuthResponse;
+import com.tsvetanbondzhov.resumeenhancer.auth.dto.LoginRequest;
 import com.tsvetanbondzhov.resumeenhancer.auth.dto.SignupRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +36,65 @@ class AuthServiceTest {
 
     @InjectMocks
     private AuthService authService;
+
+    @Test
+    void login_validCredentials_returnsToken() {
+        // Given
+        LoginRequest request = new LoginRequest("test@example.com", "password123");
+
+        User user = new User();
+        user.setEmail("test@example.com");
+        user.setPasswordHash("hashed-password");
+        user.setRole("USER");
+        user.setEnabled(true);
+
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("password123", "hashed-password")).thenReturn(true);
+        when(tokenService.generateToken(user)).thenReturn("jwt-token-value");
+
+        // When
+        AuthResponse response = authService.login(request);
+
+        // Then
+        assertThat(response.token()).isEqualTo("jwt-token-value");
+        verify(tokenService).generateToken(user);
+    }
+
+    @Test
+    void login_unknownEmail_throwsInvalidCredentialsException() {
+        // Given
+        LoginRequest request = new LoginRequest("unknown@example.com", "password123");
+        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+
+        // When / Then
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Invalid email or password");
+
+        verify(tokenService, never()).generateToken(any(User.class));
+    }
+
+    @Test
+    void login_wrongPassword_throwsInvalidCredentialsException() {
+        // Given
+        LoginRequest request = new LoginRequest("test@example.com", "wrong-password");
+
+        User user = new User();
+        user.setEmail("test@example.com");
+        user.setPasswordHash("hashed-password");
+        user.setRole("USER");
+        user.setEnabled(true);
+
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong-password", "hashed-password")).thenReturn(false);
+
+        // When / Then
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Invalid email or password");
+
+        verify(tokenService, never()).generateToken(any(User.class));
+    }
 
     @Test
     void signup_happyPath_returnsToken() {

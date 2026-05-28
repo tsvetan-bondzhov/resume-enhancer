@@ -6,7 +6,12 @@
       "Bash(python *)",
       "Skill(bmad-dev-story)",
       "Skill(bmad-code-review)",
-      "Bash(mvn dependency:tree -Dincludes=\"org.springframework:spring-webflux\" --quiet)"
+      "Bash(mvn dependency:tree -Dincludes=\"org.springframework:spring-webflux\" --quiet)",
+      "Bash(./mvnw test *)",
+      "Bash(npm run *)",
+      "Read(//dev/**)",
+      "Bash(npx tsc *)",
+      "Bash(npm test *)"
     ]
   }
 }

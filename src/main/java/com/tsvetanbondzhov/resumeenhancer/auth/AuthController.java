@@ -1,6 +1,7 @@
 package com.tsvetanbondzhov.resumeenhancer.auth;
 
 import com.tsvetanbondzhov.resumeenhancer.auth.dto.AuthResponse;
+import com.tsvetanbondzhov.resumeenhancer.auth.dto.LoginRequest;
 import com.tsvetanbondzhov.resumeenhancer.auth.dto.SignupRequest;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -20,6 +21,12 @@ public class AuthController {
 
     public AuthController(AuthService authService) {
         this.authService = authService;
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/signup")

@@ -2,6 +2,7 @@ package com.tsvetanbondzhov.resumeenhancer.auth;
 
 import com.tsvetanbondzhov.resumeenhancer.auth.domain.User;
 import com.tsvetanbondzhov.resumeenhancer.auth.dto.AuthResponse;
+import com.tsvetanbondzhov.resumeenhancer.auth.dto.LoginRequest;
 import com.tsvetanbondzhov.resumeenhancer.auth.dto.SignupRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -9,6 +10,13 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
+
+    /**
+     * Pre-computed BCrypt hash of a dummy value used to equalize response time when
+     * the requested email does not exist, preventing a timing side-channel oracle.
+     */
+    private static final String DUMMY_HASH =
+            "$2a$10$7EqJtq98hPqEX7fNZaFWoOe2Hs0CXcQPqRIuEqV9xKP1C6N3aU6Im";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -20,6 +28,23 @@ public class AuthService {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
+    }
+
+    public AuthResponse login(LoginRequest request) {
+        User user = userRepository.findByEmail(request.email())
+                .orElseGet(() -> {
+                    // Perform a dummy password check to equalize response time and
+                    // prevent a timing oracle that reveals whether an email exists.
+                    passwordEncoder.matches(request.password(), DUMMY_HASH);
+                    throw new InvalidCredentialsException();
+                });
+
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw new InvalidCredentialsException();
+        }
+
+        String token = tokenService.generateToken(user);
+        return new AuthResponse(token);
     }
 
     public AuthResponse signup(SignupRequest request) {

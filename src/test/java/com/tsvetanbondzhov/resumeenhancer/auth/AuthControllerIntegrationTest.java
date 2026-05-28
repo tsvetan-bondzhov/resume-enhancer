@@ -1,9 +1,11 @@
 package com.tsvetanbondzhov.resumeenhancer.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tsvetanbondzhov.resumeenhancer.auth.dto.LoginRequest;
 import com.tsvetanbondzhov.resumeenhancer.auth.dto.SignupRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -40,6 +42,12 @@ class AuthControllerIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private TokenService tokenService;
+
+    @Value("${app.jwt.secret}")
+    private String jwtSecret;
 
     private WebTestClient webTestClient() {
         return WebTestClient.bindToServer()
@@ -117,5 +125,123 @@ class AuthControllerIntegrationTest {
                 .expectBody()
                 .jsonPath("$.title").isEqualTo("Bad Request")
                 .jsonPath("$.errors.password").isNotEmpty();
+    }
+
+    // ─── Login tests ───
+
+    @Test
+    void login_validCredentials_returns200WithToken() throws Exception {
+        userRepository.deleteAll();
+
+        // First register a user
+        SignupRequest signup = new SignupRequest("loginuser@example.com", "Password1");
+        webTestClient().post()
+                .uri("/api/v1/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(objectMapper.writeValueAsString(signup))
+                .exchange()
+                .expectStatus().isCreated();
+
+        // Then login
+        LoginRequest login = new LoginRequest("loginuser@example.com", "Password1");
+        webTestClient().post()
+                .uri("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(objectMapper.writeValueAsString(login))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.token").isNotEmpty();
+    }
+
+    @Test
+    void login_unknownEmail_returns401ProblemDetail() throws Exception {
+        userRepository.deleteAll();
+
+        LoginRequest login = new LoginRequest("nobody@example.com", "Password1");
+
+        webTestClient().post()
+                .uri("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(objectMapper.writeValueAsString(login))
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Unauthorized")
+                .jsonPath("$.detail").isEqualTo("Invalid email or password");
+    }
+
+    @Test
+    void login_wrongPassword_returns401ProblemDetail() throws Exception {
+        userRepository.deleteAll();
+
+        // Register user
+        SignupRequest signup = new SignupRequest("wrongpass@example.com", "Password1");
+        webTestClient().post()
+                .uri("/api/v1/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(objectMapper.writeValueAsString(signup))
+                .exchange()
+                .expectStatus().isCreated();
+
+        // Login with wrong password
+        LoginRequest login = new LoginRequest("wrongpass@example.com", "WrongPassword");
+        webTestClient().post()
+                .uri("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(objectMapper.writeValueAsString(login))
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Unauthorized")
+                .jsonPath("$.detail").isEqualTo("Invalid email or password");
+    }
+
+    @Test
+    void login_blankEmail_returns400ProblemDetail() throws Exception {
+        LoginRequest login = new LoginRequest("", "Password1");
+
+        webTestClient().post()
+                .uri("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(objectMapper.writeValueAsString(login))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Bad Request")
+                .jsonPath("$.errors.email").isNotEmpty();
+    }
+
+    @Test
+    void protectedEndpoint_withoutToken_returns401ProblemDetail() {
+        webTestClient().get()
+                .uri("/api/v1/profile")
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Unauthorized");
+    }
+
+    @Test
+    void protectedEndpoint_withExpiredToken_returns401ProblemDetail() {
+        // Build a short-lived TokenService using the same secret as the application context,
+        // but with a negative expiration so the token is immediately expired.
+        TokenService expiredTokenService = new TokenService(jwtSecret, -1000L);
+        com.tsvetanbondzhov.resumeenhancer.auth.domain.User dummyUser =
+                new com.tsvetanbondzhov.resumeenhancer.auth.domain.User();
+        dummyUser.setEmail("expired@example.com");
+        dummyUser.setRole("USER");
+        dummyUser.setEnabled(true);
+        dummyUser.setPasswordHash("");
+        String expiredToken = expiredTokenService.generateToken(dummyUser);
+
+        webTestClient().get()
+                .uri("/api/v1/profile")
+                .header("Authorization", "Bearer " + expiredToken)
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Unauthorized")
+                .jsonPath("$.detail").isEqualTo("Invalid or expired token");
     }
 }
