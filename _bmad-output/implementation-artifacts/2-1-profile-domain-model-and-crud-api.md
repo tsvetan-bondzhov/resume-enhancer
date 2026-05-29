@@ -1,6 +1,6 @@
 # Story 2.1: Profile Domain Model & CRUD API
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -26,68 +26,68 @@ So that the frontend and all downstream features have a stable, tested API to re
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create profile JPA domain entities (AC: 1, 3)
-  - [ ] Create package `com.tsvetanbondzhov.resumeenhancer.profile.domain`
-  - [ ] `Profile.java` — `@Entity @Table(name = "profiles")`, extends `BaseEntity` (inherits `id`, `createdAt`, `updatedAt`). Fields: `@OneToOne(fetch = LAZY) @JoinColumn(name = "user_id", unique = true) User user;`, `@Column(name = "summary") String summary;`
-  - [ ] On `Profile`, map the three child collections with `@OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)`: `List<WorkExperience> workExperiences`, `List<Education> education`, `List<Skill> skills`. Initialize each to `new ArrayList<>()`. orphanRemoval + replace-on-PUT is how full-document updates work (see Dev Notes "PUT replace strategy").
-  - [ ] `WorkExperience.java` — `@Entity @Table(name = "profile_work_experiences")` extends `BaseEntity`. `@ManyToOne @JoinColumn(name = "profile_id") Profile profile;` Fields (DB columns): `jobTitle`→`job_title`, `company`, `startDate`→`start_date` (`LocalDate`), `endDate`→`end_date` (`LocalDate`), `isCurrent`→`is_current` (`boolean`, default false), `description` (TEXT).
-  - [ ] `Education.java` — `@Entity @Table(name = "profile_education")` extends `BaseEntity`. `@ManyToOne profile`. Fields: `institution`, `degree`, `fieldOfStudy`→`field_of_study`, `startDate`→`start_date` (`LocalDate`), `endDate`→`end_date` (`LocalDate`).
-  - [ ] `Skill.java` — `@Entity @Table(name = "profile_skills")` extends `BaseEntity`. `@ManyToOne profile`. Field: `name` (`@Column(nullable = false)`).
-  - [ ] Use Lombok `@Getter @Setter` on entities (matches `User.java` convention). Use `GenerationType.UUID` ids — already provided by `BaseEntity`; do NOT redeclare `@Id`.
-  - [ ] Column names MUST match the existing V2 migration exactly (snake_case). Do not rely on implicit naming — set `@Column(name = "...")` / `@JoinColumn(name = "...")` explicitly.
+- [x] Task 1: Create profile JPA domain entities (AC: 1, 3)
+  - [x] Create package `com.tsvetanbondzhov.resumeenhancer.profile.domain`
+  - [x] `Profile.java` — `@Entity @Table(name = "profiles")`, extends `BaseEntity` (inherits `id`, `createdAt`, `updatedAt`). Fields: `@OneToOne(fetch = LAZY) @JoinColumn(name = "user_id", unique = true) User user;`, `@Column(name = "summary") String summary;`
+  - [x] On `Profile`, map the three child collections with `@OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)`: `List<WorkExperience> workExperiences`, `List<Education> education`, `List<Skill> skills`. Initialize each to `new ArrayList<>()`. orphanRemoval + replace-on-PUT is how full-document updates work (see Dev Notes "PUT replace strategy").
+  - [x] `WorkExperience.java` — `@Entity @Table(name = "profile_work_experiences")` extends `BaseEntity`. `@ManyToOne @JoinColumn(name = "profile_id") Profile profile;` Fields (DB columns): `jobTitle`→`job_title`, `company`, `startDate`→`start_date` (`LocalDate`), `endDate`→`end_date` (`LocalDate`), `isCurrent`→`is_current` (`boolean`, default false), `description` (TEXT).
+  - [x] `Education.java` — `@Entity @Table(name = "profile_education")` extends `BaseEntity`. `@ManyToOne profile`. Fields: `institution`, `degree`, `fieldOfStudy`→`field_of_study`, `startDate`→`start_date` (`LocalDate`), `endDate`→`end_date` (`LocalDate`).
+  - [x] `Skill.java` — `@Entity @Table(name = "profile_skills")` extends `BaseEntity`. `@ManyToOne profile`. Field: `name` (`@Column(nullable = false)`).
+  - [x] Use Lombok `@Getter @Setter` on entities (matches `User.java` convention). Use `GenerationType.UUID` ids — already provided by `BaseEntity`; do NOT redeclare `@Id`.
+  - [x] Column names MUST match the existing V2 migration exactly (snake_case). Do not rely on implicit naming — set `@Column(name = "...")` / `@JoinColumn(name = "...")` explicitly.
 
-- [ ] Task 2: Create `ProfileRepository` (AC: 2, 5)
-  - [ ] Create `com.tsvetanbondzhov.resumeenhancer.profile.repository.ProfileRepository extends JpaRepository<Profile, UUID>`
-  - [ ] Add `Optional<Profile> findByUser(User user);` (or `Optional<Profile> findByUserId(UUID userId);`) — used to scope reads/writes to the authenticated user.
+- [x] Task 2: Create `ProfileRepository` (AC: 2, 5)
+  - [x] Create `com.tsvetanbondzhov.resumeenhancer.profile.repository.ProfileRepository extends JpaRepository<Profile, UUID>`
+  - [x] Add `Optional<Profile> findByUser(User user);` (or `Optional<Profile> findByUserId(UUID userId);`) — used to scope reads/writes to the authenticated user.
 
-- [ ] Task 3: Create DTOs and the update request (AC: 2, 3, 4)
-  - [ ] Create package `com.tsvetanbondzhov.resumeenhancer.profile.dto`
-  - [ ] `ProfileDto` — Java `record` (matches existing DTO style). Shape: `record ProfileDto(String summary, List<WorkExperienceDto> workExperiences, List<EducationDto> education, List<SkillDto> skills)`.
-  - [ ] `WorkExperienceDto(String jobTitle, String company, LocalDate startDate, LocalDate endDate, boolean isCurrent, String description)`
-  - [ ] `EducationDto(String institution, String degree, String fieldOfStudy, LocalDate startDate, LocalDate endDate)`
-  - [ ] `SkillDto(String name)` (or a flat `List<String> skills` — pick `SkillDto` for forward-compat; keep consistent across read + write).
-  - [ ] `ProfileUpdateRequest` — `record` with `@Valid` nested lists so Bean Validation cascades. Apply `jakarta.validation.constraints` mirroring `SignupRequest.java`:
+- [x] Task 3: Create DTOs and the update request (AC: 2, 3, 4)
+  - [x] Create package `com.tsvetanbondzhov.resumeenhancer.profile.dto`
+  - [x] `ProfileDto` — Java `record` (matches existing DTO style). Shape: `record ProfileDto(String summary, List<WorkExperienceDto> workExperiences, List<EducationDto> education, List<SkillDto> skills)`.
+  - [x] `WorkExperienceDto(String jobTitle, String company, LocalDate startDate, LocalDate endDate, boolean isCurrent, String description)`
+  - [x] `EducationDto(String institution, String degree, String fieldOfStudy, LocalDate startDate, LocalDate endDate)`
+  - [x] `SkillDto(String name)` (or a flat `List<String> skills` — pick `SkillDto` for forward-compat; keep consistent across read + write).
+  - [x] `ProfileUpdateRequest` — `record` with `@Valid` nested lists so Bean Validation cascades. Apply `jakarta.validation.constraints` mirroring `SignupRequest.java`:
     - Work experience entry: `@NotBlank(message = "Job title is required") String jobTitle`, `@NotBlank(message = "Company is required") String company`.
     - Education entry: `@NotBlank(message = "Institution is required") String institution`.
     - Skill entry: `@NotBlank(message = "Skill name is required") String name`.
     - Annotate the nested list fields on `ProfileUpdateRequest` with `@Valid` (and `@NotNull` defaulting to empty if desired) so per-element validation fires and surfaces through the existing `MethodArgumentNotValidException` handler.
 
-- [ ] Task 4: Create `ProfileService` (AC: 2, 3, 5)
-  - [ ] Create `com.tsvetanbondzhov.resumeenhancer.profile.ProfileService` (`@Service`).
-  - [ ] Constructor-inject `ProfileRepository` and `UserRepository` (`com.tsvetanbondzhov.resumeenhancer.auth.UserRepository`).
-  - [ ] `ProfileDto getProfile(String email)` — resolve `User` via `userRepository.findByEmail(email)`; find profile via `ProfileRepository`; **if absent, return an empty `ProfileDto`** (`null` summary, empty lists) — do NOT create a row and do NOT throw 404 (AC2).
-  - [ ] `ProfileDto updateProfile(String email, ProfileUpdateRequest request)` (`@Transactional`) — resolve user; get-or-create the `Profile` row for that user; apply the PUT replace strategy (clear + repopulate child collections, see Dev Notes); set `summary`; save; map back to `ProfileDto`.
-  - [ ] Map entity↔DTO with private helper methods in the service (no MapStruct — none is on the classpath; keep it plain). Map `null` collections in the request to empty lists.
-  - [ ] If `userRepository.findByEmail(email)` is empty, throw a domain exception — but in practice the JWT filter guarantees an authenticated principal exists; treat a missing user as an unexpected 500 (do not invent a 404 contract for the authenticated route).
+- [x] Task 4: Create `ProfileService` (AC: 2, 3, 5)
+  - [x] Create `com.tsvetanbondzhov.resumeenhancer.profile.ProfileService` (`@Service`).
+  - [x] Constructor-inject `ProfileRepository` and `UserRepository` (`com.tsvetanbondzhov.resumeenhancer.auth.UserRepository`).
+  - [x] `ProfileDto getProfile(String email)` — resolve `User` via `userRepository.findByEmail(email)`; find profile via `ProfileRepository`; **if absent, return an empty `ProfileDto`** (`null` summary, empty lists) — do NOT create a row and do NOT throw 404 (AC2).
+  - [x] `ProfileDto updateProfile(String email, ProfileUpdateRequest request)` (`@Transactional`) — resolve user; get-or-create the `Profile` row for that user; apply the PUT replace strategy (clear + repopulate child collections, see Dev Notes); set `summary`; save; map back to `ProfileDto`.
+  - [x] Map entity↔DTO with private helper methods in the service (no MapStruct — none is on the classpath; keep it plain). Map `null` collections in the request to empty lists.
+  - [x] If `userRepository.findByEmail(email)` is empty, throw a domain exception — but in practice the JWT filter guarantees an authenticated principal exists; treat a missing user as an unexpected 500 (do not invent a 404 contract for the authenticated route).
 
-- [ ] Task 5: Create `ProfileController` (AC: 2, 3, 4, 5)
-  - [ ] Create `com.tsvetanbondzhov.resumeenhancer.profile.ProfileController` — `@RestController @RequestMapping("/api/v1/profile") @Tag(name = "Profile")`.
-  - [ ] `GET` → `@GetMapping public ProfileDto getProfile(Authentication authentication)` returning the service result (Spring serializes directly with HTTP 200 — no `ResponseEntity` wrapper needed; matches "direct DTO body" rule).
-  - [ ] `PUT` → `@PutMapping public ProfileDto updateProfile(Authentication authentication, @Valid @RequestBody ProfileUpdateRequest request)`.
-  - [ ] Resolve the authenticated user's email via `authentication.getName()` — this returns the email because the JWT principal's `getUsername()` is the email (see Dev Notes "CRITICAL: principal has no id"). Pass the email into the service. **Do NOT cast the principal and call `getId()` — it is null.**
-  - [ ] No new `SecurityConfig` change is needed: `/api/v1/profile` is already covered by `.anyRequest().authenticated()`.
+- [x] Task 5: Create `ProfileController` (AC: 2, 3, 4, 5)
+  - [x] Create `com.tsvetanbondzhov.resumeenhancer.profile.ProfileController` — `@RestController @RequestMapping("/api/v1/profile") @Tag(name = "Profile")`.
+  - [x] `GET` → `@GetMapping public ProfileDto getProfile(Authentication authentication)` returning the service result (Spring serializes directly with HTTP 200 — no `ResponseEntity` wrapper needed; matches "direct DTO body" rule).
+  - [x] `PUT` → `@PutMapping public ProfileDto updateProfile(Authentication authentication, @Valid @RequestBody ProfileUpdateRequest request)`.
+  - [x] Resolve the authenticated user's email via `authentication.getName()` — this returns the email because the JWT principal's `getUsername()` is the email (see Dev Notes "CRITICAL: principal has no id"). Pass the email into the service. **Do NOT cast the principal and call `getId()` — it is null.**
+  - [x] No new `SecurityConfig` change is needed: `/api/v1/profile` is already covered by `.anyRequest().authenticated()`.
 
-- [ ] Task 6: Write `ProfileServiceTest.java` (AC: 6) — JUnit 5 + Mockito, NO Spring context
-  - [ ] Location: `src/test/java/com/tsvetanbondzhov/resumeenhancer/profile/ProfileServiceTest.java`
-  - [ ] `@ExtendWith(MockitoExtension.class)`; `@Mock ProfileRepository`, `@Mock UserRepository`; `@InjectMocks ProfileService`.
-  - [ ] Test: `getProfile` when no profile exists → returns empty `ProfileDto` (null summary, empty lists), and does NOT save anything.
-  - [ ] Test: `getProfile` when a profile exists → maps entity collections to DTO correctly.
-  - [ ] Test: `updateProfile` when no profile exists → creates a profile bound to the resolved user, persists child entities, returns mapped DTO.
-  - [ ] Test: `updateProfile` when a profile exists → replaces child collections (old entries removed, new applied) and updates summary.
+- [x] Task 6: Write `ProfileServiceTest.java` (AC: 6) — JUnit 5 + Mockito, NO Spring context
+  - [x] Location: `src/test/java/com/tsvetanbondzhov/resumeenhancer/profile/ProfileServiceTest.java`
+  - [x] `@ExtendWith(MockitoExtension.class)`; `@Mock ProfileRepository`, `@Mock UserRepository`; `@InjectMocks ProfileService`.
+  - [x] Test: `getProfile` when no profile exists → returns empty `ProfileDto` (null summary, empty lists), and does NOT save anything.
+  - [x] Test: `getProfile` when a profile exists → maps entity collections to DTO correctly.
+  - [x] Test: `updateProfile` when no profile exists → creates a profile bound to the resolved user, persists child entities, returns mapped DTO.
+  - [x] Test: `updateProfile` when a profile exists → replaces child collections (old entries removed, new applied) and updates summary.
 
-- [ ] Task 7: Write `ProfileControllerIntegrationTest.java` (AC: 2, 3, 4, 5, 6) — Testcontainers PostgreSQL
-  - [ ] Location: `src/test/java/com/tsvetanbondzhov/resumeenhancer/profile/ProfileControllerIntegrationTest.java`
-  - [ ] Copy the harness from `AuthControllerIntegrationTest`: `@SpringBootTest(webEnvironment = RANDOM_PORT)`, `@ActiveProfiles("test")`, inner `@TestConfiguration` `ContainersConfig` with `@Bean @ServiceConnection PostgreSQLContainer(postgres:16)`, `WebTestClient` bound to `http://localhost:{port}`.
-  - [ ] Helper: register a user via `POST /api/v1/auth/signup` (or persist a `User` + mint a token via injected `TokenService`) to obtain a valid `Bearer` token, then send it in the `Authorization` header.
-  - [ ] Test: `GET /api/v1/profile` with token but no saved profile → 200 with empty arrays and null summary (AC2).
-  - [ ] Test: `PUT /api/v1/profile` valid payload → 200, returned DTO echoes the saved data (AC3); a follow-up `GET` returns the persisted data.
-  - [ ] Test: `PUT /api/v1/profile` with a work experience missing `jobTitle` → 400, `$.title == "Bad Request"`, `$.errors` is non-empty (AC4).
-  - [ ] Test: per-user isolation — user A saves a profile; user B's `GET` returns an empty profile, never A's data (AC5).
-  - [ ] Test (already exists in `AuthControllerIntegrationTest`): no-token `GET /api/v1/profile` → 401. Do not duplicate unless useful; isolation + validation are the new value here.
+- [x] Task 7: Write `ProfileControllerIntegrationTest.java` (AC: 2, 3, 4, 5, 6) — Testcontainers PostgreSQL
+  - [x] Location: `src/test/java/com/tsvetanbondzhov/resumeenhancer/profile/ProfileControllerIntegrationTest.java`
+  - [x] Copy the harness from `AuthControllerIntegrationTest`: `@SpringBootTest(webEnvironment = RANDOM_PORT)`, `@ActiveProfiles("test")`, inner `@TestConfiguration` `ContainersConfig` with `@Bean @ServiceConnection PostgreSQLContainer(postgres:16)`, `WebTestClient` bound to `http://localhost:{port}`.
+  - [x] Helper: register a user via `POST /api/v1/auth/signup` (or persist a `User` + mint a token via injected `TokenService`) to obtain a valid `Bearer` token, then send it in the `Authorization` header.
+  - [x] Test: `GET /api/v1/profile` with token but no saved profile → 200 with empty arrays and null summary (AC2).
+  - [x] Test: `PUT /api/v1/profile` valid payload → 200, returned DTO echoes the saved data (AC3); a follow-up `GET` returns the persisted data.
+  - [x] Test: `PUT /api/v1/profile` with a work experience missing `jobTitle` → 400, `$.title == "Bad Request"`, `$.errors` is non-empty (AC4).
+  - [x] Test: per-user isolation — user A saves a profile; user B's `GET` returns an empty profile, never A's data (AC5).
+  - [x] Test (already exists in `AuthControllerIntegrationTest`): no-token `GET /api/v1/profile` → 401. Do not duplicate unless useful; isolation + validation are the new value here.
 
-- [ ] Task 8: Build + test gate (required before marking `review`)
-  - [ ] Run `./mvnw test` — all new and existing tests must pass.
-  - [ ] Docker must be available/running for Testcontainers PostgreSQL.
+- [x] Task 8: Build + test gate (required before marking `review`)
+  - [x] Run `./mvnw test` — all new and existing tests must pass.
+  - [x] Docker must be available/running for Testcontainers PostgreSQL.
 
 ## Dev Notes
 
@@ -175,12 +175,45 @@ Note the DB itself leaves `job_title`/`company`/`institution` **nullable** — t
 
 ### Agent Model Used
 
+claude-sonnet-4-6
+
 ### Debug Log References
+
+- Fixed `LazyInitializationException` on `getProfile` by adding `@Transactional(readOnly = true)` — lazy collections accessed outside transaction scope when mapping to DTO.
+- `PostgreSQLContainer` is non-generic in this Testcontainers version — removed `<?>` type parameter to match `AuthControllerIntegrationTest` pattern.
 
 ### Completion Notes List
 
+- Implemented `Profile`, `WorkExperience`, `Education`, `Skill` entities mapped exactly to V2 migration columns.
+- `ProfileRepository` with `findByUser(User)` for principal-scoped queries.
+- DTOs as Java records: `ProfileDto`, `WorkExperienceDto`, `EducationDto`, `SkillDto`; request records with `@Valid`/`@NotBlank` Bean Validation.
+- `ProfileService` with `@Transactional(readOnly=true)` `getProfile` and `@Transactional` `updateProfile` using orphanRemoval clear-and-repopulate strategy.
+- `ProfileController` resolves email via `authentication.getName()` — never touches `principal.getId()` (null per JWT filter design).
+- `ProfileServiceTest`: 4 unit tests (no Spring context), all passing.
+- `ProfileControllerIntegrationTest`: 5 integration tests against Testcontainers PG16, all passing.
+- All 26 tests pass (26 total including pre-existing auth tests).
+
 ### File List
+
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/domain/Profile.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/domain/WorkExperience.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/domain/Education.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/domain/Skill.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/repository/ProfileRepository.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/ProfileDto.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/WorkExperienceDto.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/EducationDto.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/SkillDto.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/ProfileUpdateRequest.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/WorkExperienceRequest.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/EducationRequest.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/SkillRequest.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/ProfileService.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/ProfileController.java`
+- `src/test/java/com/tsvetanbondzhov/resumeenhancer/profile/ProfileServiceTest.java`
+- `src/test/java/com/tsvetanbondzhov/resumeenhancer/profile/ProfileControllerIntegrationTest.java`
 
 ### Change Log
 
 - 2026-05-29: Story 2.1 drafted and contexted for implementation (status → ready-for-dev).
+- 2026-05-29: Implemented profile domain model, CRUD API, and all tests. All 26 tests passing. (status → review)
