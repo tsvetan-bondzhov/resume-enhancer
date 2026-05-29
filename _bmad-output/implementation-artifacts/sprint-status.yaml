@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-05-29  # updated by code-review 2.1
+last_updated: 2026-05-29  # updated by code-review 2.2 — story marked done
 project: resume-enhancer
 project_key: NOKEY
 tracking_system: file-system
@@ -54,7 +54,7 @@ development_status:
   # ─── Epic 2: Experience Profile Management ───
   epic-2: in-progress
   2-1-profile-domain-model-and-crud-api: done
-  2-2-profile-page-ui-manual-entry: backlog
+  2-2-profile-page-ui-manual-entry: done
   2-3-file-upload-infrastructure-and-resume-parsing: backlog
   2-4-resume-upload-to-seed-profile: backlog
   epic-2-retrospective: optional

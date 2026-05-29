@@ -13,7 +13,9 @@
       "Bash(npx tsc *)",
       "Bash(npm test *)",
       "Bash(docker info *)",
-      "Bash(py \"C:\\\\Users\\\\tseko\\\\Documents\\\\Projects\\\\resume-enhancer\\\\_bmad\\\\scripts\\\\resolve_customization.py\" --skill \"C:\\\\Users\\\\tseko\\\\Documents\\\\Projects\\\\resume-enhancer\\\\.claude\\\\skills\\\\bmad-agent-dev\" --key agent)"
+      "Bash(py \"C:\\\\Users\\\\tseko\\\\Documents\\\\Projects\\\\resume-enhancer\\\\_bmad\\\\scripts\\\\resolve_customization.py\" --skill \"C:\\\\Users\\\\tseko\\\\Documents\\\\Projects\\\\resume-enhancer\\\\.claude\\\\skills\\\\bmad-agent-dev\" --key agent)",
+      "Bash(py *)",
+      "Bash(npx vitest *)"
     ]
   }
 }

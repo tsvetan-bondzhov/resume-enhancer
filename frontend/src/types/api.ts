@@ -41,10 +41,54 @@ export interface ChatMessage {
   timestamp: string
 }
 
+export interface WorkExperienceDto {
+  jobTitle: string
+  company: string
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean
+  description: string | null
+}
+
+export interface EducationDto {
+  institution: string
+  degree: string | null
+  fieldOfStudy: string | null
+  startDate: string | null
+  endDate: string | null
+}
+
+export interface SkillDto {
+  name: string
+}
+
 export interface ProfileDto {
-  id: string
-  userId: string
-  fullName: string
-  email: string
-  updatedAt: string
+  summary: string | null
+  workExperiences: WorkExperienceDto[]
+  education: EducationDto[]
+  skills: SkillDto[]
+}
+
+// WorkExperienceRequest is structurally identical to WorkExperienceDto.
+// The backend PUT /api/v1/profile accepts the same shape it returns.
+// Kept as a type alias so consumer code stays explicit about intent.
+export type WorkExperienceRequest = WorkExperienceDto
+
+export interface EducationRequest {
+  institution: string
+  degree: string | null
+  fieldOfStudy: string | null
+  startDate: string | null
+  endDate: string | null
+}
+
+export interface SkillRequest {
+  name: string
+}
+
+export interface ProfileUpdateRequest {
+  summary: string | null
+  workExperiences: WorkExperienceRequest[]
+  education: EducationRequest[]
+  skills: SkillRequest[]
 }
