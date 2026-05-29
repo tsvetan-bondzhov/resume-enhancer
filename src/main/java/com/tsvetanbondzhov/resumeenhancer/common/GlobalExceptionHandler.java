@@ -55,6 +55,16 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(FileValidationException.class)
+    public ProblemDetail handleFileValidation(FileValidationException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                ex.getMessage()
+        );
+        problem.setTitle("Unprocessable Entity");
+        return problem;
+    }
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleException(Exception ex) {
         log.error("Unhandled exception", ex);
