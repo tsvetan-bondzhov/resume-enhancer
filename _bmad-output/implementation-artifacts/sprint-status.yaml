@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-05-29  # updated by code-review 2.4 — review passed, status → done
+last_updated: 2026-06-05  # updated by code-review 3.1 — clean review, status → done
 project: resume-enhancer
 project_key: NOKEY
 tracking_system: file-system
@@ -60,8 +60,8 @@ development_status:
   epic-2-retrospective: optional
 
   # ─── Epic 3: Resume Management & Template Selection ───
-  epic-3: backlog
-  3-1-resumedocument-model-and-resume-crud-api: backlog
+  epic-3: in-progress
+  3-1-resumedocument-model-and-resume-crud-api: done
   3-2-template-management-api-and-prebuilt-library: backlog
   3-3-dashboard-resume-gallery: backlog
   3-4-resume-editor-layout-and-resumecanvas: backlog

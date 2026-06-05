@@ -1,5 +1,7 @@
 package com.tsvetanbondzhov.resumeenhancer.common;
 
+import com.tsvetanbondzhov.resumeenhancer.resume.ResumeAccessDeniedException;
+import com.tsvetanbondzhov.resumeenhancer.resume.ResumeNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -62,6 +64,23 @@ public class GlobalExceptionHandler {
                 ex.getMessage()
         );
         problem.setTitle("Unprocessable Entity");
+        return problem;
+    }
+
+    @ExceptionHandler(ResumeAccessDeniedException.class)
+    public ProblemDetail handleResumeAccessDenied(ResumeAccessDeniedException ex) {
+        log.warn("Resume access denied for request");
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setTitle("Forbidden");
+        return problem;
+    }
+
+    @ExceptionHandler(ResumeNotFoundException.class)
+    public ProblemDetail handleResumeNotFound(ResumeNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Not Found");
         return problem;
     }
 
