@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-05  # updated by code-review 3.2 — patch applied, status → done
+last_updated: 2026-06-05  # updated by code-review 3.3 — review passed, status → done
 project: resume-enhancer
 project_key: NOKEY
 tracking_system: file-system
@@ -63,7 +63,7 @@ development_status:
   epic-3: in-progress
   3-1-resumedocument-model-and-resume-crud-api: done
   3-2-template-management-api-and-prebuilt-library: done
-  3-3-dashboard-resume-gallery: backlog
+  3-3-dashboard-resume-gallery: done
   3-4-resume-editor-layout-and-resumecanvas: backlog
   3-5-inline-section-editing-and-section-visibility: backlog
   3-6-resume-save-save-as-and-name-management: backlog
