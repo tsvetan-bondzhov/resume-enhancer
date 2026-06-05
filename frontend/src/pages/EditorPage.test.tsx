@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { apiClient } from "@/lib/apiClient"
 import { toast } from "sonner"
 import type { ResumeDto } from "@/types/api"
@@ -11,16 +11,22 @@ vi.mock("@/lib/apiClient", () => ({
     get: vi.fn(),
     // put is mocked to a never-resolving promise so autosave doesn't interfere with tests
     put: vi.fn(() => new Promise(() => {})),
+    post: vi.fn(),
   },
 }))
 
 vi.mock("sonner", () => ({
-  toast: Object.assign(vi.fn(), { error: vi.fn() }),
+  toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
 }))
 
+const mockNavigate = vi.fn()
 vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router-dom")>()
-  return { ...actual, useParams: () => ({ id: "test-resume-id" }) }
+  return {
+    ...actual,
+    useParams: () => ({ id: "test-resume-id" }),
+    useNavigate: () => mockNavigate,
+  }
 })
 
 const mockGet = vi.mocked(apiClient.get)
@@ -57,6 +63,7 @@ describe("EditorPage", () => {
     vi.clearAllMocks()
     // Restore never-resolving put mock after clearAllMocks
     vi.mocked(apiClient.put).mockReturnValue(new Promise(() => {}))
+    mockNavigate.mockReset()
   })
 
   afterEach(() => {
@@ -98,5 +105,83 @@ describe("EditorPage", () => {
       screen.getByRole("heading", { name: /edit section title/i }),
     )
     expect(useResumeStore.getState().currentResume?.id).toBe("test-resume-id")
+  })
+
+  it("renders editor toolbar with resume name after fetch", async () => {
+    mockGet.mockResolvedValue(buildResume())
+    render(<EditorPage />)
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: /resume name/i })).toHaveValue("Test Resume")
+    )
+  })
+
+  it("navigates to dashboard on back button click", async () => {
+    mockGet.mockResolvedValue(buildResume())
+    render(<EditorPage />)
+    await waitFor(() => screen.getByLabelText(/back to resumes/i))
+    fireEvent.click(screen.getByLabelText(/back to resumes/i))
+    expect(mockNavigate).toHaveBeenCalledWith("/")
+  })
+
+  it("opens Save As dialog when Save As button is clicked", async () => {
+    mockGet.mockResolvedValue(buildResume())
+    render(<EditorPage />)
+    await waitFor(() => screen.getByRole("button", { name: /save as new resume/i }))
+    fireEvent.click(screen.getByRole("button", { name: /save as new resume/i }))
+    await waitFor(() =>
+      expect(screen.getByRole("dialog")).toBeInTheDocument()
+    )
+  })
+
+  it("calls clone endpoint and navigates on Save As confirm", async () => {
+    const newResume = buildResume({ id: "new-resume-id", name: "My Copy" })
+    mockGet.mockResolvedValue(buildResume())
+    vi.mocked(apiClient.post).mockResolvedValue(newResume)
+    render(<EditorPage />)
+    await waitFor(() => screen.getByRole("button", { name: /save as new resume/i }))
+    fireEvent.click(screen.getByRole("button", { name: /save as new resume/i }))
+    const dialog = await waitFor(() => screen.getByRole("dialog"))
+    // Clear default name and type new one — use the input inside the dialog
+    const nameInput = dialog.querySelector<HTMLInputElement>("#save-as-name")!
+    fireEvent.change(nameInput, { target: { value: "My Copy" } })
+    fireEvent.click(screen.getByRole("button", { name: /^save as$/i }))
+    await waitFor(() =>
+      expect(vi.mocked(apiClient.post)).toHaveBeenCalledWith(
+        "/api/v1/resumes/test-resume-id/clone",
+        { name: "My Copy" }
+      )
+    )
+    expect(mockNavigate).toHaveBeenCalledWith("/resumes/new-resume-id")
+  })
+
+  it("shows validation error when Save As is submitted with blank name (AC3)", async () => {
+    mockGet.mockResolvedValue(buildResume())
+    render(<EditorPage />)
+    await waitFor(() => screen.getByRole("button", { name: /save as new resume/i }))
+    fireEvent.click(screen.getByRole("button", { name: /save as new resume/i }))
+    const dialog = await waitFor(() => screen.getByRole("dialog"))
+    const nameInput = dialog.querySelector<HTMLInputElement>("#save-as-name")!
+    fireEvent.change(nameInput, { target: { value: "" } })
+    fireEvent.click(screen.getByRole("button", { name: /^save as$/i }))
+    await waitFor(() =>
+      expect(screen.getByText("Name is required")).toBeInTheDocument()
+    )
+    expect(vi.mocked(apiClient.post)).not.toHaveBeenCalled()
+  })
+
+  it("updates document.title with resume name after fetch (AC1)", async () => {
+    mockGet.mockResolvedValue(buildResume({ name: "My Awesome Resume" }))
+    render(<EditorPage />)
+    await waitFor(() =>
+      expect(document.title).toBe("My Awesome Resume — Resume Enhancer")
+    )
+  })
+
+  it("renders back navigation button in error state (AC6)", async () => {
+    mockGet.mockRejectedValue(new Error("network"))
+    render(<EditorPage />)
+    await waitFor(() =>
+      expect(screen.getByLabelText(/back to resumes/i)).toBeInTheDocument()
+    )
   })
 })

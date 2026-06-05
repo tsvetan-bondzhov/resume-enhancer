@@ -16,6 +16,7 @@ interface ResumeState {
   updateItemField: (sectionId: string, itemId: string, field: string, value: string) => void
   toggleSectionVisibility: (sectionId: string) => void
   reorderSections: (newSections: ResumeSectionDto[]) => void
+  updateResumeName: (name: string) => void
   applyPatch: (patch: {
     sectionId: string
     itemIndex: number
@@ -102,6 +103,13 @@ export const useResumeStore = create<ResumeState>((set) => ({
           ...state.currentResume,
           content: { ...state.currentResume.content, sections: newSections },
         },
+      }
+    }),
+  updateResumeName: (name) =>
+    set((state) => {
+      if (!state.currentResume) return state
+      return {
+        currentResume: { ...state.currentResume, name },
       }
     }),
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
