@@ -7,12 +7,13 @@ import { useResumeStore } from "@/stores/useResumeStore"
 import ResumeDashboardCard from "@/components/resume/ResumeDashboardCard"
 import ResumeDashboardCardSkeleton from "@/components/resume/ResumeDashboardCardSkeleton"
 import { Button } from "@/components/ui/button"
-import type { ResumeDto } from "@/types/api"
+import type { CreateResumeRequest, ResumeDto } from "@/types/api"
 
 export default function DashboardPage() {
   const navigate = useNavigate()
   const [displayedResumes, setDisplayedResumes] = useState<ResumeDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isCreating, setIsCreating] = useState(false)
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
   const pendingDeletes = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const setResumes = useResumeStore((state) => state.setResumes)
@@ -38,6 +39,19 @@ export default function DashboardPage() {
       pendingDeletes.current.forEach(clearTimeout)
     }
   }, [])
+
+  const handleCreateResume = useCallback(async () => {
+    setIsCreating(true)
+    try {
+      const body: CreateResumeRequest = { name: "Untitled Resume", templateId: null }
+      const newResume = await apiClient.post<ResumeDto>("/api/v1/resumes", body)
+      navigate(`/resumes/${newResume.id}`)
+    } catch {
+      toast.error("Failed to create resume")
+    } finally {
+      setIsCreating(false)
+    }
+  }, [navigate])
 
   const handleOpen = useCallback(
     (id: string) => {
@@ -106,8 +120,8 @@ export default function DashboardPage() {
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">My Resumes</h1>
-        <Button variant="outline" disabled aria-disabled="true">
-          New Resume
+        <Button variant="outline" onClick={handleCreateResume} disabled={isCreating}>
+          {isCreating ? "Creating…" : "New Resume"}
         </Button>
       </div>
 
