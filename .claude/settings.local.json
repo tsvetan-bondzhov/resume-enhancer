@@ -35,7 +35,10 @@
       "Bash(./mvnw clean *)",
       "Bash(mvn dependency:tree -Dincludes=com.fasterxml.jackson.core:jackson-databind -q)",
       "Bash(./mvnw dependency:tree -Dincludes=com.fasterxml.jackson.core:jackson-databind -q)",
-      "Bash(./mvnw dependency:tree -Dincludes=com.fasterxml.jackson.core:jackson-databind)"
+      "Bash(./mvnw dependency:tree -Dincludes=com.fasterxml.jackson.core:jackson-databind)",
+      "Bash(Select-String -Pattern \"Tests run:|BUILD|FAILURE|ERROR|SUCCESS\")",
+      "Bash(Select-Object -Last 20)",
+      "Bash(PYTHONIOENCODING=utf-8 python3 *)"
     ]
   }
 }

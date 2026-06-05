@@ -129,3 +129,21 @@ export interface ParsedResumeDtoResponse {
   educationLines: string[]
   skillLines: string[]
 }
+
+export interface TemplateDto {
+  id: string
+  name: string
+  description: string | null
+  isPrebuilt: boolean
+  isPublished: boolean
+  /** Flexible JSONB map — format TBD in Epic 7 */
+  templateDefinition: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TemplateRequest {
+  name: string
+  description: string | null
+  templateDefinition: Record<string, unknown>
+}

@@ -43,6 +43,15 @@ public class SecurityConfig {
                             problem.setTitle("Unauthorized");
                             response.getWriter().write(objectMapper.writeValueAsString(problem));
                         })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            if (!response.isCommitted()) {
+                                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                                ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access denied");
+                                problem.setTitle("Forbidden");
+                                response.getWriter().write(objectMapper.writeValueAsString(problem));
+                            }
+                        })
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
