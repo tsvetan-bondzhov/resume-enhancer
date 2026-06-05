@@ -18,7 +18,7 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = useAuthStore.getState().token
-  const hasBody = init?.body !== undefined
+  const hasBody = init?.body !== undefined && !(init.body instanceof FormData)
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
     headers: {
@@ -59,4 +59,6 @@ export const apiClient = {
   put: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  uploadFile: <T>(path: string, formData: FormData) =>
+    request<T>(path, { method: "POST", body: formData }),
 }

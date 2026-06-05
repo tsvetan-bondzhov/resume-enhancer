@@ -92,3 +92,10 @@ export interface ProfileUpdateRequest {
   education: EducationRequest[]
   skills: SkillRequest[]
 }
+
+export interface ParsedResumeDtoResponse {
+  rawText: string
+  workExperienceLines: string[]
+  educationLines: string[]
+  skillLines: string[]
+}

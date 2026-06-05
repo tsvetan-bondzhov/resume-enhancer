@@ -9,6 +9,7 @@ import ExperienceStep from "@/components/profile/ExperienceStep"
 import EducationStep from "@/components/profile/EducationStep"
 import SkillsStep from "@/components/profile/SkillsStep"
 import SummaryStep from "@/components/profile/SummaryStep"
+import { useResumeUpload } from "@/hooks/useResumeUpload"
 
 const STEPS = ["Experience", "Education", "Skills", "Summary"]
 const LAST_STEP = STEPS.length - 1 // 3 — SummaryStep handles its own navigation
@@ -39,6 +40,8 @@ export default function ProfilePage() {
     setSaving,
     setHasStarted,
   } = useProfileStore()
+
+  const { isUploading, triggerUpload, renderFileInput } = useResumeUpload()
 
   // isSavingRef is a synchronous lock set on the very first tick of a click —
   // before any await — so concurrent double-clicks are rejected even in the
@@ -156,21 +159,44 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-2xl p-6">
-      <h1 className="mb-6 text-2xl font-semibold">Your Profile</h1>
+      {/* Hidden file input — always in the tree, invisible */}
+      {renderFileInput()}
+
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Your Profile</h1>
+        {!showEmptyState && (
+          <Button
+            variant="outline"
+            onClick={triggerUpload}
+            disabled={isUploading}
+          >
+            {isUploading ? "Uploading..." : "Upload existing resume"}
+          </Button>
+        )}
+      </div>
 
       {showEmptyState ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="mb-4 text-zinc-500">
             Your profile is empty — start building below
           </p>
-          <Button
-            onClick={() => {
-              setHasStarted(true)
-              setStep(0)
-            }}
-          >
-            Get Started
-          </Button>
+          <div className="flex flex-col items-center gap-3">
+            <Button
+              onClick={() => {
+                setHasStarted(true)
+                setStep(0)
+              }}
+            >
+              Get Started
+            </Button>
+            <Button
+              variant="outline"
+              onClick={triggerUpload}
+              disabled={isUploading}
+            >
+              {isUploading ? "Uploading..." : "Upload existing resume"}
+            </Button>
+          </div>
         </div>
       ) : (
         <>
