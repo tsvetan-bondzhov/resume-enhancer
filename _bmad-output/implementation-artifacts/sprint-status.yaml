@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-05  # updated by bmad-code-review — story 3.4 review passed, status → done
+last_updated: 2026-06-05  # updated by bmad-code-review — story 3.5 review passed (pass 2), status → done
 project: resume-enhancer
 project_key: NOKEY
 tracking_system: file-system
@@ -65,7 +65,7 @@ development_status:
   3-2-template-management-api-and-prebuilt-library: done
   3-3-dashboard-resume-gallery: done
   3-4-resume-editor-layout-and-resumecanvas: done
-  3-5-inline-section-editing-and-section-visibility: backlog
+  3-5-inline-section-editing-and-section-visibility: done
   3-6-resume-save-save-as-and-name-management: backlog
   3-7-template-gallery-and-template-switching: backlog
   3-8-resume-deletion-with-undo-and-confirm-dialogs: backlog

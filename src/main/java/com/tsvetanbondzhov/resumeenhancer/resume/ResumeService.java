@@ -14,6 +14,7 @@ import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSection;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.CreateResumeRequest;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.ResumeDto;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.SaveAsRequest;
+import com.tsvetanbondzhov.resumeenhancer.resume.dto.UpdateResumeRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -99,6 +100,16 @@ public class ResumeService {
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    @Transactional
+    public ResumeDto updateResume(String email, UUID resumeId, UpdateResumeRequest request) {
+        User user = resolveUser(email);
+        Resume resume = resumeRepository.findByIdAndUser(resumeId, user)
+                .orElseThrow(() -> new ResumeAccessDeniedException("Access denied or resume not found"));
+        resume.setName(request.name());
+        resume.setResumeContent(request.content());
+        return toDto(resumeRepository.save(resume));
+    }
 
     private User resolveUser(String email) {
         return userRepository.findByEmail(email)

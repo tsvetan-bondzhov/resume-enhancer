@@ -9,6 +9,8 @@ import EditorPage from "./EditorPage"
 vi.mock("@/lib/apiClient", () => ({
   apiClient: {
     get: vi.fn(),
+    // put is mocked to a never-resolving promise so autosave doesn't interfere with tests
+    put: vi.fn(() => new Promise(() => {})),
   },
 }))
 
@@ -53,10 +55,13 @@ function buildResume(overrides?: Partial<ResumeDto>): ResumeDto {
 describe("EditorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Restore never-resolving put mock after clearAllMocks
+    vi.mocked(apiClient.put).mockReturnValue(new Promise(() => {}))
   })
 
   afterEach(() => {
     useResumeStore.getState().setCurrentResume(null)
+    useResumeStore.getState().setLastSavedDocument(null)
   })
 
   it("renders skeleton while loading", () => {
@@ -69,10 +74,10 @@ describe("EditorPage", () => {
     mockGet.mockResolvedValue(buildResume())
     render(<EditorPage />)
     await waitFor(() =>
-      screen.getByRole("heading", { name: /work experience/i }),
+      screen.getByRole("heading", { name: /edit section title/i }),
     )
     expect(
-      screen.getByRole("heading", { name: /work experience/i }),
+      screen.getByRole("heading", { name: /edit section title/i }),
     ).toBeInTheDocument()
   })
 
@@ -90,7 +95,7 @@ describe("EditorPage", () => {
     mockGet.mockResolvedValue(buildResume())
     render(<EditorPage />)
     await waitFor(() =>
-      screen.getByRole("heading", { name: /work experience/i }),
+      screen.getByRole("heading", { name: /edit section title/i }),
     )
     expect(useResumeStore.getState().currentResume?.id).toBe("test-resume-id")
   })

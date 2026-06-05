@@ -282,4 +282,135 @@ class ResumeControllerIntegrationTest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+
+    // --- PUT /api/v1/resumes/{id} ------------------------------------------
+
+    @Test
+    void put_updateResume_returns200WithUpdatedContent() throws Exception {
+        String token = registerAndGetToken("update_resume@example.com", "Password1");
+
+        // Create a resume
+        String createBody = """
+                { "name": "Original Name", "templateId": null }
+                """;
+        String createResponse = webTestClient().post()
+                .uri("/api/v1/resumes")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(createBody)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        String resumeId = objectMapper.readTree(createResponse).get("id").asText();
+        String originalUpdatedAt = objectMapper.readTree(createResponse).get("updatedAt").asText();
+
+        // Small delay to ensure updatedAt differs
+        Thread.sleep(10);
+
+        // PUT with updated name and content
+        String putBody = """
+                {
+                  "name": "Updated Name",
+                  "content": { "sections": [] }
+                }
+                """;
+        String putResponse = webTestClient().put()
+                .uri("/api/v1/resumes/" + resumeId)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(putBody)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        String newUpdatedAt = objectMapper.readTree(putResponse).get("updatedAt").asText();
+        assertThat(newUpdatedAt).isNotEqualTo(originalUpdatedAt);
+        assertThat(java.time.Instant.parse(newUpdatedAt))
+                .isAfter(java.time.Instant.parse(originalUpdatedAt));
+
+        // Also verify response fields
+        assertThat(objectMapper.readTree(putResponse).get("name").asText()).isEqualTo("Updated Name");
+        assertThat(objectMapper.readTree(putResponse).get("id").asText()).isEqualTo(resumeId);
+        assertThat(objectMapper.readTree(putResponse).get("content").get("sections").isArray()).isTrue();
+    }
+
+    @Test
+    void put_updateResume_otherUsersResume_returns403() throws Exception {
+        String tokenA = registerAndGetToken("put_owner@example.com", "Password1");
+        String tokenB = registerAndGetToken("put_other@example.com", "Password1");
+
+        // User A creates a resume
+        String createBody = """
+                { "name": "Owner Resume", "templateId": null }
+                """;
+        String createResponse = webTestClient().post()
+                .uri("/api/v1/resumes")
+                .header("Authorization", "Bearer " + tokenA)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(createBody)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        String resumeId = objectMapper.readTree(createResponse).get("id").asText();
+
+        // User B tries to update User A's resume
+        String putBody = """
+                {
+                  "name": "Hijacked Name",
+                  "content": { "sections": [] }
+                }
+                """;
+        webTestClient().put()
+                .uri("/api/v1/resumes/" + resumeId)
+                .header("Authorization", "Bearer " + tokenB)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(putBody)
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void put_updateResume_blankName_returns400() throws Exception {
+        String token = registerAndGetToken("put_invalid@example.com", "Password1");
+
+        // Create a resume first
+        String createBody = """
+                { "name": "Original", "templateId": null }
+                """;
+        String createResponse = webTestClient().post()
+                .uri("/api/v1/resumes")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(createBody)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        String resumeId = objectMapper.readTree(createResponse).get("id").asText();
+
+        // PUT with blank name
+        String putBody = """
+                {
+                  "name": "",
+                  "content": { "sections": [] }
+                }
+                """;
+        webTestClient().put()
+                .uri("/api/v1/resumes/" + resumeId)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(putBody)
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
 }
