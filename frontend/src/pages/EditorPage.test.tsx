@@ -63,6 +63,11 @@ describe("EditorPage", () => {
     vi.clearAllMocks()
     // Restore never-resolving put mock after clearAllMocks
     vi.mocked(apiClient.put).mockReturnValue(new Promise(() => {}))
+    // Default: templates endpoint returns empty array so TemplateGallery renders without crashing
+    mockGet.mockImplementation((url: string) => {
+      if ((url as string).includes("resume-templates")) return Promise.resolve([])
+      return new Promise(() => {})
+    })
     mockNavigate.mockReset()
   })
 
@@ -71,14 +76,25 @@ describe("EditorPage", () => {
     useResumeStore.getState().setLastSavedDocument(null)
   })
 
+  /** Helper: return resume data for resume URL, empty array for templates URL */
+  function mockGetWithResume(resume: ResumeDto) {
+    mockGet.mockImplementation((url: string) => {
+      if ((url as string).includes("resume-templates")) return Promise.resolve([])
+      return Promise.resolve(resume)
+    })
+  }
+
   it("renders skeleton while loading", () => {
-    mockGet.mockReturnValue(new Promise(() => {}))
+    mockGet.mockImplementation((url: string) => {
+      if ((url as string).includes("resume-templates")) return Promise.resolve([])
+      return new Promise(() => {})
+    })
     render(<EditorPage />)
     expect(screen.getByLabelText(/resume preview loading/i)).toBeInTheDocument()
   })
 
   it("renders resume sections after successful fetch", async () => {
-    mockGet.mockResolvedValue(buildResume())
+    mockGetWithResume(buildResume())
     render(<EditorPage />)
     await waitFor(() =>
       screen.getByRole("heading", { name: /edit section title/i }),
@@ -89,7 +105,10 @@ describe("EditorPage", () => {
   })
 
   it("renders error toast on fetch failure", async () => {
-    mockGet.mockRejectedValue(new Error("network"))
+    mockGet.mockImplementation((url: string) => {
+      if ((url as string).includes("resume-templates")) return Promise.resolve([])
+      return Promise.reject(new Error("network"))
+    })
     render(<EditorPage />)
     await waitFor(() =>
       expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
@@ -99,7 +118,7 @@ describe("EditorPage", () => {
   })
 
   it("calls setCurrentResume with fetched resume", async () => {
-    mockGet.mockResolvedValue(buildResume())
+    mockGetWithResume(buildResume())
     render(<EditorPage />)
     await waitFor(() =>
       screen.getByRole("heading", { name: /edit section title/i }),
@@ -108,7 +127,7 @@ describe("EditorPage", () => {
   })
 
   it("renders editor toolbar with resume name after fetch", async () => {
-    mockGet.mockResolvedValue(buildResume())
+    mockGetWithResume(buildResume())
     render(<EditorPage />)
     await waitFor(() =>
       expect(screen.getByRole("textbox", { name: /resume name/i })).toHaveValue("Test Resume")
@@ -116,7 +135,7 @@ describe("EditorPage", () => {
   })
 
   it("navigates to dashboard on back button click", async () => {
-    mockGet.mockResolvedValue(buildResume())
+    mockGetWithResume(buildResume())
     render(<EditorPage />)
     await waitFor(() => screen.getByLabelText(/back to resumes/i))
     fireEvent.click(screen.getByLabelText(/back to resumes/i))
@@ -124,7 +143,7 @@ describe("EditorPage", () => {
   })
 
   it("opens Save As dialog when Save As button is clicked", async () => {
-    mockGet.mockResolvedValue(buildResume())
+    mockGetWithResume(buildResume())
     render(<EditorPage />)
     await waitFor(() => screen.getByRole("button", { name: /save as new resume/i }))
     fireEvent.click(screen.getByRole("button", { name: /save as new resume/i }))
@@ -135,7 +154,7 @@ describe("EditorPage", () => {
 
   it("calls clone endpoint and navigates on Save As confirm", async () => {
     const newResume = buildResume({ id: "new-resume-id", name: "My Copy" })
-    mockGet.mockResolvedValue(buildResume())
+    mockGetWithResume(buildResume())
     vi.mocked(apiClient.post).mockResolvedValue(newResume)
     render(<EditorPage />)
     await waitFor(() => screen.getByRole("button", { name: /save as new resume/i }))
@@ -155,7 +174,7 @@ describe("EditorPage", () => {
   })
 
   it("shows validation error when Save As is submitted with blank name (AC3)", async () => {
-    mockGet.mockResolvedValue(buildResume())
+    mockGetWithResume(buildResume())
     render(<EditorPage />)
     await waitFor(() => screen.getByRole("button", { name: /save as new resume/i }))
     fireEvent.click(screen.getByRole("button", { name: /save as new resume/i }))
@@ -170,7 +189,7 @@ describe("EditorPage", () => {
   })
 
   it("updates document.title with resume name after fetch (AC1)", async () => {
-    mockGet.mockResolvedValue(buildResume({ name: "My Awesome Resume" }))
+    mockGetWithResume(buildResume({ name: "My Awesome Resume" }))
     render(<EditorPage />)
     await waitFor(() =>
       expect(document.title).toBe("My Awesome Resume — Resume Enhancer")
@@ -178,7 +197,10 @@ describe("EditorPage", () => {
   })
 
   it("renders back navigation button in error state (AC6)", async () => {
-    mockGet.mockRejectedValue(new Error("network"))
+    mockGet.mockImplementation((url: string) => {
+      if ((url as string).includes("resume-templates")) return Promise.resolve([])
+      return Promise.reject(new Error("network"))
+    })
     render(<EditorPage />)
     await waitFor(() =>
       expect(screen.getByLabelText(/back to resumes/i)).toBeInTheDocument()

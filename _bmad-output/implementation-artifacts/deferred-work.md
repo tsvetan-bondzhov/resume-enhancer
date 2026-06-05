@@ -31,6 +31,11 @@
 - **D2** `DashboardPage.test.tsx` — No test for DELETE API failure + restore + `toast.error("Delete failed — resume restored")`. Same as D1.
 - **D3** `DashboardPage.tsx:84` — Double-delete Map key collision: calling `handleDelete` on the same resume ID twice (e.g., duplicate browser tab) silently overwrites the first pending timeout without clearing it, leaking a stale setTimeout. Low-probability in practice; address if undo patterns are revisited in Story 3.8.
 
+## Deferred from: code review of 3-7-template-gallery-and-template-switching (2026-06-05)
+
+- Stale closure in `handleApplyTemplate` revert path (`EditorPage.tsx:131`) — under rapid successive template clicks, a failed API call reverts to the `templateId` captured in the callback's closure at creation time, which may not be the original template if the user clicked multiple templates quickly. Pre-existing React closure pattern; no user-visible impact under normal usage.
+- No EditorPage-level integration test for `handleApplyTemplate` / "Template applied" toast — `TemplateGallery.test.tsx` covers the `onApply` callback invocation path; EditorPage-level integration test for this flow is not required by the story spec.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

@@ -11,6 +11,7 @@ import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.CreateResumeRequest;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.ResumeDto;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.SaveAsRequest;
+import com.tsvetanbondzhov.resumeenhancer.resume.dto.UpdateResumeRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -208,6 +209,47 @@ class ResumeServiceTest {
 
         assertThatThrownBy(() -> resumeService.deleteResume(EMAIL, RESUME_ID))
                 .isInstanceOf(ResumeAccessDeniedException.class);
+    }
+
+    // ─── updateResume ─────────────────────────────────────────────────────────
+
+    @Test
+    void updateResume_updatesTemplateId_whenProvided() {
+        User user = buildUser();
+        UUID newTemplateId = UUID.randomUUID();
+        Resume resume = buildResume(user);
+
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(resumeRepository.findByIdAndUser(RESUME_ID, user)).thenReturn(Optional.of(resume));
+
+        ArgumentCaptor<Resume> captor = ArgumentCaptor.forClass(Resume.class);
+        Resume savedResume = buildResume(user);
+        savedResume.setTemplateId(newTemplateId);
+        when(resumeRepository.save(captor.capture())).thenReturn(savedResume);
+
+        UpdateResumeRequest request = new UpdateResumeRequest("My Resume", new ResumeDocument(List.of()), newTemplateId);
+        resumeService.updateResume(EMAIL, RESUME_ID, request);
+
+        assertThat(captor.getValue().getTemplateId()).isEqualTo(newTemplateId);
+    }
+
+    @Test
+    void updateResume_preservesTemplateId_whenNull() {
+        User user = buildUser();
+        UUID existingTemplateId = UUID.randomUUID();
+        Resume resume = buildResume(user);
+        resume.setTemplateId(existingTemplateId);
+
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(resumeRepository.findByIdAndUser(RESUME_ID, user)).thenReturn(Optional.of(resume));
+
+        ArgumentCaptor<Resume> captor = ArgumentCaptor.forClass(Resume.class);
+        when(resumeRepository.save(captor.capture())).thenReturn(resume);
+
+        UpdateResumeRequest request = new UpdateResumeRequest("My Resume", new ResumeDocument(List.of()), null);
+        resumeService.updateResume(EMAIL, RESUME_ID, request);
+
+        assertThat(captor.getValue().getTemplateId()).isEqualTo(existingTemplateId);
     }
 
     // ─── cloneResume ──────────────────────────────────────────────────────────

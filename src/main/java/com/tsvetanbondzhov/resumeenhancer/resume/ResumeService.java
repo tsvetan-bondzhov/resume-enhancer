@@ -108,6 +108,10 @@ public class ResumeService {
                 .orElseThrow(() -> new ResumeAccessDeniedException("Access denied or resume not found"));
         resume.setName(request.name());
         resume.setResumeContent(request.content());
+        // Only overwrite templateId when explicitly provided — null means "keep existing"
+        if (request.templateId() != null) {
+            resume.setTemplateId(request.templateId());
+        }
         return toDto(resumeRepository.save(resume));
     }
 

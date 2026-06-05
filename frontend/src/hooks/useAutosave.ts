@@ -82,6 +82,7 @@ export function useAutosave(
         .put<ResumeDto>(`/api/v1/resumes/${resumeId}`, {
           name: doc.name,
           content: doc.content,
+          templateId: doc.templateId ?? null,
         })
         .then((updated) => {
           setLastSavedDocument(updated.content)

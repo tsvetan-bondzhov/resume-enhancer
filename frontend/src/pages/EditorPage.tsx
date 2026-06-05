@@ -8,6 +8,7 @@ import SectionsPanel from "@/components/resume/SectionsPanel"
 import ResumeSection from "@/components/resume/ResumeSection"
 import EditorToolbar from "@/components/resume/EditorToolbar"
 import SaveAsDialog from "@/components/resume/SaveAsDialog"
+import TemplateGallery from "@/components/resume/TemplateGallery"
 import { useAutosave } from "@/hooks/useAutosave"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { ResumeDto } from "@/types/api"
@@ -28,6 +29,9 @@ export default function EditorPage() {
   const updateSectionTitle = useResumeStore((state) => state.updateSectionTitle)
   const updateItemField = useResumeStore((state) => state.updateItemField)
   const updateResumeName = useResumeStore((state) => state.updateResumeName)
+  const setCurrentResumeTemplateId = useResumeStore(
+    (state) => state.setCurrentResumeTemplateId
+  )
 
   const { status: autosaveStatus } = useAutosave(id)
 
@@ -110,6 +114,27 @@ export default function EditorPage() {
     [id, navigate]
   )
 
+  const handleApplyTemplate = useCallback(
+    async (templateId: string) => {
+      if (!id || !currentResume) return
+      // Optimistic update — update store immediately so the gallery highlights correctly
+      setCurrentResumeTemplateId(templateId)
+      try {
+        await apiClient.put<ResumeDto>(`/api/v1/resumes/${id}`, {
+          name: currentResume.name,
+          content: currentResume.content,
+          templateId,
+        })
+        toast.success("Template applied")
+      } catch {
+        // Revert optimistic update on failure
+        setCurrentResumeTemplateId(currentResume.templateId)
+        toast.error("Failed to apply template — please try again")
+      }
+    },
+    [id, currentResume, setCurrentResumeTemplateId]
+  )
+
   const handleBack = useCallback(() => {
     navigate("/")
   }, [navigate])
@@ -118,7 +143,15 @@ export default function EditorPage() {
     <>
       <SplitPaneLayout
         leftSlot={
-          <SectionsPanel sections={currentResume?.content.sections ?? []} />
+          <div className="overflow-y-auto h-full">
+            <SectionsPanel sections={currentResume?.content.sections ?? []} />
+            <div className="border-t border-border mt-2 pt-2">
+              <TemplateGallery
+                activeTemplateId={currentResume?.templateId ?? null}
+                onApply={handleApplyTemplate}
+              />
+            </div>
+          </div>
         }
         centerSlot={
           <div className="flex flex-col h-full overflow-hidden">
