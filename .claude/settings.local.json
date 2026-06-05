@@ -42,7 +42,8 @@
       "Bash(git *)",
       "Bash(node -e ' *)",
       "Bash(npx eslint *)",
-      "Bash(echo \"mkdir result: $?\")"
+      "Bash(echo \"mkdir result: $?\")",
+      "Bash(set PYTHONIOENCODING=utf-8)"
     ]
   }
 }

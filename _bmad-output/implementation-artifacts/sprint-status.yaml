@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-05  # updated by bmad-code-review — story 3.7 done
+last_updated: 2026-06-05  # updated by bmad-code-review — story 3.8 done
 project: resume-enhancer
 project_key: NOKEY
 tracking_system: file-system
@@ -68,7 +68,7 @@ development_status:
   3-5-inline-section-editing-and-section-visibility: done
   3-6-resume-save-save-as-and-name-management: done
   3-7-template-gallery-and-template-switching: done
-  3-8-resume-deletion-with-undo-and-confirm-dialogs: backlog
+  3-8-resume-deletion-with-undo-and-confirm-dialogs: done
   epic-3-retrospective: optional
 
   # ─── Epic 4: AI Enhancement & Conversational Chat ───

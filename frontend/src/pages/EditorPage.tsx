@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/apiClient"
@@ -9,6 +9,7 @@ import ResumeSection from "@/components/resume/ResumeSection"
 import EditorToolbar from "@/components/resume/EditorToolbar"
 import SaveAsDialog from "@/components/resume/SaveAsDialog"
 import TemplateGallery from "@/components/resume/TemplateGallery"
+import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
 import { useAutosave } from "@/hooks/useAutosave"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { ResumeDto } from "@/types/api"
@@ -32,6 +33,11 @@ export default function EditorPage() {
   const setCurrentResumeTemplateId = useResumeStore(
     (state) => state.setCurrentResumeTemplateId
   )
+  const resumes = useResumeStore((state) => state.resumes)
+
+  const [sidebarResumes, setSidebarResumes] = useState<ResumeDto[]>(() => resumes)
+  const [duplicatingSidebarId, setDuplicatingSidebarId] = useState<string | null>(null)
+  const pendingSidebarDeletes = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   const { status: autosaveStatus } = useAutosave(id)
 
@@ -70,6 +76,12 @@ export default function EditorPage() {
       document.title = "Resume Enhancer"
     }
   }, [currentResume?.name])
+
+  // Cleanup pending sidebar deletes on unmount
+  useEffect(() => {
+    const ref = pendingSidebarDeletes.current
+    return () => { ref.forEach(clearTimeout) }
+  }, [])
 
   const handleTitleChange = useCallback(
     (sectionId: string, title: string) => {
@@ -139,11 +151,84 @@ export default function EditorPage() {
     navigate("/")
   }, [navigate])
 
+  const handleDuplicateFromSidebar = useCallback(async (resume: ResumeDto) => {
+    setDuplicatingSidebarId(resume.id)
+    try {
+      const newResume = await apiClient.post<ResumeDto>(
+        `/api/v1/resumes/${resume.id}/clone`,
+        { name: `${resume.name} (copy)` },
+      )
+      setSidebarResumes((prev) => [newResume, ...prev])
+      toast.success("Resume duplicated")
+    } catch {
+      toast.error("Failed to duplicate resume")
+    } finally {
+      setDuplicatingSidebarId(null)
+    }
+  }, [])
+
+  const handleDeleteFromSidebar = useCallback((resume: ResumeDto) => {
+    // 1. Remove from sidebar list immediately (optimistic)
+    setSidebarResumes((prev) => prev.filter((r) => r.id !== resume.id))
+
+    // 2. Schedule actual API delete after 5s
+    const timeoutId = setTimeout(async () => {
+      pendingSidebarDeletes.current.delete(resume.id)
+      try {
+        await apiClient.delete(`/api/v1/resumes/${resume.id}`)
+      } catch {
+        setSidebarResumes((prev) => {
+          if (prev.find((r) => r.id === resume.id)) return prev
+          return [...prev, resume]
+        })
+        toast.error("Delete failed — resume restored")
+      }
+    }, 5000)
+
+    pendingSidebarDeletes.current.set(resume.id, timeoutId)
+
+    // 3. Show undo toast
+    toast("Deleted. Undo?", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          const tid = pendingSidebarDeletes.current.get(resume.id)
+          if (tid !== undefined) clearTimeout(tid)
+          pendingSidebarDeletes.current.delete(resume.id)
+          setSidebarResumes((prev) => {
+            if (prev.find((r) => r.id === resume.id)) return prev
+            return [...prev, resume]
+          })
+        },
+      },
+      duration: 5000,
+    })
+  }, [])
+
   return (
     <>
       <SplitPaneLayout
         leftSlot={
           <div className="overflow-y-auto h-full">
+            {/* Resume list for quick navigation (UX-DR9) */}
+            {sidebarResumes.length > 0 && (
+              <div className="px-2 py-2 border-b border-border">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 px-1">
+                  Resumes
+                </p>
+                {sidebarResumes.map((r) => (
+                  <ResumeSidebarItem
+                    key={r.id}
+                    resume={r}
+                    isActive={r.id === id}
+                    onOpen={() => navigate(`/resumes/${r.id}`)}
+                    onDuplicate={() => handleDuplicateFromSidebar(r)}
+                    onDelete={() => handleDeleteFromSidebar(r)}
+                    isDuplicating={duplicatingSidebarId === r.id}
+                  />
+                ))}
+              </div>
+            )}
             <SectionsPanel sections={currentResume?.content.sections ?? []} />
             <div className="border-t border-border mt-2 pt-2">
               <TemplateGallery
