@@ -1,4 +1,4 @@
-# Epic 3: Resume Management & Template Selection
+﻿# Epic 3: Resume Management & Template Selection
 
 Users can create resumes from their profile, browse and apply prebuilt templates, manage their resume library (save, clone, save-as, list, open, delete, download), edit resume content inline, and control section visibility. The complete editing loop is functional without AI. Custom template creation (FR22/FR23) is deferred to Epic 7.
 
@@ -255,4 +255,132 @@ So that I never accidentally lose work without the ability to recover.
 **Then** action icons for duplicate, delete, and export (stub) appear; the active resume has a blue background highlight (UX-DR9)
 
 ---
-
+
+
+### Story 3.9: LLM-Based Resume Parsing Pipeline
+
+As a user uploading a resume,
+I want my uploaded PDF or DOCX to be intelligently parsed into structured sections, job titles, companies, dates, and skills,
+So that my profile is pre-populated with typed, actionable data rather than raw unformatted text.
+
+**Background / Scope:**
+
+The existing `SectionExtractor` produces only three flat `List<String>` buckets (work/education/skills) with no typed field extraction. This story implements the hybrid pipeline defined in `llm-based-resume-parsing-architecture.md`: heuristic pre-segmentation for section boundaries + Ollama LLM for per-section field extraction, with full graceful degradation to heuristics when Ollama is unavailable.
+
+`AiService` and `OllamaHealthGuard` are scaffolded here (first appearance of the `ai` package) so the parsing pipeline has no forward dependency on Epic 4.
+
+**In scope:** `AiService`, `OllamaHealthGuard`, `OllamaUnavailableException`; modified `SectionExtractor.segmentByHeaders()`; `RawSection` record, `ResumeItemDto` record, `ResumeSectionType` enum; `LlmSectionExtractor`; modified `ParsingService`; prompt template `resume-section-extraction.st`; unit and integration tests.
+
+**Out of scope:** SSE streaming, `DocumentPatchService`, chat UI -- all Epic 4.
+
+**Acceptance Criteria:**
+
+**Given** the Spring AI 2.0.0-M6 Ollama starter dependency is present in `pom.xml`
+**When** the application starts
+**Then** `AiService` is a `@Service` bean in the `ai` package with `ChatClient` injected via constructor; `OllamaHealthGuard` is a `@Component` that checks Ollama reachability; `OllamaUnavailableException` is a typed domain exception in the `ai` package -- `AiService` is the only class in the codebase that calls `ChatClient` directly; `LlmSectionExtractor` calls `AiService.extractResumeSection()` only, never `ChatClient` directly
+
+**Given** `SectionExtractor.segmentByHeaders(rawText)` is called
+**When** the input contains section headings
+**Then** it returns a `List<RawSection>` where each `RawSection` record holds a `title` (String) and `lines` (List<String>); the keyword set covers: experience, work, employment, education, degree, skills, technologies, certifications, projects, summary, publications, languages, volunteering; section detection fires only when the keyword constitutes the full normalized line -- not a mid-sentence substring match (fixes the existing brittleness bug where `"5 years of experience"` falsely triggers a section switch)
+
+**Given** `ResumeSectionType` enum is defined
+**When** `segmentByHeaders()` classifies a section header
+**Then** recognized headers map to `WORK_EXPERIENCE`, `EDUCATION`, `SKILLS`, `CERTIFICATIONS`, `PROJECTS`, `SUMMARY`, `LANGUAGES`, `VOLUNTEERING`; unrecognized headers map to `UNKNOWN` with raw lines stored as a single `text` field per item -- content is never silently dropped
+
+**Given** Ollama is available
+**When** `ParsingService.parse(file)` is called
+**Then** `OllamaHealthGuard.isAvailable()` returns true; `LlmSectionExtractor` is invoked; for each `RawSection`, `AiService.extractResumeSection(sectionType, sectionText)` is called with a prompt built from `src/main/resources/prompts/resume-section-extraction.st`; the JSON response is validated and converted to `List<ResumeItemDto>`; a `ResumeDocument` with typed `ResumeSection` / `ResumeItem` entries is assembled and returned alongside the backward-compatible `ParsedResumeDto` (unchanged three-bucket structure)
+
+**Given** Ollama is unavailable
+**When** `ParsingService.parse(file)` is called
+**Then** `OllamaHealthGuard.isAvailable()` returns false; `ParsingService` catches `OllamaUnavailableException` and returns a heuristic-only `ParsedResumeDto`; the upload endpoint always returns HTTP 200 -- never 503; no `LlmSectionExtractor` call is made
+
+**Given** `LlmSectionExtractor` receives a malformed JSON response for one section
+**When** the JSON parse check fails
+**Then** that section falls back to heuristic lines; all other sections retain their LLM-extracted output; the malformed response is logged at WARN; the upload is never blocked
+
+**Given** `LlmSectionExtractor` receives a structurally valid JSON response
+**When** the date format check runs
+**Then** date fields not matching `\d{4}(-\d{2})?` or `"Present"` are nulled out; the item is kept with all remaining valid fields intact
+
+**Given** `LlmSectionExtractor` receives a JSON response where no field value for an item appears as a case-insensitive substring in `rawText`
+**When** the anchor check runs
+**Then** the item is included but `lowConfidence: true` is set in the intermediate `ResumeItemDto` and logged at WARN; it is never silently dropped
+
+**Given** a resume section exceeds 3000 characters
+**When** `LlmSectionExtractor` prepares the prompt
+**Then** the section text is truncated to 3000 characters before sending; truncation is logged at WARN
+
+**Given** the total LLM parsing time exceeds 30 seconds
+**When** `ParsingService` detects the timeout
+**Then** heuristic `ParsedResumeDto` is returned; the upload endpoint returns HTTP 200
+
+**Given** `LlmSectionExtractorTest.java` and `ParsingServiceTest.java` are run
+**When** tests execute
+**Then** `LlmSectionExtractorTest` covers: JSON parse failure falls back to heuristic lines; date fields with invalid format are nulled; anchor-check failure sets `lowConfidence: true`; all using a mocked `AiService`; `ParsingServiceTest` asserts that when `OllamaHealthGuard.isAvailable()` returns false, heuristic `ParsedResumeDto` is returned and `LlmSectionExtractor` is never called
+
+---
+
+### Story 3.10: Template Definition Backfill & ResumeCanvas Template Application
+
+As a user editing a resume,
+I want my selected template's layout, typography, and section order to be visually applied in the editor canvas and reflected in the sidebar template thumbnails,
+So that switching templates gives me an immediate, accurate preview of how my resume will look.
+
+**Background / Scope:**
+
+`V5__seed_prebuilt_templates.sql` inserts `{}` (empty JSONB) for all three templates. `ResumeCanvas` renders with hardcoded Tailwind classes and has no template awareness. `TemplateGallery` thumbnails show identical placeholder line boxes regardless of template.
+
+This story backfills real template definitions, adds the Java `TemplateDefinition` record hierarchy, wires `ResumeCanvas` to consume template definitions from the API, and updates `TemplateGallery` thumbnails to visually reflect each template's layout type -- including accent color.
+
+**In scope:** `V6__backfill_template_definitions.sql`; `TemplateDefinition`, `TemplateLayout`, `TemplateColumns`, `SectionStyle` Java records in `export` package including `TemplateDefinition.DEFAULT`; `TemplateService` CSS unit validation; updated `ResumeCanvas.tsx` with `templateId` prop, CSS variable injection, template-driven section ordering, and layout-type rendering; updated `TemplateGallery.tsx` thumbnails differentiated by layout type and accent color; `EditorPage.tsx` prop wiring; unit and component tests.
+
+**Out of scope:** server-side PDF/DOCX export rendering (Epic 5), `itemSeparator` rendering (picked up in Epic 5), custom template authoring (Epic 7).
+
+**Acceptance Criteria:**
+
+**Given** `V6__backfill_template_definitions.sql` is applied
+**When** `GET /api/v1/resume-templates` is called
+**Then** all three templates return fully populated `templateDefinition` JSONB: Minimal (`id: 11111111-0000-0000-0000-000000000001`) has `layoutType: "single-column"`; Classic (`id: ...000000000002`) has `layoutType: "two-column"`; Modern (`id: ...000000000003`) has `layoutType: "modern-accent"`; all three include `cssVariables` (with `--accent-color` defined), `layout`, and `metadata` sections matching the schema in `template-structure-and-application-architecture.md`
+
+**Given** `TemplateDefinition`, `TemplateLayout`, `TemplateColumns`, `SectionStyle` Java records are defined in the `export` package
+**When** `ObjectMapper.convertValue(rawMap, TemplateDefinition.class)` is called on any of the three prebuilt template definitions
+**Then** the records deserialize without error; `TemplateDefinition.isTwoColumn()` returns true only for Classic; `TemplateDefinition.isModernAccent()` returns true only for Modern; `TemplateDefinition.DEFAULT` is a compile-time constant with `layoutType: "single-column"`, `headerFormat: "name-contact"`, `sectionOrder: ["experience", "education", "skills"]`, and 0.75in page margins
+
+**Given** `TemplateService.updateTemplate()` receives a `templateDefinition` with `cssVariables` containing `rem` or `em` units
+**When** validation runs
+**Then** the update is rejected with a descriptive error identifying the offending variable; only `px` and `in` units are accepted; the template is not persisted
+
+**Given** `ResumeCanvas` receives a non-null `templateId` prop
+**When** the component mounts or `templateId` changes
+**Then** `GET /api/v1/resume-templates/{templateId}` is called via `apiClient`; on success the `templateDefinition.cssVariables` are injected as inline `style` on the root `<article>` element; sections render in the order defined by `layout.sectionOrder` (single-column / modern-accent) or right-column then left-column order (two-column); sections present in the document but absent from the template order arrays render last in document order; sections are never silently dropped
+
+**Given** `ResumeCanvas` receives `templateId: null`
+**When** the component renders
+**Then** hardcoded CSS default values are applied (matching `TemplateDefinition.DEFAULT`); no API call to the template endpoint is made; rendering does not error or show a loading state
+
+**Given** the template fetch fails (network error or 404)
+**When** `ResumeCanvas` handles the error
+**Then** hardcoded CSS defaults are applied silently; no error is shown to the user; `template` state is set to `null`
+
+**Given** `layoutType` is `"modern-accent"`
+**When** `ResumeCanvas` renders
+**Then** the header element receives `bg-[var(--accent-color)]` styling; each section `<h2>` receives `border-b-2 border-[var(--accent-color)]`; the layout is otherwise single-column (no grid)
+
+**Given** `layoutType` is `"two-column"`
+**When** `ResumeCanvas` renders
+**Then** the root `<article>` uses CSS Grid with `grid-template-columns: 1fr 2fr`; sections listed in `columns.left` render in the left grid area; sections listed in `columns.right` render in the right grid area; the renderer reads column assignment exclusively from the template JSON and has no hardcoded knowledge of which section types belong in which column
+
+**Given** `TemplateGallery` renders template thumbnail cards
+**When** `templateDefinition.layoutType` and `cssVariables["--accent-color"]` are available
+**Then** single-column thumbnails show a full-width line stack on a white background; two-column thumbnails show a narrow left block alongside a wider right block; modern-accent thumbnails show a coloured header band filled with the template's `--accent-color` value followed by a line stack; thumbnails for templates whose definitions have not yet loaded render the existing placeholder skeleton
+
+**Given** `EditorPage` renders
+**When** the resume data is loaded from `GET /api/v1/resumes/{resumeId}`
+**Then** `resume.templateId` is passed as the `templateId` prop to `ResumeCanvas`; when the user applies a different template via `TemplateGallery`, `useResumeStore` is updated and the new `templateId` is re-passed to `ResumeCanvas`, triggering a re-render with the new template
+
+**Given** the story is implemented
+**When** tests are run
+**Then** `TemplateServiceTest.java` includes a test asserting `rem`/`em` CSS units are rejected on update; `ResumeCanvas.test.tsx` verifies: (a) `cssVariables` are applied as inline `style` on the root `<article>`, (b) section render order follows template `sectionOrder`, (c) `templateId: null` applies defaults without making an API call, (d) two-column layout routes sections to correct grid areas; `TemplateGallery.test.tsx` verifies thumbnail layout structure and accent color differ by `layoutType`
+
+---

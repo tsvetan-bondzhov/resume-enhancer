@@ -69,6 +69,8 @@ development_status:
   3-6-resume-save-save-as-and-name-management: done
   3-7-template-gallery-and-template-switching: done
   3-8-resume-deletion-with-undo-and-confirm-dialogs: done
+  3-9-llm-based-resume-parsing-pipeline: backlog
+  3-10-template-definition-backfill-and-resumecanvas-template-application: backlog
   epic-3-retrospective: optional
 
   # ─── Epic 4: AI Enhancement & Conversational Chat ───
