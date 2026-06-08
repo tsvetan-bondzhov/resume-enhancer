@@ -379,6 +379,10 @@ This story backfills real template definitions, adds the Java `TemplateDefinitio
 **When** the resume data is loaded from `GET /api/v1/resumes/{resumeId}`
 **Then** `resume.templateId` is passed as the `templateId` prop to `ResumeCanvas`; when the user applies a different template via `TemplateGallery`, `useResumeStore` is updated and the new `templateId` is re-passed to `ResumeCanvas`, triggering a re-render with the new template
 
+**Given** a section has been hidden by the user via the `SectionsPanel` (`section.visible` is false)
+**When** `ResumeCanvas` renders with any `layoutType`
+**Then** that section is excluded from the rendered output regardless of its position in `layout.sectionOrder`, `columns.left`, or `columns.right`; section visibility takes precedence over template ordering
+
 **Given** the story is implemented
 **When** tests are run
 **Then** `TemplateServiceTest.java` includes a test asserting `rem`/`em` CSS units are rejected on update; `ResumeCanvas.test.tsx` verifies: (a) `cssVariables` are applied as inline `style` on the root `<article>`, (b) section render order follows template `sectionOrder`, (c) `templateId: null` applies defaults without making an API call, (d) two-column layout routes sections to correct grid areas; `TemplateGallery.test.tsx` verifies thumbnail layout structure and accent color differ by `layoutType`
