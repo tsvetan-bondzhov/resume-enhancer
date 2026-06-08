@@ -1,7 +1,6 @@
 package com.tsvetanbondzhov.resumeenhancer.upload;
 
 import com.tsvetanbondzhov.resumeenhancer.ai.OllamaHealthGuard;
-import com.tsvetanbondzhov.resumeenhancer.ai.OllamaUnavailableException;
 import com.tsvetanbondzhov.resumeenhancer.common.FileValidationException;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
 import com.tsvetanbondzhov.resumeenhancer.upload.dto.ParsedResumeDto;
@@ -86,10 +85,12 @@ public class ParsingService {
         } catch (TimeoutException e) {
             log.warn("LLM parsing timed out after {}s — returning heuristic fallback", LLM_TIMEOUT_SECONDS);
             return heuristicResult;
-        } catch (OllamaUnavailableException e) {
-            log.warn("Ollama unavailable during LLM extraction — returning heuristic fallback");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); // restore interrupt status
+            log.warn("LLM parsing interrupted — returning heuristic fallback");
             return heuristicResult;
         } catch (Exception e) {
+            // ExecutionException wraps exceptions thrown inside supplyAsync (including OllamaUnavailableException)
             log.warn("LLM parsing failed — returning heuristic fallback: {}", e.getMessage());
             return heuristicResult;
         }

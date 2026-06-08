@@ -1,6 +1,6 @@
 # Story 3.9: LLM-Based Resume Parsing Pipeline
 
-Status: review
+Status: done
 
 ## Story
 
@@ -1160,3 +1160,15 @@ None — all tasks implemented cleanly on first pass. 9 new tests added, 78 tota
 ### Change Log
 
 - 2026-06-08: Implemented LLM-based resume parsing pipeline (Story 3.9). Added `ai` package with `AiService`, `OllamaHealthGuard`, `OllamaUnavailableException`. Added `RawSection`, `ResumeItemDto` DTOs. Added `ResumeSectionType` enum. Added `LlmSectionExtractor` with JSON validation, date format check, anchor check, section truncation. Extended `ParsingService` with Ollama health-gated LLM path and 30s timeout. Added `segmentByHeaders()` to `SectionExtractor` with full-line-only keyword matching. Added 9 unit tests (78 total passing).
+
+---
+
+### Review Findings
+
+- [x] [Review][Patch] `.st` prompt template ignored — `AiService.buildPrompt()` uses inline `String.format`; `{fieldSchema}` variable in `resume-section-extraction.st` is never populated; LLM receives no per-section field schema; AC4 specifies prompt built from the `.st` file [AiService.java:38] — **fixed: `buildPrompt()` now loads `.st` via `PromptTemplate` with `{fieldSchema}` populated per section type; inline fallback retained on template load failure**
+- [x] [Review][Patch] `InterruptedException` swallowed without re-setting interrupt flag — `catch (Exception e)` in `ParsingService.parse()` catches `InterruptedException` from `future.get()` without calling `Thread.currentThread().interrupt()` [ParsingService.java:92] — **fixed: explicit `catch (InterruptedException)` added before generic catch, calls `Thread.currentThread().interrupt()`**
+- [x] [Review][Patch] `catch (OllamaUnavailableException)` in `ParsingService` is dead code — exceptions thrown inside `CompletableFuture.supplyAsync()` are always wrapped in `ExecutionException`; this catch can never be reached [ParsingService.java:89] — **fixed: dead catch removed; explanatory comment added to generic catch block**
+- [x] [Review][Defer] `HttpClient` created on every `OllamaHealthGuard.isAvailable()` call — no pooling; minor inefficiency but matches story design intent [OllamaHealthGuard.java:29] — deferred, pre-existing design choice
+- [x] [Review][Defer] Empty sections (no content lines) still trigger a LLM call with empty `sectionText` — wasted API call; low severity, fallback handles it gracefully [LlmSectionExtractor.java:79] — deferred, pre-existing design choice
+- [x] [Review][Defer] `CompletableFuture.get()` blocks the calling servlet thread for up to 30s — thread starvation risk under load; known trade-off documented in story dev notes [ParsingService.java:80] — deferred, accepted trade-off
+- [x] [Review][Defer] `ExecutionException.getCause()` not unwrapped in `catch (Exception e)` fallback log message — diagnostics show wrapped message, not root cause [ParsingService.java:92] — deferred, diagnostic quality only
