@@ -1,9 +1,13 @@
 package com.tsvetanbondzhov.resumeenhancer.common;
 
+import com.tsvetanbondzhov.resumeenhancer.resume.ResumeAccessDeniedException;
+import com.tsvetanbondzhov.resumeenhancer.resume.ResumeNotFoundException;
+import com.tsvetanbondzhov.resumeenhancer.template.TemplateNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -62,6 +66,46 @@ public class GlobalExceptionHandler {
                 ex.getMessage()
         );
         problem.setTitle("Unprocessable Entity");
+        return problem;
+    }
+
+    @ExceptionHandler(ResumeAccessDeniedException.class)
+    public ProblemDetail handleResumeAccessDenied(ResumeAccessDeniedException ex) {
+        log.warn("Resume access denied for request");
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setTitle("Forbidden");
+        return problem;
+    }
+
+    @ExceptionHandler(ResumeNotFoundException.class)
+    public ProblemDetail handleResumeNotFound(ResumeNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Not Found");
+        return problem;
+    }
+
+    @ExceptionHandler(TemplateNotFoundException.class)
+    public ProblemDetail handleTemplateNotFound(TemplateNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Not Found");
+        return problem;
+    }
+
+    /**
+     * Handles Spring Security method-level authorization failures ({@code @PreAuthorize}).
+     * {@link AuthorizationDeniedException} is thrown inside the MVC dispatch layer (post-filter)
+     * and must be caught here — it never reaches {@code ExceptionTranslationFilter}.
+     * Filter-chain access denials are handled separately via {@code SecurityConfig.accessDeniedHandler}.
+     */
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ProblemDetail handleAuthorizationDenied(AuthorizationDeniedException ex) {
+        log.warn("Authorization denied");
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.FORBIDDEN, "Access denied");
+        problem.setTitle("Forbidden");
         return problem;
     }
 

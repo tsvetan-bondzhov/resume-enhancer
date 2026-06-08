@@ -25,5 +25,26 @@
 
 - No request abort controller in `useResumeUpload.ts` — inflight `uploadFile` request is not cancelled if user navigates away mid-upload. Pre-existing pattern across the codebase; acceptable v1 limitation. Address when adding a global request cancellation strategy.
 
+## Deferred from: code review of 3-3-dashboard-resume-gallery (2026-06-05)
+
+- **D1** `DashboardPage.test.tsx` — No test for `apiClient.get` error path (`toast.error("Failed to load resumes")`). Pre-existing coverage gap not required by Task 4's specified test cases. Add in a future test quality pass.
+- **D2** `DashboardPage.test.tsx` — No test for DELETE API failure + restore + `toast.error("Delete failed — resume restored")`. Same as D1.
+- **D3** `DashboardPage.tsx:84` — Double-delete Map key collision: calling `handleDelete` on the same resume ID twice (e.g., duplicate browser tab) silently overwrites the first pending timeout without clearing it, leaking a stale setTimeout. Low-probability in practice; address if undo patterns are revisited in Story 3.8.
+
+## Deferred from: code review of 3-7-template-gallery-and-template-switching (2026-06-05)
+
+- Stale closure in `handleApplyTemplate` revert path (`EditorPage.tsx:131`) — under rapid successive template clicks, a failed API call reverts to the `templateId` captured in the callback's closure at creation time, which may not be the original template if the user clicked multiple templates quickly. Pre-existing React closure pattern; no user-visible impact under normal usage.
+- No EditorPage-level integration test for `handleApplyTemplate` / "Template applied" toast — `TemplateGallery.test.tsx` covers the `onApply` callback invocation path; EditorPage-level integration test for this flow is not required by the story spec.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
+
+## Deferred from: code review of 3-5-inline-section-editing-and-section-visibility (2026-06-05)
+
+- `act()` warnings in `useAutosave.test.ts` and `EditorPage.test.tsx` -- `useResumeStore.setState()` called outside `act()` in `beforeEach`/`afterEach`; all tests pass; address in a future test quality pass.
+- In-flight PUT request not cancelled on component unmount in `useAutosave.ts` -- timer is cleared on unmount but an already-dispatched PUT can still resolve and write to the global Zustand store; no data loss; address when adding a global request cancellation strategy.
+- Redundant double dirty-check in `useAutosave.ts` (lines 67 and 70-77) -- two overlapping `JSON.stringify` guards both prevent spurious PUTs; logic is correct and safe; the first guard (line 67) is subsumed by the snapshot guard (lines 70-77); defer cleanup to a future refactor pass.
+
+## Deferred from: code review of 3-6-resume-save-save-as-and-name-management (2026-06-05)
+
+- JSX indentation misalignment in `EditorPage.tsx` centerSlot close tags (lines 206-209) — cosmetic; close tags for the inner canvas `div` and fragment are slightly misaligned relative to their open tags. Address in a future formatting/refactor pass.

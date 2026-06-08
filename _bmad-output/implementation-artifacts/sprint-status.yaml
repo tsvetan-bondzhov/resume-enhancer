@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-05-29  # updated by code-review 2.4 — review passed, status → done
+last_updated: 2026-06-05  # updated by bmad-code-review — story 3.8 done
 project: resume-enhancer
 project_key: NOKEY
 tracking_system: file-system
@@ -60,15 +60,15 @@ development_status:
   epic-2-retrospective: optional
 
   # ─── Epic 3: Resume Management & Template Selection ───
-  epic-3: backlog
-  3-1-resumedocument-model-and-resume-crud-api: backlog
-  3-2-template-management-api-and-prebuilt-library: backlog
-  3-3-dashboard-resume-gallery: backlog
-  3-4-resume-editor-layout-and-resumecanvas: backlog
-  3-5-inline-section-editing-and-section-visibility: backlog
-  3-6-resume-save-save-as-and-name-management: backlog
-  3-7-template-gallery-and-template-switching: backlog
-  3-8-resume-deletion-with-undo-and-confirm-dialogs: backlog
+  epic-3: in-progress
+  3-1-resumedocument-model-and-resume-crud-api: done
+  3-2-template-management-api-and-prebuilt-library: done
+  3-3-dashboard-resume-gallery: done
+  3-4-resume-editor-layout-and-resumecanvas: done
+  3-5-inline-section-editing-and-section-visibility: done
+  3-6-resume-save-save-as-and-name-management: done
+  3-7-template-gallery-and-template-switching: done
+  3-8-resume-deletion-with-undo-and-confirm-dialogs: done
   epic-3-retrospective: optional
 
   # ─── Epic 4: AI Enhancement & Conversational Chat ───
