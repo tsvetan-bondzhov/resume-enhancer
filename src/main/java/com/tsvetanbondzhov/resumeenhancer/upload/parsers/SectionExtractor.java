@@ -1,6 +1,7 @@
 package com.tsvetanbondzhov.resumeenhancer.upload.parsers;
 
 import com.tsvetanbondzhov.resumeenhancer.upload.dto.ParsedResumeDto;
+import com.tsvetanbondzhov.resumeenhancer.upload.dto.RawSection;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +17,18 @@ public final class SectionExtractor {
     private static final Set<String> WORK_KEYWORDS = Set.of("experience", "work", "employment");
     private static final Set<String> EDUCATION_KEYWORDS = Set.of("education", "degree", "university", "college");
     private static final Set<String> SKILL_KEYWORDS = Set.of("skills", "technologies", "competencies");
+
+    private static final Set<String> ALL_SECTION_KEYWORDS = Set.of(
+        "experience", "work experience", "work", "employment", "work history", "professional experience",
+        "education", "degree", "academic background", "educational background",
+        "skills", "technologies", "technical skills", "core competencies", "competencies",
+        "certifications", "certificates", "certification",
+        "projects", "project experience", "personal projects", "open source", "key projects",
+        "summary", "professional summary", "profile", "about me", "objective", "career objective",
+        "publications",
+        "languages", "language skills",
+        "volunteering", "volunteer", "volunteer experience", "community involvement"
+    );
 
     private SectionExtractor() {
     }
@@ -56,5 +69,45 @@ public final class SectionExtractor {
             }
         }
         return false;
+    }
+
+    /**
+     * Segments raw resume text into sections by detecting header lines.
+     * FULL-LINE match only: a line must normalize to a known keyword exactly.
+     * This prevents mid-sentence false positives (e.g. "5 years of experience").
+     */
+    public static List<RawSection> segmentByHeaders(String rawText) {
+        List<RawSection> sections = new ArrayList<>();
+        String[] lines = rawText.split("\\r?\\n");
+
+        String currentTitle = null;
+        List<String> currentLines = new ArrayList<>();
+
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) continue;
+
+            String normalized = trimmed.toLowerCase()
+                    .replaceAll("[^a-z0-9 ]", "")  // strip punctuation
+                    .trim();
+
+            if (ALL_SECTION_KEYWORDS.contains(normalized)) {
+                // Save previous section if it had content
+                if (currentTitle != null) {
+                    sections.add(new RawSection(currentTitle, List.copyOf(currentLines)));
+                }
+                currentTitle = trimmed;
+                currentLines = new ArrayList<>();
+            } else if (currentTitle != null) {
+                currentLines.add(trimmed);
+            }
+        }
+
+        // Add final section
+        if (currentTitle != null) {
+            sections.add(new RawSection(currentTitle, List.copyOf(currentLines)));
+        }
+
+        return sections;
     }
 }
