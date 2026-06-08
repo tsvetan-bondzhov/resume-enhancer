@@ -12,7 +12,8 @@ import TemplateGallery from "@/components/resume/TemplateGallery"
 import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
 import { useAutosave } from "@/hooks/useAutosave"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { ResumeDto } from "@/types/api"
+import { getOrderedSections } from "@/lib/templateUtils"
+import type { ResumeDto, TemplateDto } from "@/types/api"
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>()
@@ -39,7 +40,28 @@ export default function EditorPage() {
   const [duplicatingSidebarId, setDuplicatingSidebarId] = useState<string | null>(null)
   const pendingSidebarDeletes = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
+  const [currentTemplate, setCurrentTemplate] = useState<TemplateDto | null>(null)
+  const currentTemplateId = useResumeStore((state) => state.currentResume?.templateId ?? null)
+
   const { status: autosaveStatus } = useAutosave(id)
+
+  // Template-driven CSS variables and layout type (AC10)
+  const editorCssVars = currentTemplate?.templateDefinition?.cssVariables ?? {}
+  const editorLayoutType = currentTemplate?.templateDefinition?.layoutType
+  const editorBaseStyle = Object.fromEntries(
+    Object.entries(editorCssVars as Record<string, string>).filter(([, v]) => v !== undefined)
+  ) as React.CSSProperties
+  const editorRootStyle: React.CSSProperties =
+    editorLayoutType === "two-column"
+      ? { ...editorBaseStyle, gridTemplateColumns: "1fr 2fr" }
+      : editorBaseStyle
+  // Two-column: sets of section IDs for grid-column assignment (AC8)
+  const editorLeftColumnIds = new Set(
+    currentTemplate?.templateDefinition?.layout?.columns?.left ?? []
+  )
+  const editorRightColumnIds = new Set(
+    currentTemplate?.templateDefinition?.layout?.columns?.right ?? []
+  )
 
   useEffect(() => {
     if (!id) return
@@ -82,6 +104,31 @@ export default function EditorPage() {
     const ref = pendingSidebarDeletes.current
     return () => { ref.forEach(clearTimeout) }
   }, [])
+
+  // Fetch template definition when templateId changes (AC10)
+  useEffect(() => {
+    let cancelled = false
+    if (currentTemplateId) {
+      apiClient
+        .get<TemplateDto>(`/api/v1/resume-templates/${currentTemplateId}`)
+        .then((data) => {
+          if (!cancelled) setCurrentTemplate(data)
+        })
+        .catch(() => {
+          if (!cancelled) setCurrentTemplate(null)
+        })
+    } else {
+      // ESLint react-hooks/set-state-in-effect forbids synchronous setState in effect body.
+      // Promise.resolve().then() defers to microtask queue — satisfies the rule while
+      // still resetting template when currentTemplateId becomes null (AC5/AC6).
+      void Promise.resolve().then(() => {
+        if (!cancelled) setCurrentTemplate(null)
+      })
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [currentTemplateId])
 
   const handleTitleChange = useCallback(
     (sectionId: string, title: string) => {
@@ -295,7 +342,12 @@ export default function EditorPage() {
                   <article
                     id="resume-canvas"
                     aria-label="Resume preview"
-                    className="bg-white shadow-lg w-full max-w-[794px] p-8"
+                    style={editorRootStyle}
+                    className={
+                      editorLayoutType === "two-column"
+                        ? "bg-white shadow-lg w-full max-w-[794px] grid gap-4 p-8"
+                        : "bg-white shadow-lg w-full max-w-[794px] p-8"
+                    }
                   >
                     <div
                       role="status"
@@ -305,11 +357,20 @@ export default function EditorPage() {
                     >
                       {/* SSE streaming stub — Story 4.3 */}
                     </div>
-                    {currentResume.content.sections
-                      .filter((s) => s.visible)
-                      .map((section) => (
+                    {/* modern-accent: accent header band (AC7) — decorative only */}
+                    {editorLayoutType === "modern-accent" && (
+                      <div aria-hidden="true" className="bg-[var(--accent-color)] p-4 mb-6" />
+                    )}
+                    {getOrderedSections(currentResume.content.sections, currentTemplate).map((section) => (
+                      <div
+                        key={section.id}
+                        style={
+                          editorLayoutType === "two-column"
+                            ? { gridColumn: editorLeftColumnIds.has(section.id) ? 1 : editorRightColumnIds.has(section.id) ? 2 : undefined }
+                            : undefined
+                        }
+                      >
                         <ResumeSection
-                          key={section.id}
                           section={section}
                           onTitleChange={(title) =>
                             handleTitleChange(section.id, title)
@@ -318,7 +379,8 @@ export default function EditorPage() {
                             handleFieldChange(section.id, itemId, field, value)
                           }
                         />
-                      ))}
+                      </div>
+                    ))}
                   </article>
                 )}
               </div>

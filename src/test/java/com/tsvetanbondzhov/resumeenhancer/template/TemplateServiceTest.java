@@ -2,6 +2,7 @@ package com.tsvetanbondzhov.resumeenhancer.template;
 
 import com.tsvetanbondzhov.resumeenhancer.template.domain.ResumeTemplate;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.TemplateDto;
+import com.tsvetanbondzhov.resumeenhancer.template.dto.TemplateRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -10,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -17,6 +19,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -94,5 +97,59 @@ class TemplateServiceTest {
         assertThatThrownBy(() -> templateService.getPublishedTemplate(TEMPLATE_ID))
                 .isInstanceOf(TemplateNotFoundException.class)
                 .hasMessageContaining(TEMPLATE_ID.toString());
+    }
+
+    // ─── updateTemplate — CSS unit validation (AC3) ───────────────────────────
+
+    @Test
+    void updateTemplate_remUnitInCssVariables_throwsTemplateValidationException() {
+        ResumeTemplate t = buildTemplate("Minimal", true);
+        when(templateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(t));
+
+        Map<String, Object> cssVars = new HashMap<>(Map.of(
+                "--font-size-base", "1rem",   // DISALLOWED
+                "--accent-color", "#3b82f6"
+        ));
+        Map<String, Object> templateDef = new HashMap<>(Map.of("cssVariables", cssVars));
+        TemplateRequest request = new TemplateRequest("Minimal Updated", null, templateDef);
+
+        assertThatThrownBy(() -> templateService.updateTemplate(TEMPLATE_ID, request))
+                .isInstanceOf(TemplateValidationException.class)
+                .hasMessageContaining("rem");
+    }
+
+    @Test
+    void updateTemplate_emUnitInCssVariables_throwsTemplateValidationException() {
+        ResumeTemplate t = buildTemplate("Minimal", true);
+        when(templateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(t));
+
+        Map<String, Object> cssVars = new HashMap<>(Map.of(
+                "--line-height-base", "1.5em"  // DISALLOWED
+        ));
+        Map<String, Object> templateDef = new HashMap<>(Map.of("cssVariables", cssVars));
+        TemplateRequest request = new TemplateRequest("Minimal Updated", null, templateDef);
+
+        assertThatThrownBy(() -> templateService.updateTemplate(TEMPLATE_ID, request))
+                .isInstanceOf(TemplateValidationException.class)
+                .hasMessageContaining("em");
+    }
+
+    @Test
+    void updateTemplate_pxAndInUnitsAccepted_templatePersisted() {
+        ResumeTemplate t = buildTemplate("Minimal", true);
+        when(templateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(t));
+        when(templateRepository.save(any(ResumeTemplate.class))).thenReturn(t);
+
+        Map<String, Object> cssVars = new HashMap<>(Map.of(
+                "--font-size-base", "11px",
+                "--page-margin-top", "0.75in"
+        ));
+        Map<String, Object> templateDef = new HashMap<>(Map.of("cssVariables", cssVars));
+        TemplateRequest request = new TemplateRequest("Minimal", null, templateDef);
+
+        TemplateDto result = templateService.updateTemplate(TEMPLATE_ID, request);
+
+        assertThat(result).isNotNull();
+        verify(templateRepository).save(any(ResumeTemplate.class));
     }
 }

@@ -130,14 +130,54 @@ export interface ParsedResumeDtoResponse {
   skillLines: string[]
 }
 
+export interface TemplateCssVariables {
+  "--primary-color"?: string
+  "--accent-color"?: string
+  "--font-family-sans"?: string
+  "--font-size-base"?: string
+  "--line-height-base"?: string
+  "--section-spacing"?: string
+  "--item-spacing"?: string
+  "--page-margin-top"?: string
+  "--page-margin-right"?: string
+  "--page-margin-bottom"?: string
+  "--page-margin-left"?: string
+  [key: string]: string | undefined
+}
+
+export interface TemplateSectionStyle {
+  titleFormat?: string
+  itemSeparator?: string
+  showDates?: boolean
+  showDescriptions?: boolean
+}
+
+export interface TemplateColumns {
+  left: string[]
+  right: string[]
+}
+
+export interface TemplateLayout {
+  headerFormat?: string
+  sectionOrder?: string[]
+  columns?: TemplateColumns
+  sectionStyles?: Record<string, TemplateSectionStyle>
+}
+
+export interface TemplateDefinitionDto {
+  layoutType: "single-column" | "two-column" | "modern-accent" | string
+  cssVariables?: TemplateCssVariables
+  layout?: TemplateLayout
+  metadata?: Record<string, unknown>
+}
+
 export interface TemplateDto {
   id: string
   name: string
   description: string | null
   isPrebuilt: boolean
   isPublished: boolean
-  /** Flexible JSONB map — format TBD in Epic 7 */
-  templateDefinition: Record<string, unknown>
+  templateDefinition: TemplateDefinitionDto
   createdAt: string
   updatedAt: string
 }

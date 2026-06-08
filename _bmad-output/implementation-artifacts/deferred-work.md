@@ -43,6 +43,15 @@
 - `CompletableFuture.get()` blocks calling servlet thread for up to 30s — thread starvation risk under concurrent load; accepted trade-off in story dev notes; address with virtual threads or async servlet in a future scalability story.
 - `ExecutionException.getCause()` not unwrapped in `catch (Exception e)` fallback log message in `ParsingService` — diagnostic quality only; unwrap cause for better log readability in a future refactor pass.
 
+## Deferred from: code review of 3-10-template-definition-backfill-and-resumecanvas-template-application (2026-06-08)
+
+- **F1** `Promise.resolve().then()` pattern in useEffect null-reset path — intentional ESLint `react-hooks/set-state-in-effect` workaround; synchronous `setState` in effect body is forbidden by project config; revisit if ESLint rule is relaxed or React changes its guidance on this pattern.
+- **F4** `TemplateDefinition.DEFAULT` missing `--item-spacing` — `Map.of()` is at 10-entry capacity; `--item-spacing` not consumed by current frontend rendering; add when DEFAULT map is restructured or `--item-spacing` is used in export rendering (Epic 5).
+- **F5** `TemplateService` CSS unit validation uses a denylist (rem/em) rather than an allowlist (px/in) — denylist is spec-mandated; unitless values like `"1.5"` for `line-height` must pass validation; tighten to an allowlist in a future template management story when all valid value formats are enumerated.
+- **F7** `getOrderedSections` in `templateUtils.ts` has no dedicated unit tests — function is covered indirectly by `ResumeCanvas.test.tsx`; add `templateUtils.test.ts` in a future test quality pass.
+- **F8** No test for `modern-accent` layout rendering in `ResumeCanvas.test.tsx` — not required by AC12; add in a future test quality pass.
+- **F10** `TemplateLayout.resolvedSectionOrder()` is spec-mandated infrastructure for Epic 5 but never called and untested — add usage and tests when `DocumentRenderer` / `PdfRenderer` are implemented in Story 5.1.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

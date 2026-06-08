@@ -48,9 +48,9 @@ public class TemplateController {
 
     @PutMapping("/{templateId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> updateTemplate(@PathVariable UUID templateId,
-                                               @Valid @RequestBody TemplateRequest request) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    public ResponseEntity<TemplateDto> updateTemplate(@PathVariable UUID templateId,
+                                                      @Valid @RequestBody TemplateRequest request) {
+        return ResponseEntity.ok(templateService.updateTemplate(templateId, request));
     }
 
     @DeleteMapping("/{templateId}")
