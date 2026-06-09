@@ -26,7 +26,7 @@ public class ParsingService {
     private static final Logger log = LoggerFactory.getLogger(ParsingService.class);
     private static final String MIME_PDF = "application/pdf";
     private static final String MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    private static final int LLM_TIMEOUT_SECONDS = 30;
+    private static final int LLM_TIMEOUT_SECONDS = 60;
 
     private final FileValidator fileValidator;
     private final PdfParser pdfParser;

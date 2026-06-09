@@ -76,6 +76,9 @@ public class LlmSectionExtractor {
             String fullRawText) {
 
         try {
+            System.out.println("-----------------------");
+            System.out.printf("Section %s text: %s", sectionType.name(), sectionText);
+            System.out.println("-----------------------");
             String jsonResponse = aiService.extractResumeSection(sectionType.name(), sectionText);
 
             // AC6: JSON parse check
