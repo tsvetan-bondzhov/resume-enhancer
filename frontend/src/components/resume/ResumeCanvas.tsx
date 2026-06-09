@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { apiClient } from "@/lib/apiClient"
 import { getOrderedSections } from "@/lib/templateUtils"
+import ResumeSection from "@/components/resume/ResumeSection"
 import type { ResumeDocumentDto, TemplateDto } from "@/types/api"
 
 interface ResumeCanvasProps {
@@ -9,6 +10,8 @@ interface ResumeCanvasProps {
   templateId: string | null
   isLoading?: boolean
   state?: "idle" | "streaming" | "diff" | "print-preview"
+  onTitleChange?: (sectionId: string, title: string) => void
+  onFieldChange?: (sectionId: string, itemId: string, field: string, value: string) => void
 }
 
 export default function ResumeCanvas({
@@ -16,6 +19,8 @@ export default function ResumeCanvas({
   templateId,
   isLoading = false,
   state = "idle",
+  onTitleChange,
+  onFieldChange,
 }: ResumeCanvasProps) {
   const [template, setTemplate] = useState<TemplateDto | null>(null)
 
@@ -60,6 +65,8 @@ export default function ResumeCanvas({
   // Two-column: sets of section IDs belonging to each column (AC8)
   const leftColumnIds = new Set(template?.templateDefinition?.layout?.columns?.left ?? [])
   const rightColumnIds = new Set(template?.templateDefinition?.layout?.columns?.right ?? [])
+
+  const isEditable = onTitleChange !== undefined && onFieldChange !== undefined
 
   return (
     <div className="h-full overflow-y-auto bg-zinc-100 py-8 px-4 flex flex-col items-center">
@@ -120,38 +127,55 @@ export default function ResumeCanvas({
             <div aria-hidden="true" className="bg-[var(--accent-color)] p-4 mb-6" />
           )}
 
-          {getOrderedSections(document.sections ?? [], template).map((section) => (
-            <section
-              key={section.id}
-              aria-labelledby={`section-title-${section.id}`}
-              className="mb-6"
-              style={
-                layoutType === "two-column"
-                  ? { gridColumn: leftColumnIds.has(section.id) ? 1 : rightColumnIds.has(section.id) ? 2 : undefined }
-                  : undefined
-              }
-            >
-              <h2
-                id={`section-title-${section.id}`}
-                className={
-                  layoutType === "modern-accent"
-                    ? "text-base font-semibold border-b-2 border-[var(--accent-color)] pb-1 mb-2 uppercase tracking-wide"
-                    : "text-base font-semibold border-b border-zinc-200 pb-1 mb-2 uppercase tracking-wide"
+          {getOrderedSections(document.sections ?? [], template).map((section) =>
+            isEditable ? (
+              <div
+                key={section.id}
+                style={
+                  layoutType === "two-column"
+                    ? { gridColumn: leftColumnIds.has(section.id) ? 1 : rightColumnIds.has(section.id) ? 2 : undefined }
+                    : undefined
                 }
               >
-                {section.title}
-              </h2>
-              <ul className="space-y-1 text-sm list-none p-0">
-                {section.items.map((item) => (
-                  <li key={item.id}>
-                    {Object.values(item.fields)
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
+                <ResumeSection
+                  section={section}
+                  onTitleChange={(title) => onTitleChange(section.id, title)}
+                  onFieldChange={(itemId, field, value) => onFieldChange(section.id, itemId, field, value)}
+                />
+              </div>
+            ) : (
+              <section
+                key={section.id}
+                aria-labelledby={`section-title-${section.id}`}
+                className="mb-6"
+                style={
+                  layoutType === "two-column"
+                    ? { gridColumn: leftColumnIds.has(section.id) ? 1 : rightColumnIds.has(section.id) ? 2 : undefined }
+                    : undefined
+                }
+              >
+                <h2
+                  id={`section-title-${section.id}`}
+                  className={
+                    layoutType === "modern-accent"
+                      ? "text-base font-semibold border-b-2 border-[var(--accent-color)] pb-1 mb-2 uppercase tracking-wide"
+                      : "text-base font-semibold border-b border-zinc-200 pb-1 mb-2 uppercase tracking-wide"
+                  }
+                >
+                  {section.title}
+                </h2>
+                <ul className="space-y-1 text-sm list-none p-0">
+                  {section.items.map((item) => (
+                    <li key={item.id}>
+                      {Object.values(item.fields)
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )
+          )}
         </article>
       )}
     </div>
