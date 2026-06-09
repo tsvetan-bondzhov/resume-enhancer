@@ -133,6 +133,7 @@ export interface ParsedResumeDtoResponse {
 export interface TemplateCssVariables {
   "--primary-color"?: string
   "--accent-color"?: string
+  "--text-color"?: string
   "--font-family-sans"?: string
   "--font-size-base"?: string
   "--line-height-base"?: string

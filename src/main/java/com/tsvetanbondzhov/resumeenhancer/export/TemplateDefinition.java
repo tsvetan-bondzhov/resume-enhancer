@@ -23,17 +23,18 @@ public record TemplateDefinition(
 ) {
     public static final TemplateDefinition DEFAULT = new TemplateDefinition(
             "single-column",
-            Map.of(
-                    "--primary-color", "#1f2937",
-                    "--accent-color", "#3b82f6",
-                    "--font-family-sans", "Inter, system-ui, sans-serif",
-                    "--font-size-base", "11px",
-                    "--line-height-base", "1.5",
-                    "--section-spacing", "12px",
-                    "--page-margin-top", "0.75in",
-                    "--page-margin-right", "0.75in",
-                    "--page-margin-bottom", "0.75in",
-                    "--page-margin-left", "0.75in"
+            Map.ofEntries(
+                    Map.entry("--primary-color", "#1f2937"),
+                    Map.entry("--accent-color", "#3b82f6"),
+                    Map.entry("--font-family-sans", "Inter, system-ui, sans-serif"),
+                    Map.entry("--font-size-base", "11px"),
+                    Map.entry("--line-height-base", "1.5"),
+                    Map.entry("--section-spacing", "12px"),
+                    Map.entry("--page-margin-top", "0.75in"),
+                    Map.entry("--page-margin-right", "0.75in"),
+                    Map.entry("--page-margin-bottom", "0.75in"),
+                    Map.entry("--page-margin-left", "0.75in"),
+                    Map.entry("--text-color", "#111827")
             ),
             new TemplateLayout(
                     "name-contact",

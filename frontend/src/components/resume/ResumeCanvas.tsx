@@ -54,8 +54,8 @@ export default function ResumeCanvas({
   // Two-column gets gridTemplateColumns via inline style (AC8, avoids Tailwind JIT scan issues)
   const rootStyle: React.CSSProperties =
     layoutType === "two-column"
-      ? { ...baseStyle, gridTemplateColumns: "1fr 2fr" }
-      : baseStyle
+      ? { ...baseStyle, color: "var(--text-color, #111827)", gridTemplateColumns: "1fr 2fr" }
+      : { ...baseStyle, color: "var(--text-color, #111827)" }
 
   // Two-column: sets of section IDs belonging to each column (AC8)
   const leftColumnIds = new Set(template?.templateDefinition?.layout?.columns?.left ?? [])

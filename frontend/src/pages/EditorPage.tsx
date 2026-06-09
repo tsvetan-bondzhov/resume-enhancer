@@ -53,8 +53,8 @@ export default function EditorPage() {
   ) as React.CSSProperties
   const editorRootStyle: React.CSSProperties =
     editorLayoutType === "two-column"
-      ? { ...editorBaseStyle, gridTemplateColumns: "1fr 2fr" }
-      : editorBaseStyle
+      ? { ...editorBaseStyle, color: "var(--text-color, #111827)", gridTemplateColumns: "1fr 2fr" }
+      : { ...editorBaseStyle, color: "var(--text-color, #111827)" }
   // Two-column: sets of section IDs for grid-column assignment (AC8)
   const editorLeftColumnIds = new Set(
     currentTemplate?.templateDefinition?.layout?.columns?.left ?? []
