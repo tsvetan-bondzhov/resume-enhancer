@@ -11,9 +11,9 @@ const mockGet = vi.mocked(apiClient.get)
 
 const mockDocument: ResumeDocumentDto = {
   sections: [
-    { id: "experience", title: "Experience", visible: true, items: [{ id: "i1", fields: { text: "Engineer" } }] },
-    { id: "skills", title: "Skills", visible: true, items: [{ id: "i2", fields: { text: "Java" } }] },
-    { id: "education", title: "Education", visible: false, items: [] },
+    { sectionType: "WORK_EXPERIENCE", title: "Experience", visible: true, items: [{ id: "i1", fields: { text: "Engineer" } }] },
+    { sectionType: "SKILLS",          title: "Skills",     visible: true, items: [{ id: "i2", fields: { text: "Java" } }] },
+    { sectionType: "EDUCATION",       title: "Education",  visible: false, items: [] },
   ],
 }
 
@@ -27,7 +27,7 @@ function buildTemplate(overrides: Partial<TemplateDto> = {}): TemplateDto {
     templateDefinition: {
       layoutType: "single-column",
       cssVariables: { "--accent-color": "#3b82f6", "--font-size-base": "11px" },
-      layout: { headerFormat: "name-contact", sectionOrder: ["skills", "experience"] },
+      layout: { headerFormat: "name-contact", sectionOrder: ["SKILLS", "WORK_EXPERIENCE"] },
     },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -76,7 +76,7 @@ describe("ResumeCanvas", () => {
     const template = buildTemplate({
       templateDefinition: {
         layoutType: "single-column",
-        layout: { sectionOrder: ["education", "experience", "skills"] },
+        layout: { sectionOrder: ["EDUCATION", "WORK_EXPERIENCE", "SKILLS"] },
       },
     })
     mockGet.mockResolvedValue(template)
@@ -96,7 +96,7 @@ describe("ResumeCanvas", () => {
         layoutType: "two-column",
         cssVariables: { "--accent-color": "#1d4ed8" },
         layout: {
-          columns: { left: ["skills"], right: ["experience"] },
+          columns: { left: ["SKILLS"], right: ["WORK_EXPERIENCE"] },
         },
       },
     })

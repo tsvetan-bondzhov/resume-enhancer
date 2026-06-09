@@ -1,4 +1,4 @@
-package com.tsvetanbondzhov.resumeenhancer.upload.parsers;
+package com.tsvetanbondzhov.resumeenhancer.resume.domain;
 
 public enum ResumeSectionType {
     WORK_EXPERIENCE, EDUCATION, SKILLS, CERTIFICATIONS,

@@ -41,7 +41,7 @@ function SortableSectionRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: section.id })
+  } = useSortable({ id: section.sectionType })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -69,14 +69,14 @@ function SortableSectionRow({
       {/* Visibility checkbox */}
       <Checkbox
         checked={section.visible}
-        onCheckedChange={() => onToggle(section.id)}
+        onCheckedChange={() => onToggle(section.sectionType)}
         aria-label={`Show ${section.title} section`}
-        id={`section-visible-${section.id}`}
+        id={`section-visible-${section.sectionType}`}
       />
 
       {/* Section name label */}
       <label
-        htmlFor={`section-visible-${section.id}`}
+        htmlFor={`section-visible-${section.sectionType}`}
         className="flex-1 text-sm truncate cursor-pointer select-none"
       >
         {section.title}
@@ -88,11 +88,11 @@ function SortableSectionRow({
           type="button"
           className="text-muted-foreground hover:text-foreground p-0.5"
           aria-label={`Move ${section.title} up`}
-          onClick={() => onMoveUp(section.id)}
+          onClick={() => onMoveUp(section.sectionType)}
           onKeyDown={(e) => {
             if (e.key === "ArrowUp") {
               e.preventDefault()
-              onMoveUp(section.id)
+              onMoveUp(section.sectionType)
             }
           }}
         >
@@ -102,11 +102,11 @@ function SortableSectionRow({
           type="button"
           className="text-muted-foreground hover:text-foreground p-0.5"
           aria-label={`Move ${section.title} down`}
-          onClick={() => onMoveDown(section.id)}
+          onClick={() => onMoveDown(section.sectionType)}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault()
-              onMoveDown(section.id)
+              onMoveDown(section.sectionType)
             }
           }}
         >
@@ -128,8 +128,8 @@ export default function SectionsPanel({ sections }: SectionsPanelProps) {
     (event: DragEndEvent) => {
       const { active, over } = event
       if (!over || active.id === over.id) return
-      const oldIndex = sections.findIndex((s) => s.id === active.id)
-      const newIndex = sections.findIndex((s) => s.id === over.id)
+      const oldIndex = sections.findIndex((s) => s.sectionType === active.id)
+      const newIndex = sections.findIndex((s) => s.sectionType === over.id)
       if (oldIndex === -1 || newIndex === -1) return
       reorderSections(arrayMove(sections, oldIndex, newIndex))
     },
@@ -138,7 +138,7 @@ export default function SectionsPanel({ sections }: SectionsPanelProps) {
 
   const handleMoveUp = useCallback(
     (id: string) => {
-      const idx = sections.findIndex((s) => s.id === id)
+      const idx = sections.findIndex((s) => s.sectionType === id)
       if (idx <= 0) return
       reorderSections(arrayMove(sections, idx, idx - 1))
     },
@@ -147,7 +147,7 @@ export default function SectionsPanel({ sections }: SectionsPanelProps) {
 
   const handleMoveDown = useCallback(
     (id: string) => {
-      const idx = sections.findIndex((s) => s.id === id)
+      const idx = sections.findIndex((s) => s.sectionType === id)
       if (idx === -1 || idx >= sections.length - 1) return
       reorderSections(arrayMove(sections, idx, idx + 1))
     },
@@ -171,12 +171,12 @@ export default function SectionsPanel({ sections }: SectionsPanelProps) {
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={sections.map((s) => s.id)}
+            items={sections.map((s) => s.sectionType)}
             strategy={verticalListSortingStrategy}
           >
             {sections.map((section) => (
               <SortableSectionRow
-                key={section.id}
+                key={section.sectionType}
                 section={section}
                 onToggle={toggleSectionVisibility}
                 onMoveUp={handleMoveUp}

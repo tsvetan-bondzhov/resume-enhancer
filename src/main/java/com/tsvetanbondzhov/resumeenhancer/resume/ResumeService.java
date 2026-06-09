@@ -11,6 +11,7 @@ import com.tsvetanbondzhov.resumeenhancer.resume.domain.Resume;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSection;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSectionType;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.CreateResumeRequest;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.ResumeDto;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.SaveAsRequest;
@@ -138,7 +139,7 @@ public class ResumeService {
                         )
                 ))
                 .toList();
-        sections.add(new ResumeSection("experience", "Work Experience", true, expItems));
+        sections.add(new ResumeSection(ResumeSectionType.WORK_EXPERIENCE, "Work Experience", true, expItems));
 
         // Education section
         List<ResumeItem> eduItems = (profile.getEducation() != null
@@ -152,7 +153,7 @@ public class ResumeService {
                         )
                 ))
                 .toList();
-        sections.add(new ResumeSection("education", "Education", true, eduItems));
+        sections.add(new ResumeSection(ResumeSectionType.EDUCATION, "Education", true, eduItems));
 
         // Skills section
         List<ResumeItem> skillItems = (profile.getSkills() != null
@@ -162,7 +163,7 @@ public class ResumeService {
                         Map.of("name", s.getName() != null ? s.getName() : "")
                 ))
                 .toList();
-        sections.add(new ResumeSection("skills", "Skills", true, skillItems));
+        sections.add(new ResumeSection(ResumeSectionType.SKILLS, "Skills", true, skillItems));
 
         return new ResumeDocument(sections);
     }
@@ -183,7 +184,7 @@ public class ResumeService {
                     List<ResumeItem> copiedItems = section.items().stream()
                             .map(item -> new ResumeItem(item.id(), item.fields()))
                             .toList();
-                    return new ResumeSection(section.id(), section.title(), section.visible(), copiedItems);
+                    return new ResumeSection(section.sectionType(), section.title(), section.visible(), copiedItems);
                 })
                 .toList();
         return new ResumeDocument(copiedSections);

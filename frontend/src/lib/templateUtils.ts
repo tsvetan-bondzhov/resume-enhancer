@@ -10,11 +10,8 @@ import type { ResumeSectionDto, TemplateDto } from "@/types/api"
  * - Sections absent from the template order arrays are appended last in document order.
  * - Sections are NEVER silently dropped.
  *
- * Note: `sectionOrder` strings are matched against `section.id` values. When
- * `ResumeDocument` sections have UUID-based IDs (generated in Story 3.1), semantic
- * strings like "experience" will not match and all sections will fall into the
- * `remaining` array — rendering in document order. Full ID alignment happens when
- * document creation assigns semantic section IDs.
+ * Note: `sectionOrder` strings now match `section.sectionType` values (e.g. "WORK_EXPERIENCE").
+ * After Story 3.11, template definitions use enum names — full alignment is achieved.
  */
 export function getOrderedSections(
   sections: ResumeSectionDto[],
@@ -31,17 +28,17 @@ export function getOrderedSections(
     const right = layout.columns?.right ?? []
     const orderedIds = [...left, ...right]
     const inOrder = orderedIds
-      .map((id) => visibleSections.find((s) => s.id === id))
+      .map((id) => visibleSections.find((s) => s.sectionType === id))
       .filter((s): s is ResumeSectionDto => s !== undefined)
-    const remaining = visibleSections.filter((s) => !orderedIds.includes(s.id))
+    const remaining = visibleSections.filter((s) => !orderedIds.includes(s.sectionType))
     return [...inOrder, ...remaining]
   }
 
   // single-column and modern-accent
   const sectionOrder = layout.sectionOrder ?? []
   const inOrder = sectionOrder
-    .map((id) => visibleSections.find((s) => s.id === id))
+    .map((id) => visibleSections.find((s) => s.sectionType === id))
     .filter((s): s is ResumeSectionDto => s !== undefined)
-  const remaining = visibleSections.filter((s) => !sectionOrder.includes(s.id))
+  const remaining = visibleSections.filter((s) => !sectionOrder.includes(s.sectionType))
   return [...inOrder, ...remaining]
 }

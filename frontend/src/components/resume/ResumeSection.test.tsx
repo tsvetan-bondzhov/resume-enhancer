@@ -19,7 +19,7 @@ vi.mock("sonner", () => ({
 
 function buildSection(overrides?: Partial<ResumeSectionDto>): ResumeSectionDto {
   return {
-    id: "test-section",
+    sectionType: "WORK_EXPERIENCE",
     title: "Work Experience",
     visible: true,
     items: [
@@ -158,10 +158,10 @@ describe("ResumeSection", () => {
       <ResumeSection
         section={section}
         onTitleChange={(title) =>
-          useResumeStore.getState().updateSectionTitle(section.id, title)
+          useResumeStore.getState().updateSectionTitle(section.sectionType, title)
         }
         onFieldChange={(itemId, field, value) =>
-          useResumeStore.getState().updateItemField(section.id, itemId, field, value)
+          useResumeStore.getState().updateItemField(section.sectionType, itemId, field, value)
         }
       />
     )
@@ -187,10 +187,10 @@ describe("ResumeSection", () => {
       <ResumeSection
         section={section}
         onTitleChange={(title) =>
-          useResumeStore.getState().updateSectionTitle(section.id, title)
+          useResumeStore.getState().updateSectionTitle(section.sectionType, title)
         }
         onFieldChange={(itemId, field, value) =>
-          useResumeStore.getState().updateItemField(section.id, itemId, field, value)
+          useResumeStore.getState().updateItemField(section.sectionType, itemId, field, value)
         }
       />
     )
@@ -231,7 +231,7 @@ describe("ResumeSection", () => {
     act(() => {
       useResumeStore
         .getState()
-        .updateItemField(section.id, "item-1", "jobTitle", "Senior Engineer")
+        .updateItemField(section.sectionType, "item-1", "jobTitle", "Senior Engineer")
     })
 
     // Before 500ms elapses, PUT should not have been called
@@ -273,7 +273,7 @@ describe("ResumeSection", () => {
     act(() => {
       useResumeStore
         .getState()
-        .updateItemField(section.id, "item-1", "jobTitle", "Changed Title")
+        .updateItemField(section.sectionType, "item-1", "jobTitle", "Changed Title")
     })
 
     // Advance past the 500ms debounce to trigger the PUT

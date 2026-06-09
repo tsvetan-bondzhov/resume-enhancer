@@ -130,32 +130,32 @@ export default function ResumeCanvas({
           {getOrderedSections(document.sections ?? [], template).map((section) =>
             isEditable ? (
               <div
-                key={section.id}
+                key={section.sectionType}
                 style={
                   layoutType === "two-column"
-                    ? { gridColumn: leftColumnIds.has(section.id) ? 1 : rightColumnIds.has(section.id) ? 2 : undefined }
+                    ? { gridColumn: leftColumnIds.has(section.sectionType) ? 1 : rightColumnIds.has(section.sectionType) ? 2 : undefined }
                     : undefined
                 }
               >
                 <ResumeSection
                   section={section}
-                  onTitleChange={(title) => onTitleChange(section.id, title)}
-                  onFieldChange={(itemId, field, value) => onFieldChange(section.id, itemId, field, value)}
+                  onTitleChange={(title) => onTitleChange(section.sectionType, title)}
+                  onFieldChange={(itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)}
                 />
               </div>
             ) : (
               <section
-                key={section.id}
-                aria-labelledby={`section-title-${section.id}`}
+                key={section.sectionType}
+                aria-labelledby={`section-title-${section.sectionType}`}
                 className="mb-6"
                 style={
                   layoutType === "two-column"
-                    ? { gridColumn: leftColumnIds.has(section.id) ? 1 : rightColumnIds.has(section.id) ? 2 : undefined }
+                    ? { gridColumn: leftColumnIds.has(section.sectionType) ? 1 : rightColumnIds.has(section.sectionType) ? 2 : undefined }
                     : undefined
                 }
               >
                 <h2
-                  id={`section-title-${section.id}`}
+                  id={`section-title-${section.sectionType}`}
                   className={
                     layoutType === "modern-accent"
                       ? "text-base font-semibold border-b-2 border-[var(--accent-color)] pb-1 mb-2 uppercase tracking-wide"

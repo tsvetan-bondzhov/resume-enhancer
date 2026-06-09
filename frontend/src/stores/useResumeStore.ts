@@ -48,7 +48,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
           content: {
             ...state.currentResume.content,
             sections: state.currentResume.content.sections.map((s) =>
-              s.id === sectionId ? { ...s, title } : s
+              s.sectionType === sectionId ? { ...s, title } : s
             ),
           },
         },
@@ -64,7 +64,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
           content: {
             ...state.currentResume.content,
             sections: state.currentResume.content.sections.map((s) =>
-              s.id !== sectionId
+              s.sectionType !== sectionId
                 ? s
                 : {
                     ...s,
@@ -89,7 +89,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
           content: {
             ...state.currentResume.content,
             sections: state.currentResume.content.sections.map((s) =>
-              s.id === sectionId ? { ...s, visible: !s.visible } : s
+              s.sectionType === sectionId ? { ...s, visible: !s.visible } : s
             ),
           },
         },

@@ -8,6 +8,7 @@ import com.tsvetanbondzhov.resumeenhancer.profile.domain.WorkExperience;
 import com.tsvetanbondzhov.resumeenhancer.profile.repository.ProfileRepository;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.Resume;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSectionType;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.CreateResumeRequest;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.ResumeDto;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.SaveAsRequest;
@@ -135,11 +136,14 @@ class ResumeServiceTest {
         Resume saved = captor.getValue();
         assertThat(saved.getResumeContent().sections()).hasSize(3);
         // Work Experience section has 1 item
-        assertThat(saved.getResumeContent().sections().get(0).id()).isEqualTo("experience");
+        assertThat(saved.getResumeContent().sections().get(0).sectionType())
+                .isEqualTo(ResumeSectionType.WORK_EXPERIENCE);
         assertThat(saved.getResumeContent().sections().get(0).items()).hasSize(1);
-        assertThat(saved.getResumeContent().sections().get(0).items().get(0).fields().get("jobTitle")).isEqualTo("Engineer");
+        assertThat(saved.getResumeContent().sections().get(0).items().get(0).fields().get("jobTitle"))
+                .isEqualTo("Engineer");
         // Skills section has 1 item
-        assertThat(saved.getResumeContent().sections().get(2).id()).isEqualTo("skills");
+        assertThat(saved.getResumeContent().sections().get(2).sectionType())
+                .isEqualTo(ResumeSectionType.SKILLS);
         assertThat(saved.getResumeContent().sections().get(2).items()).hasSize(1);
     }
 

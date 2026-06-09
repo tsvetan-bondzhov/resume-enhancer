@@ -32,8 +32,19 @@ export interface ResumeItemDto {
   fields: Record<string, string>
 }
 
+export type ResumeSectionType =
+  | "WORK_EXPERIENCE"
+  | "EDUCATION"
+  | "SKILLS"
+  | "CERTIFICATIONS"
+  | "PROJECTS"
+  | "SUMMARY"
+  | "LANGUAGES"
+  | "VOLUNTEERING"
+  | "UNKNOWN"
+
 export interface ResumeSectionDto {
-  id: string
+  sectionType: ResumeSectionType
   title: string
   visible: boolean
   items: ResumeItemDto[]

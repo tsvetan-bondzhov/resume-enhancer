@@ -43,7 +43,9 @@
       "Bash(node -e ' *)",
       "Bash(npx eslint *)",
       "Bash(echo \"mkdir result: $?\")",
-      "Bash(set PYTHONIOENCODING=utf-8)"
+      "Bash(set PYTHONIOENCODING=utf-8)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\tseko\\\\Documents\\\\Projects\\\\resume-enhancer\\\\src\\\\main\\\\java\\\\com\\\\tsvetanbondzhov\\\\resumeenhancer\\\\upload\\\\parsers\\\\ResumeSectionType.java\" -Force)",
+      "Bash(Write-Output \"Deleted\")"
     ]
   }
 }

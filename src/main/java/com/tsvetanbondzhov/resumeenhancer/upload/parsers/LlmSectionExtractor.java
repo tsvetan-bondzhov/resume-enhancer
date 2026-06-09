@@ -6,6 +6,7 @@ import com.tsvetanbondzhov.resumeenhancer.ai.AiService;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSection;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSectionType;
 import com.tsvetanbondzhov.resumeenhancer.upload.dto.RawSection;
 import com.tsvetanbondzhov.resumeenhancer.upload.dto.ResumeItemDto;
 import org.slf4j.Logger;
@@ -59,7 +60,7 @@ public class LlmSectionExtractor {
                 rawSection, sectionType, sectionText, fullRawText);
 
             sections.add(new ResumeSection(
-                UUID.randomUUID().toString(),
+                sectionType,   // already computed above via ResumeSectionType.fromHeader()
                 rawSection.title(),
                 true,
                 items

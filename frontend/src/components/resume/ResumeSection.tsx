@@ -12,9 +12,9 @@ export default function ResumeSection({
   onFieldChange,
 }: ResumeSectionProps) {
   return (
-    <section aria-labelledby={`section-title-${section.id}`} className="mb-6">
+    <section aria-labelledby={`section-title-${section.sectionType}`} className="mb-6">
       <h2
-        id={`section-title-${section.id}`}
+        id={`section-title-${section.sectionType}`}
         contentEditable
         suppressContentEditableWarning
         onBlur={(e) => onTitleChange(e.currentTarget.textContent ?? "")}
