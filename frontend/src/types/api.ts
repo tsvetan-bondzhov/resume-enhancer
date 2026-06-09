@@ -103,11 +103,54 @@ export interface SkillDto {
   name: string
 }
 
+export type LanguageProficiencyLevel =
+  | "BEGINNER"
+  | "ELEMENTARY"
+  | "INTERMEDIATE"
+  | "UPPER_INTERMEDIATE"
+  | "ADVANCED"
+  | "NATIVE"
+
+export interface CertificationDto {
+  name: string
+  issuer: string | null
+  issueDate: string | null
+  expirationDate: string | null
+}
+
+export interface LanguageDto {
+  name: string
+  proficiencyLevel: LanguageProficiencyLevel
+}
+
+export interface ProjectDto {
+  name: string
+  description: string | null
+  technologies: string | null
+  link: string | null
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean
+}
+
+export interface VolunteeringDto {
+  role: string
+  organization: string
+  description: string | null
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean
+}
+
 export interface ProfileDto {
   summary: string | null
   workExperiences: WorkExperienceDto[]
   education: EducationDto[]
   skills: SkillDto[]
+  certifications: CertificationDto[]
+  languages: LanguageDto[]
+  projects: ProjectDto[]
+  volunteering: VolunteeringDto[]
 }
 
 // WorkExperienceRequest is structurally identical to WorkExperienceDto.
@@ -127,11 +170,46 @@ export interface SkillRequest {
   name: string
 }
 
+export interface CertificationRequest {
+  name: string
+  issuer: string | null
+  issueDate: string | null
+  expirationDate: string | null
+}
+
+export interface LanguageRequest {
+  name: string
+  proficiencyLevel: LanguageProficiencyLevel
+}
+
+export interface ProjectRequest {
+  name: string
+  description: string | null
+  technologies: string | null
+  link: string | null
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean
+}
+
+export interface VolunteeringRequest {
+  role: string
+  organization: string
+  description: string | null
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean
+}
+
 export interface ProfileUpdateRequest {
   summary: string | null
   workExperiences: WorkExperienceRequest[]
   education: EducationRequest[]
   skills: SkillRequest[]
+  certifications: CertificationRequest[]
+  languages: LanguageRequest[]
+  projects: ProjectRequest[]
+  volunteering: VolunteeringRequest[]
 }
 
 export interface ParsedResumeDtoResponse {

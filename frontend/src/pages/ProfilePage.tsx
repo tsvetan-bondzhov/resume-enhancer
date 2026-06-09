@@ -8,11 +8,15 @@ import type { ProfileDto, ProfileUpdateRequest } from "@/types/api"
 import ExperienceStep from "@/components/profile/ExperienceStep"
 import EducationStep from "@/components/profile/EducationStep"
 import SkillsStep from "@/components/profile/SkillsStep"
+import CertificationsStep from "@/components/profile/CertificationsStep"
+import LanguagesStep from "@/components/profile/LanguagesStep"
+import ProjectsStep from "@/components/profile/ProjectsStep"
+import VolunteeringStep from "@/components/profile/VolunteeringStep"
 import SummaryStep from "@/components/profile/SummaryStep"
 import { useResumeUpload } from "@/hooks/useResumeUpload"
 
-const STEPS = ["Experience", "Education", "Skills", "Summary"]
-const LAST_STEP = STEPS.length - 1 // 3 — SummaryStep handles its own navigation
+const STEPS = ["Experience", "Education", "Skills", "Certifications", "Languages", "Projects", "Volunteering", "Summary"]
+const LAST_STEP = STEPS.length - 1 // 7 — SummaryStep handles its own navigation
 
 function isEmptyProfile(profile: ProfileDto): boolean {
   return (
@@ -20,7 +24,11 @@ function isEmptyProfile(profile: ProfileDto): boolean {
     !profile.summary &&
     profile.workExperiences.length === 0 &&
     profile.education.length === 0 &&
-    profile.skills.length === 0
+    profile.skills.length === 0 &&
+    (profile.certifications ?? []).length === 0 &&
+    (profile.languages ?? []).length === 0 &&
+    (profile.projects ?? []).length === 0 &&
+    (profile.volunteering ?? []).length === 0
   )
 }
 
@@ -94,6 +102,10 @@ export default function ProfilePage() {
         workExperiences: [],
         education: [],
         skills: [],
+        certifications: [],
+        languages: [],
+        projects: [],
+        volunteering: [],
       }
       const payload: ProfileUpdateRequest = {
         summary: partial.summary !== undefined ? partial.summary : current.summary,
@@ -104,6 +116,22 @@ export default function ProfilePage() {
         education:
           partial.education !== undefined ? partial.education : current.education,
         skills: partial.skills !== undefined ? partial.skills : current.skills,
+        certifications:
+          partial.certifications !== undefined
+            ? partial.certifications
+            : (current.certifications ?? []),
+        languages:
+          partial.languages !== undefined
+            ? partial.languages
+            : (current.languages ?? []),
+        projects:
+          partial.projects !== undefined
+            ? partial.projects
+            : (current.projects ?? []),
+        volunteering:
+          partial.volunteering !== undefined
+            ? partial.volunteering
+            : (current.volunteering ?? []),
       }
       const updated = await apiClient.put<ProfileDto>("/api/v1/profile", payload)
       setProfile(updated)
@@ -231,6 +259,18 @@ export default function ProfilePage() {
             <SkillsStep onSaveAndContinue={handleSaveAndContinue} />
           )}
           {currentStep === 3 && (
+            <CertificationsStep onSaveAndContinue={handleSaveAndContinue} />
+          )}
+          {currentStep === 4 && (
+            <LanguagesStep onSaveAndContinue={handleSaveAndContinue} />
+          )}
+          {currentStep === 5 && (
+            <ProjectsStep onSaveAndContinue={handleSaveAndContinue} />
+          )}
+          {currentStep === 6 && (
+            <VolunteeringStep onSaveAndContinue={handleSaveAndContinue} />
+          )}
+          {currentStep === 7 && (
             <SummaryStep onSaveAndContinue={handleSaveAndContinue} />
           )}
         </>

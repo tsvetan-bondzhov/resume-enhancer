@@ -1,7 +1,6 @@
 package com.tsvetanbondzhov.resumeenhancer.profile.dto;
 
 import jakarta.validation.Valid;
-
 import java.util.List;
 
 public record ProfileUpdateRequest(
@@ -14,6 +13,18 @@ public record ProfileUpdateRequest(
         List<EducationRequest> education,
 
         @Valid
-        List<SkillRequest> skills
+        List<SkillRequest> skills,
+
+        @Valid
+        List<CertificationRequest> certifications,
+
+        @Valid
+        List<LanguageRequest> languages,
+
+        @Valid
+        List<ProjectRequest> projects,
+
+        @Valid
+        List<VolunteeringRequest> volunteering
 ) {
 }

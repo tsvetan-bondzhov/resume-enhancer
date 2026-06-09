@@ -239,4 +239,60 @@ class ProfileControllerIntegrationTest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+
+    // ─── AC9: round-trip for all four new extended sections ──────────────────
+
+    @Test
+    void updateProfile_withAllNewSections_roundTripsCorrectly() throws Exception {
+        String token = registerAndGetToken("extended_sections@example.com", "Password1");
+
+        String requestBody = """
+                {
+                  "summary": "Extended profile test",
+                  "workExperiences": [],
+                  "education": [],
+                  "skills": [],
+                  "certifications": [
+                    {"name": "AWS Cloud Practitioner", "issuer": "Amazon", "issueDate": "2023-01-15", "expirationDate": null}
+                  ],
+                  "languages": [
+                    {"name": "English", "proficiencyLevel": "NATIVE"},
+                    {"name": "Spanish", "proficiencyLevel": "INTERMEDIATE"}
+                  ],
+                  "projects": [
+                    {"name": "ResumeApp", "description": "A resume enhancer", "technologies": "Java, React", "link": "https://github.com/test", "startDate": "2024-01-01", "endDate": null, "isCurrent": true}
+                  ],
+                  "volunteering": [
+                    {"role": "Mentor", "organization": "Code.org", "description": "Teaching programming", "startDate": null, "endDate": null, "isCurrent": false}
+                  ]
+                }
+                """;
+
+        // PUT — verify response body
+        webTestClient().put()
+                .uri("/api/v1/profile")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.certifications[0].name").isEqualTo("AWS Cloud Practitioner")
+                .jsonPath("$.languages[0].name").isEqualTo("English")
+                .jsonPath("$.languages[0].proficiencyLevel").isEqualTo("NATIVE")
+                .jsonPath("$.projects[0].name").isEqualTo("ResumeApp")
+                .jsonPath("$.volunteering[0].role").isEqualTo("Mentor");
+
+        // GET — verify persistence
+        webTestClient().get()
+                .uri("/api/v1/profile")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.certifications[0].name").isEqualTo("AWS Cloud Practitioner")
+                .jsonPath("$.languages[1].name").isEqualTo("Spanish")
+                .jsonPath("$.projects[0].isCurrent").isEqualTo(true)
+                .jsonPath("$.volunteering[0].organization").isEqualTo("Code.org");
+    }
 }
