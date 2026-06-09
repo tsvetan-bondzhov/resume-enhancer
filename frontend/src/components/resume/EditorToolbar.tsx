@@ -5,22 +5,36 @@ import { Button } from "@/components/ui/button"
 interface EditorToolbarProps {
   resumeName: string
   autosaveStatus: "idle" | "saving" | "saved" | "error"
+  isDirty: boolean
+  lastSavedAt: Date | null
   isSavingAs: boolean
   onNameChange: (name: string) => void
+  onSave: () => void
   onSaveAs: () => void
   onBack: () => void
+}
+
+function formatSavedAgo(date: Date): string {
+  const mins = Math.floor((Date.now() - date.getTime()) / 60_000)
+  if (mins < 1) return "just now"
+  if (mins === 1) return "1 min ago"
+  return `${mins} min ago`
 }
 
 export default function EditorToolbar({
   resumeName,
   autosaveStatus,
+  isDirty,
+  lastSavedAt,
   isSavingAs,
   onNameChange,
+  onSave,
   onSaveAs,
   onBack,
 }: EditorToolbarProps) {
   const [localName, setLocalName] = useState(resumeName)
   const [nameError, setNameError] = useState<string | null>(null)
+  const [savedAgoText, setSavedAgoText] = useState("")
   const nameInputRef = useRef<HTMLInputElement>(null)
   const isEditingRef = useRef(false)
 
@@ -31,6 +45,15 @@ export default function EditorToolbar({
       setLocalName(resumeName)
     }
   }, [resumeName])
+
+  // Update the "saved X min ago" text whenever lastSavedAt changes, then refresh every 30s
+  useEffect(() => {
+    if (!lastSavedAt) return
+    const update = () => setSavedAgoText(formatSavedAgo(lastSavedAt))
+    update()
+    const id = setInterval(update, 30_000)
+    return () => clearInterval(id)
+  }, [lastSavedAt])
 
   const handleNameFocus = () => {
     isEditingRef.current = true
@@ -55,7 +78,11 @@ export default function EditorToolbar({
     }
   }
 
-  const hasUnsavedChanges = autosaveStatus === "saving"
+  const saveButtonLabel = isDirty
+    ? "Save"
+    : lastSavedAt
+    ? `Saved ${savedAgoText}`
+    : "Saved"
 
   return (
     <div className="h-12 border-b border-border bg-card flex items-center gap-2 px-4 shrink-0">
@@ -109,18 +136,19 @@ export default function EditorToolbar({
         {isSavingAs ? "Saving…" : "Save As"}
       </Button>
 
-      {/* Save button with autosave dot indicator */}
+      {/* Save button — enabled only when there are unsaved changes */}
       <Button
         type="button"
         variant="default"
         size="sm"
-        className="gap-1.5 relative"
-        aria-label={hasUnsavedChanges ? "Unsaved changes — autosaving" : "Resume saved"}
-        disabled
+        className="gap-1.5 relative whitespace-nowrap"
+        aria-label={isDirty ? "Save unsaved changes" : saveButtonLabel}
+        onClick={onSave}
+        disabled={!isDirty || autosaveStatus === "saving"}
       >
-        <Save className="size-4" />
-        Save
-        {hasUnsavedChanges && (
+        <Save className="size-4 shrink-0" />
+        {saveButtonLabel}
+        {isDirty && (
           <span
             className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-blue-500"
             aria-hidden="true"

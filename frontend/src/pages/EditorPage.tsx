@@ -40,7 +40,7 @@ export default function EditorPage() {
 
   const currentTemplateId = useResumeStore((state) => state.currentResume?.templateId ?? null)
 
-  const { status: autosaveStatus } = useAutosave(id)
+  const { status: autosaveStatus, isDirty, lastSavedAt, saveNow } = useAutosave(id)
 
   useEffect(() => {
     if (!id) return
@@ -244,8 +244,11 @@ export default function EditorPage() {
             <EditorToolbar
               resumeName={currentResume?.name ?? ""}
               autosaveStatus={autosaveStatus}
+              isDirty={isDirty}
+              lastSavedAt={lastSavedAt}
               isSavingAs={isSavingAs}
               onNameChange={handleNameChange}
+              onSave={saveNow}
               onSaveAs={() => setIsSaveAsOpen(true)}
               onBack={handleBack}
             />

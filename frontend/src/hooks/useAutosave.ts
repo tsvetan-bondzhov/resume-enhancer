@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/apiClient"
 import { useResumeStore } from "@/stores/useResumeStore"
@@ -6,9 +6,19 @@ import type { ResumeDto } from "@/types/api"
 
 type SaveSnapshot = { name: string; contentJson: string }
 
-export function useAutosave(
-  resumeId: string | undefined
-): { status: "idle" | "saving" | "saved" | "error" } {
+const stableStringify = (val: unknown): string =>
+  JSON.stringify(val, (_, v) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)))
+      : v
+  )
+
+export function useAutosave(resumeId: string | undefined): {
+  status: "idle" | "saving" | "saved" | "error"
+  isDirty: boolean
+  lastSavedAt: Date | null
+  saveNow: () => void
+} {
   const currentResume = useResumeStore((state) => state.currentResume)
   const setCurrentResume = useResumeStore((state) => state.setCurrentResume)
   const setLastSavedDocument = useResumeStore(
@@ -16,12 +26,15 @@ export function useAutosave(
   )
   const lastSavedDocument = useResumeStore((state) => state.lastSavedDocument)
 
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
-    "idle"
-  )
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
+  const [isDirty, setIsDirty] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
 
-  // Save ref to avoid stale closures inside the debounce callback
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // true when the save was triggered by the user pressing Save (not the debounce)
+  const isManualSaveRef = useRef(false)
+
+  // Save ref to avoid stale closures inside callbacks
   const saveRef = useRef({ currentResume, lastSavedDocument })
   useEffect(() => {
     saveRef.current = { currentResume, lastSavedDocument }
@@ -40,12 +53,73 @@ export function useAutosave(
     ) {
       lastSavedSnapshotRef.current = {
         name: currentResume.name,
-        contentJson: JSON.stringify(lastSavedDocument),
+        contentJson: stableStringify(lastSavedDocument),
       }
     }
   }, [lastSavedDocument, currentResume])
 
-  // Main debounce effect
+  // Shared save logic used by both the debounce timer and saveNow
+  const executeSave = useCallback(
+    (resumeIdArg: string) => {
+      const { currentResume: doc, lastSavedDocument: lastSaved } = saveRef.current
+      if (!doc) return
+
+      // Skip PUT when neither the name nor content has changed since the last save.
+      // NOTE: intentionally checks BOTH name and content — a name-only change must
+      // not be skipped by a content-only comparison.
+      const snapshot = lastSavedSnapshotRef.current
+      if (
+        snapshot !== null &&
+        lastSaved !== null &&
+        doc.name === snapshot.name &&
+        stableStringify(doc.content) === snapshot.contentJson
+      ) {
+        setIsDirty(false)
+        return
+      }
+
+      // Mark dirty immediately so the Save button becomes active
+      setIsDirty(true)
+      setStatus("saving")
+
+      apiClient
+        .put<ResumeDto>(`/api/v1/resumes/${resumeIdArg}`, {
+          name: doc.name,
+          content: doc.content,
+          templateId: doc.templateId ?? null,
+        })
+        .then((updated) => {
+          setLastSavedDocument(updated.content)
+          lastSavedSnapshotRef.current = {
+            name: doc.name,
+            contentJson: stableStringify(updated.content),
+          }
+          setIsDirty(false)
+          setLastSavedAt(new Date())
+          setStatus("saved")
+
+          const isManual = isManualSaveRef.current
+          isManualSaveRef.current = false
+          if (isManual) {
+            toast.success("Document Saved")
+          } else {
+            toast("Document Autosaved")
+          }
+        })
+        .catch(() => {
+          // Revert to last successfully saved state
+          const { lastSavedDocument: lastSaved } = saveRef.current
+          if (lastSaved !== null) {
+            setCurrentResume({ ...doc, content: lastSaved })
+          }
+          setStatus("error")
+          toast.error("Save failed — changes reverted")
+        })
+    },
+    [setCurrentResume, setLastSavedDocument]
+  )
+
+  // Main debounce effect — marks dirty and schedules save
   useEffect(() => {
     if (!resumeId || !currentResume) return
 
@@ -58,51 +132,21 @@ export function useAutosave(
     }
 
     timerRef.current = setTimeout(() => {
-      const { currentResume: doc, lastSavedDocument: lastSaved } =
-        saveRef.current
-      if (!doc) return
-
-      // Skip save if content hasn't changed since last save (catches spurious
-      // identical PUTs when lastSavedDocument is set in the same render batch)
-      if (lastSaved !== null && JSON.stringify(doc.content) === JSON.stringify(lastSaved)) return
-
-      // Skip PUT when neither the name nor content has changed since the last save.
-      // This prevents a spurious identical PUT on initial page load.
-      const snapshot = lastSavedSnapshotRef.current
-      if (
-        snapshot !== null &&
-        lastSaved !== null &&
-        doc.name === snapshot.name &&
-        JSON.stringify(doc.content) === snapshot.contentJson
-      ) return
-
-      setStatus("saving")
-
-      apiClient
-        .put<ResumeDto>(`/api/v1/resumes/${resumeId}`, {
-          name: doc.name,
-          content: doc.content,
-          templateId: doc.templateId ?? null,
-        })
-        .then((updated) => {
-          setLastSavedDocument(updated.content)
-          lastSavedSnapshotRef.current = {
-            name: doc.name,
-            contentJson: JSON.stringify(updated.content),
-          }
-          setStatus("saved")
-        })
-        .catch(() => {
-          // Revert to last successfully saved state
-          if (lastSaved !== null) {
-            setCurrentResume({ ...doc, content: lastSaved })
-          }
-          setStatus("error")
-          toast.error("Save failed — changes reverted")
-        })
+      executeSave(resumeId)
     }, 500)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentResume, resumeId, setCurrentResume, setLastSavedDocument])
+  }, [currentResume, resumeId, executeSave])
+
+  // Immediate save — cancels any pending debounce and saves right away
+  const saveNow = useCallback(() => {
+    if (!resumeId) return
+    isManualSaveRef.current = true
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    executeSave(resumeId)
+  }, [resumeId, executeSave])
 
   // Cleanup on unmount — cancel any pending timer
   useEffect(() => {
@@ -113,5 +157,5 @@ export function useAutosave(
     }
   }, [])
 
-  return { status }
+  return { status, isDirty, lastSavedAt, saveNow }
 }
