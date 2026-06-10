@@ -139,7 +139,10 @@ class ResumeServiceTest {
         assertThat(saved.getResumeContent().sections().get(0).sectionType())
                 .isEqualTo(ResumeSectionType.WORK_EXPERIENCE);
         assertThat(saved.getResumeContent().sections().get(0).items()).hasSize(1);
-        assertThat(saved.getResumeContent().sections().get(0).items().get(0).fields().get("jobTitle"))
+        assertThat(saved.getResumeContent().sections().get(0).items().get(0))
+                .isInstanceOf(com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem.class);
+        assertThat(((com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem)
+                saved.getResumeContent().sections().get(0).items().get(0)).jobTitle())
                 .isEqualTo("Engineer");
         // Skills section has 1 item
         assertThat(saved.getResumeContent().sections().get(2).sectionType())

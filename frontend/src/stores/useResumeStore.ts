@@ -57,6 +57,8 @@ export const useResumeStore = create<ResumeState>((set) => ({
   updateItemField: (sectionId, itemId, field, value) =>
     set((state) => {
       if (!state.currentResume) return state
+      // Guard: never mutate reserved discriminant fields — would corrupt Jackson polymorphism
+      if (field === "type" || field === "id") return state
       return {
         ...state,
         currentResume: {
@@ -71,7 +73,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
                     items: s.items.map((item) =>
                       item.id !== itemId
                         ? item
-                        : { ...item, fields: { ...item.fields, [field]: value } }
+                        : { ...item, [field]: value }
                     ),
                   }
             ),

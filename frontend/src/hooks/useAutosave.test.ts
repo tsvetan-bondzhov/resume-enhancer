@@ -27,13 +27,19 @@ function buildResume(overrides?: Partial<ResumeDto>): ResumeDto {
     content: {
       sections: [
         {
-          id: "section-1",
+          sectionType: "WORK_EXPERIENCE" as const,
           title: "Work Experience",
           visible: true,
           items: [
             {
+              type: "WORK_EXPERIENCE" as const,
               id: "item-1",
-              fields: { jobTitle: "Engineer" },
+              jobTitle: "Engineer",
+              company: null,
+              startDate: null,
+              endDate: null,
+              isCurrent: false,
+              description: null,
             },
           ],
         },

@@ -3,7 +3,20 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { apiClient } from "@/lib/apiClient"
 import { getOrderedSections } from "@/lib/templateUtils"
 import ResumeSection from "@/components/resume/ResumeSection"
-import type { ResumeDocumentDto, TemplateDto } from "@/types/api"
+import type { ResumeDocumentDto, ResumeItemDto, TemplateDto } from "@/types/api"
+
+/**
+ * Extracts displayable values from any ResumeItemDto subtype for read-only rendering.
+ * Story 3.15 will replace this with per-type renderers.
+ */
+function getItemDisplayValues(item: ResumeItemDto): string[] {
+  if (item.type === "UNKNOWN") return Object.values(item.fields).filter(Boolean)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id, type, ...rest } = item as Record<string, unknown>
+  return Object.values(rest)
+    .filter((v) => v !== null && v !== undefined && v !== "")
+    .map(String)
+}
 
 interface ResumeCanvasProps {
   document: ResumeDocumentDto | null
@@ -167,9 +180,7 @@ export default function ResumeCanvas({
                 <ul className="space-y-1 text-sm list-none p-0">
                   {section.items.map((item) => (
                     <li key={item.id}>
-                      {Object.values(item.fields)
-                        .filter(Boolean)
-                        .join(" · ")}
+                      {getItemDisplayValues(item).join(" · ")}
                     </li>
                   ))}
                 </ul>

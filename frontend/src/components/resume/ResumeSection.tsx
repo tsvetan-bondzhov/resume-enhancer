@@ -1,9 +1,26 @@
-import type { ResumeSectionDto } from "@/types/api"
+import type { ResumeItemDto, ResumeSectionDto } from "@/types/api"
 
 interface ResumeSectionProps {
   section: ResumeSectionDto
   onTitleChange: (title: string) => void
   onFieldChange: (itemId: string, field: string, value: string) => void
+}
+
+/**
+ * Extracts displayable key-value pairs from any ResumeItemDto subtype.
+ * For GenericItem (UNKNOWN), returns the `fields` map directly.
+ * For typed items, builds a display map from all non-null, non-id, non-type fields.
+ * Story 3.15 will replace this with per-type renderers.
+ */
+function getItemFields(item: ResumeItemDto): Record<string, string> {
+  if (item.type === "UNKNOWN") return item.fields
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id, type, ...rest } = item as Record<string, unknown>
+  return Object.fromEntries(
+    Object.entries(rest)
+      .filter(([, v]) => v !== null && v !== undefined && v !== "")
+      .map(([k, v]) => [k, String(v)])
+  )
 }
 
 export default function ResumeSection({
@@ -25,7 +42,7 @@ export default function ResumeSection({
       </h2>
       <ul className="space-y-1 text-sm list-none p-0">
         {section.items.map((item) =>
-          Object.entries(item.fields)
+          Object.entries(getItemFields(item))
             .filter(([, v]) => Boolean(v))
             .map(([field, value]) => (
               <li key={`${item.id}-${field}`}>

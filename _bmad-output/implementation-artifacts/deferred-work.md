@@ -52,6 +52,17 @@
 - **F8** No test for `modern-accent` layout rendering in `ResumeCanvas.test.tsx` — not required by AC12; add in a future test quality pass.
 - **F10** `TemplateLayout.resolvedSectionOrder()` is spec-mandated infrastructure for Epic 5 but never called and untested — add usage and tests when `DocumentRenderer` / `PdfRenderer` are implemented in Story 5.1.
 
+## Deferred from: code review of 3-13-typed-section-specific-resumeitem-records (2026-06-09)
+
+- AC7 incomplete: `LlmSectionExtractorTest` has no typed-item test cases for `CertificationItem`, `LanguageItem`, `ProjectItem`, `VolunteeringItem`, or `EducationItem` — only `WORK_EXPERIENCE`, `SKILLS`, and `UNKNOWN` are tested. Story 3-15 adds typed section renderers; cover remaining types in that story's test expansion or a dedicated test quality pass.
+- `parseDate` silently converts year-only strings (e.g., `"2020"`) to January 1 without logging a WARN — current behavior acceptable for MVP; add a WARN log level when year-only dates are inferred to improve diagnostic traceability.
+- `GenericItem` compact constructor would NPE on maps with null values (`Map.copyOf` rejects null values) — mitigated by `toStringMap` filtering nulls before construction; risk exists if `GenericItem` is constructed directly with a user-supplied map containing null values. Add a null-value guard in the compact constructor if direct construction becomes common.
+
+## Deferred from: code review of 3-13-typed-section-specific-resumeitem-records round 2 (2026-06-10)
+
+- `isCurrent: false` and other boolean fields render as editable "false" text via `getItemFields`/`getItemDisplayValues` — the bridge approach exposes boolean record fields as contenteditable spans, which is wrong UX and allows type corruption. Deferred to Story 3.15 typed renderers which will remove contenteditable from boolean/date fields entirely.
+- Editing a boolean field (e.g. `isCurrent`) via contenteditable writes a string `"true"`/`"false"` back to the typed record via `updateItemField` — type invariant corrupted at the Zustand level; Jackson coerces string-to-boolean on next deserialization so no data loss at rest, but Zustand in-memory type is wrong. Deferred to Story 3.15.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

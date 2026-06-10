@@ -11,8 +11,8 @@ const mockGet = vi.mocked(apiClient.get)
 
 const mockDocument: ResumeDocumentDto = {
   sections: [
-    { sectionType: "WORK_EXPERIENCE", title: "Experience", visible: true, items: [{ id: "i1", fields: { text: "Engineer" } }] },
-    { sectionType: "SKILLS",          title: "Skills",     visible: true, items: [{ id: "i2", fields: { text: "Java" } }] },
+    { sectionType: "WORK_EXPERIENCE", title: "Experience", visible: true, items: [{ type: "WORK_EXPERIENCE", id: "i1", jobTitle: "Engineer", company: null, startDate: null, endDate: null, isCurrent: false, description: null }] },
+    { sectionType: "SKILLS",          title: "Skills",     visible: true, items: [{ type: "SKILLS", id: "i2", name: "Java", category: null, proficiency: null }] },
     { sectionType: "EDUCATION",       title: "Education",  visible: false, items: [] },
   ],
 }

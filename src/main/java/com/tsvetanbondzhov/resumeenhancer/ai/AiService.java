@@ -67,19 +67,22 @@ public class AiService {
 
     private String getFieldSchema(String sectionType) {
         return switch (sectionType) {
-            case "WORK_EXPERIENCE" -> "[{\"title\": \"\", \"company\": \"\", \"startDate\": \"YYYY-MM\", " +
-                    "\"endDate\": \"YYYY-MM or Present\", \"description\": \"comma-separated achievements\"}]";
-            case "EDUCATION" -> "[{\"degree\": \"\", \"institution\": \"\", " +
-                    "\"graduationDate\": \"YYYY or YYYY-MM\", \"gpa\": \"\"}]";
-            case "SKILLS" -> "[{\"skillName\": \"\", \"proficiency\": \"\", \"category\": \"\"}]";
-            case "CERTIFICATIONS" -> "[{\"certificationName\": \"\", \"issuer\": \"\", " +
-                    "\"issueDate\": \"YYYY-MM\", \"expirationDate\": \"YYYY-MM\"}]";
-            case "PROJECTS" -> "[{\"projectName\": \"\", \"description\": \"\", " +
-                    "\"technologies\": \"comma-separated\", \"link\": \"\"}]";
+            case "WORK_EXPERIENCE" -> "[{\"jobTitle\": \"\", \"company\": \"\", \"startDate\": \"YYYY-MM-DD\", " +
+                    "\"endDate\": \"YYYY-MM-DD or null\", \"isCurrent\": false, " +
+                    "\"description\": \"comma-separated achievements\"}]";
+            case "EDUCATION" -> "[{\"institution\": \"\", \"degree\": \"\", \"fieldOfStudy\": \"\", " +
+                    "\"startDate\": \"YYYY-MM-DD or null\", \"endDate\": \"YYYY-MM-DD or null\"}]";
+            case "SKILLS" -> "[{\"name\": \"\", \"category\": \"\", \"proficiency\": \"\"}]";
+            case "CERTIFICATIONS" -> "[{\"name\": \"\", \"issuer\": \"\", " +
+                    "\"issueDate\": \"YYYY-MM-DD\", \"expirationDate\": \"YYYY-MM-DD or null\"}]";
+            case "PROJECTS" -> "[{\"name\": \"\", \"description\": \"\", " +
+                    "\"technologies\": \"comma-separated\", \"link\": \"\", " +
+                    "\"startDate\": \"YYYY-MM-DD or null\", \"endDate\": \"YYYY-MM-DD or null\", \"isCurrent\": false}]";
             case "SUMMARY" -> "[{\"text\": \"full summary prose\"}]";
             case "LANGUAGES" -> "[{\"language\": \"\", \"proficiency\": \"\"}]";
             case "VOLUNTEERING" -> "[{\"role\": \"\", \"organization\": \"\", " +
-                    "\"startDate\": \"YYYY-MM\", \"endDate\": \"YYYY-MM or Present\", \"description\": \"\"}]";
+                    "\"startDate\": \"YYYY-MM-DD or null\", \"endDate\": \"YYYY-MM-DD or null\", " +
+                    "\"isCurrent\": false, \"description\": \"\"}]";
             default -> "[{\"text\": \"raw content\"}]";
         };
     }

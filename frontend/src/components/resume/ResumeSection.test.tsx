@@ -4,7 +4,7 @@ import { useResumeStore } from "@/stores/useResumeStore"
 import { useAutosave } from "@/hooks/useAutosave"
 import { apiClient } from "@/lib/apiClient"
 import ResumeSection from "./ResumeSection"
-import type { ResumeSectionDto, ResumeDto } from "@/types/api"
+import type { ResumeSectionDto, ResumeDto, WorkExperienceItemDto } from "@/types/api"
 
 vi.mock("@/lib/apiClient", () => ({
   apiClient: {
@@ -17,17 +17,26 @@ vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn() }),
 }))
 
+function buildWorkExperienceItem(overrides?: Partial<WorkExperienceItemDto>): WorkExperienceItemDto {
+  return {
+    type: "WORK_EXPERIENCE",
+    id: "item-1",
+    jobTitle: "Engineer",
+    company: "Acme Corp",
+    startDate: null,
+    endDate: null,
+    isCurrent: false,
+    description: null,
+    ...overrides,
+  }
+}
+
 function buildSection(overrides?: Partial<ResumeSectionDto>): ResumeSectionDto {
   return {
     sectionType: "WORK_EXPERIENCE",
     title: "Work Experience",
     visible: true,
-    items: [
-      {
-        id: "item-1",
-        fields: { jobTitle: "Engineer", company: "Acme Corp" },
-      },
-    ],
+    items: [buildWorkExperienceItem()],
     ...overrides,
   }
 }
@@ -122,10 +131,7 @@ describe("ResumeSection", () => {
   it("does not render items with empty field values", () => {
     const section = buildSection({
       items: [
-        {
-          id: "item-empty",
-          fields: { jobTitle: "", company: "Only Company" },
-        },
+        buildWorkExperienceItem({ id: "item-empty", jobTitle: null, company: "Only Company" }),
       ],
     })
     const onFieldChange = vi.fn()
@@ -140,7 +146,7 @@ describe("ResumeSection", () => {
     )
 
     expect(screen.getByText("Only Company")).toBeInTheDocument()
-    // Empty jobTitle should not be rendered
+    // Null jobTitle should not be rendered
     expect(screen.queryByText("jobTitle")).not.toBeInTheDocument()
   })
 
@@ -169,10 +175,10 @@ describe("ResumeSection", () => {
     const field = screen.getByText("Engineer")
     fireEvent.blur(field, { target: { textContent: "Senior Engineer" } })
 
-    const updatedFields =
+    const updatedItem =
       useResumeStore.getState().currentResume?.content.sections[0].items[0]
-        .fields
-    expect(updatedFields?.jobTitle).toBe("Senior Engineer")
+    // After updateItemField with { ...item, [field]: value }, the field is set at top level
+    expect((updatedItem as WorkExperienceItemDto).jobTitle).toBe("Senior Engineer")
   })
 
   it("onTitleChange wired to updateSectionTitle mutates useResumeStore state", () => {
@@ -212,7 +218,7 @@ describe("ResumeSection", () => {
         sections: [
           {
             ...section,
-            items: [{ id: "item-1", fields: { jobTitle: "Senior Engineer", company: "Acme Corp" } }],
+            items: [buildWorkExperienceItem({ jobTitle: "Senior Engineer" })],
           },
         ],
       },
@@ -287,9 +293,8 @@ describe("ResumeSection", () => {
     })
 
     // Store should have reverted to the original field value
-    const revertedField =
+    const revertedItem =
       useResumeStore.getState().currentResume?.content.sections[0].items[0]
-        .fields.jobTitle
-    expect(revertedField).toBe("Engineer")
+    expect((revertedItem as WorkExperienceItemDto).jobTitle).toBe("Engineer")
   })
 })

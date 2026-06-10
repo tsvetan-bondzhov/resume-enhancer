@@ -27,10 +27,96 @@ export interface ApiErrorResponse {
   instance: string
 }
 
-export interface ResumeItemDto {
+export interface WorkExperienceItemDto {
+  type: "WORK_EXPERIENCE"
+  id: string
+  jobTitle: string | null
+  company: string | null
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean
+  description: string | null
+}
+
+export interface EducationItemDto {
+  type: "EDUCATION"
+  id: string
+  institution: string | null
+  degree: string | null
+  fieldOfStudy: string | null
+  startDate: string | null
+  endDate: string | null
+}
+
+export interface SkillItemDto {
+  type: "SKILLS"
+  id: string
+  name: string | null
+  category: string | null
+  proficiency: string | null
+}
+
+export interface CertificationItemDto {
+  type: "CERTIFICATIONS"
+  id: string
+  name: string | null
+  issuer: string | null
+  issueDate: string | null
+  expirationDate: string | null
+}
+
+export interface LanguageItemDto {
+  type: "LANGUAGES"
+  id: string
+  language: string | null
+  proficiency: string | null
+}
+
+export interface ProjectItemDto {
+  type: "PROJECTS"
+  id: string
+  name: string | null
+  description: string | null
+  technologies: string | null
+  link: string | null
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean
+}
+
+export interface VolunteeringItemDto {
+  type: "VOLUNTEERING"
+  id: string
+  role: string | null
+  organization: string | null
+  description: string | null
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean
+}
+
+export interface SummaryItemDto {
+  type: "SUMMARY"
+  id: string
+  text: string | null
+}
+
+export interface GenericItemDto {
+  type: "UNKNOWN"
   id: string
   fields: Record<string, string>
 }
+
+export type ResumeItemDto =
+  | WorkExperienceItemDto
+  | EducationItemDto
+  | SkillItemDto
+  | CertificationItemDto
+  | LanguageItemDto
+  | ProjectItemDto
+  | VolunteeringItemDto
+  | SummaryItemDto
+  | GenericItemDto
 
 export type ResumeSectionType =
   | "WORK_EXPERIENCE"
