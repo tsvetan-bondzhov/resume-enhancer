@@ -38,7 +38,7 @@ public record TemplateDefinition(
             ),
             new TemplateLayout(
                     "name-contact",
-                    List.of("WORK_EXPERIENCE", "EDUCATION", "SKILLS"),
+                    List.of("SUMMARY", "WORK_EXPERIENCE", "EDUCATION", "SKILLS", "CERTIFICATIONS", "PROJECTS", "LANGUAGES", "VOLUNTEERING"),
                     null,
                     Map.of()
             ),

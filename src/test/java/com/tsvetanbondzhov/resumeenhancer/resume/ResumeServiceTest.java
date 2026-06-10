@@ -2,13 +2,27 @@ package com.tsvetanbondzhov.resumeenhancer.resume;
 
 import com.tsvetanbondzhov.resumeenhancer.auth.UserRepository;
 import com.tsvetanbondzhov.resumeenhancer.auth.domain.User;
+import com.tsvetanbondzhov.resumeenhancer.profile.domain.Certification;
+import com.tsvetanbondzhov.resumeenhancer.profile.domain.Education;
+import com.tsvetanbondzhov.resumeenhancer.profile.domain.Language;
+import com.tsvetanbondzhov.resumeenhancer.profile.domain.LanguageProficiencyLevel;
 import com.tsvetanbondzhov.resumeenhancer.profile.domain.Profile;
+import com.tsvetanbondzhov.resumeenhancer.profile.domain.Project;
 import com.tsvetanbondzhov.resumeenhancer.profile.domain.Skill;
+import com.tsvetanbondzhov.resumeenhancer.profile.domain.Volunteering;
 import com.tsvetanbondzhov.resumeenhancer.profile.domain.WorkExperience;
 import com.tsvetanbondzhov.resumeenhancer.profile.repository.ProfileRepository;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.CertificationItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.EducationItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.LanguageItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.ProjectItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.Resume;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSectionType;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.SkillItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.SummaryItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.VolunteeringItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.CreateResumeRequest;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.ResumeDto;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.SaveAsRequest;
@@ -21,6 +35,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -134,20 +149,170 @@ class ResumeServiceTest {
         resumeService.createResume(EMAIL, new CreateResumeRequest("Profile Resume", null));
 
         Resume saved = captor.getValue();
-        assertThat(saved.getResumeContent().sections()).hasSize(3);
-        // Work Experience section has 1 item
+        // buildFromProfile now always produces 8 sections in canonical order
+        assertThat(saved.getResumeContent().sections()).hasSize(8);
+        // SUMMARY at index 0 — visible: false (no summary set on this profile)
         assertThat(saved.getResumeContent().sections().get(0).sectionType())
+                .isEqualTo(ResumeSectionType.SUMMARY);
+        assertThat(saved.getResumeContent().sections().get(0).visible()).isFalse();
+        // WORK_EXPERIENCE at index 1 — has 1 item
+        assertThat(saved.getResumeContent().sections().get(1).sectionType())
                 .isEqualTo(ResumeSectionType.WORK_EXPERIENCE);
-        assertThat(saved.getResumeContent().sections().get(0).items()).hasSize(1);
-        assertThat(saved.getResumeContent().sections().get(0).items().get(0))
-                .isInstanceOf(com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem.class);
-        assertThat(((com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem)
-                saved.getResumeContent().sections().get(0).items().get(0)).jobTitle())
+        assertThat(saved.getResumeContent().sections().get(1).items()).hasSize(1);
+        assertThat(saved.getResumeContent().sections().get(1).items().get(0))
+                .isInstanceOf(WorkExperienceItem.class);
+        assertThat(((WorkExperienceItem)
+                saved.getResumeContent().sections().get(1).items().get(0)).jobTitle())
                 .isEqualTo("Engineer");
-        // Skills section has 1 item
-        assertThat(saved.getResumeContent().sections().get(2).sectionType())
+        // SKILLS at index 3 — has 1 item
+        assertThat(saved.getResumeContent().sections().get(3).sectionType())
                 .isEqualTo(ResumeSectionType.SKILLS);
+        assertThat(saved.getResumeContent().sections().get(3).items()).hasSize(1);
+    }
+
+    @Test
+    void buildFromProfile_allSections() {
+        User user = buildUser();
+        Profile profile = new Profile();
+        profile.setUser(user);
+        profile.setSummary("Experienced Java developer");
+
+        WorkExperience we = new WorkExperience();
+        we.setProfile(profile);
+        we.setJobTitle("Engineer");
+        we.setCompany("Acme");
+        profile.getWorkExperiences().add(we);
+
+        Education edu = new Education();
+        edu.setProfile(profile);
+        edu.setInstitution("MIT");
+        edu.setDegree("BSc");
+        profile.getEducation().add(edu);
+
+        Skill skill = new Skill();
+        skill.setProfile(profile);
+        skill.setName("Java");
+        profile.getSkills().add(skill);
+
+        Certification cert = new Certification();
+        cert.setProfile(profile);
+        cert.setName("AWS Solutions Architect");
+        cert.setIssuer("Amazon");
+        cert.setIssueDate(LocalDate.of(2023, 6, 1));
+        profile.getCertifications().add(cert);
+
+        Project proj = new Project();
+        proj.setProfile(profile);
+        proj.setName("Resume Enhancer");
+        profile.getProjects().add(proj);
+
+        Language lang = new Language();
+        lang.setProfile(profile);
+        lang.setName("Spanish");
+        lang.setProficiencyLevel(LanguageProficiencyLevel.ADVANCED);
+        profile.getLanguages().add(lang);
+
+        Volunteering vol = new Volunteering();
+        vol.setProfile(profile);
+        vol.setRole("Mentor");
+        vol.setOrganization("Code Club");
+        profile.getVolunteering().add(vol);
+
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(profileRepository.findByUser(user)).thenReturn(Optional.of(profile));
+
+        ArgumentCaptor<Resume> captor = ArgumentCaptor.forClass(Resume.class);
+        Resume savedResume = new Resume();
+        savedResume.setUser(user);
+        savedResume.setName("All Sections Resume");
+        when(resumeRepository.save(captor.capture())).thenReturn(savedResume);
+
+        resumeService.createResume(EMAIL, new CreateResumeRequest("All Sections Resume", null));
+
+        Resume saved = captor.getValue();
+        assertThat(saved.getResumeContent().sections()).hasSize(8);
+
+        // Canonical order assertions
+        assertThat(saved.getResumeContent().sections().get(0).sectionType()).isEqualTo(ResumeSectionType.SUMMARY);
+        assertThat(saved.getResumeContent().sections().get(1).sectionType()).isEqualTo(ResumeSectionType.WORK_EXPERIENCE);
+        assertThat(saved.getResumeContent().sections().get(2).sectionType()).isEqualTo(ResumeSectionType.EDUCATION);
+        assertThat(saved.getResumeContent().sections().get(3).sectionType()).isEqualTo(ResumeSectionType.SKILLS);
+        assertThat(saved.getResumeContent().sections().get(4).sectionType()).isEqualTo(ResumeSectionType.CERTIFICATIONS);
+        assertThat(saved.getResumeContent().sections().get(5).sectionType()).isEqualTo(ResumeSectionType.PROJECTS);
+        assertThat(saved.getResumeContent().sections().get(6).sectionType()).isEqualTo(ResumeSectionType.LANGUAGES);
+        assertThat(saved.getResumeContent().sections().get(7).sectionType()).isEqualTo(ResumeSectionType.VOLUNTEERING);
+
+        // All sections visible (each has 1 item / non-blank summary)
+        saved.getResumeContent().sections().forEach(s ->
+                assertThat(s.visible()).as("section %s should be visible", s.sectionType()).isTrue());
+
+        // Each section has exactly 1 item of the correct subclass
+        assertThat(saved.getResumeContent().sections().get(0).items()).hasSize(1);
+        assertThat(saved.getResumeContent().sections().get(0).items().get(0)).isInstanceOf(SummaryItem.class);
+        assertThat(saved.getResumeContent().sections().get(1).items()).hasSize(1);
+        assertThat(saved.getResumeContent().sections().get(1).items().get(0)).isInstanceOf(WorkExperienceItem.class);
         assertThat(saved.getResumeContent().sections().get(2).items()).hasSize(1);
+        assertThat(saved.getResumeContent().sections().get(2).items().get(0)).isInstanceOf(EducationItem.class);
+        assertThat(saved.getResumeContent().sections().get(3).items()).hasSize(1);
+        assertThat(saved.getResumeContent().sections().get(3).items().get(0)).isInstanceOf(SkillItem.class);
+        assertThat(saved.getResumeContent().sections().get(4).items()).hasSize(1);
+        assertThat(saved.getResumeContent().sections().get(4).items().get(0)).isInstanceOf(CertificationItem.class);
+        assertThat(saved.getResumeContent().sections().get(5).items()).hasSize(1);
+        assertThat(saved.getResumeContent().sections().get(5).items().get(0)).isInstanceOf(ProjectItem.class);
+        assertThat(saved.getResumeContent().sections().get(6).items()).hasSize(1);
+        assertThat(saved.getResumeContent().sections().get(6).items().get(0)).isInstanceOf(LanguageItem.class);
+        assertThat(saved.getResumeContent().sections().get(7).items()).hasSize(1);
+        assertThat(saved.getResumeContent().sections().get(7).items().get(0)).isInstanceOf(VolunteeringItem.class);
+
+        // Spot-check key mapped fields
+        SummaryItem summaryItem = (SummaryItem) saved.getResumeContent().sections().get(0).items().get(0);
+        assertThat(summaryItem.text()).isEqualTo("Experienced Java developer");
+
+        CertificationItem certItem = (CertificationItem) saved.getResumeContent().sections().get(4).items().get(0);
+        assertThat(certItem.name()).isEqualTo("AWS Solutions Architect");
+        assertThat(certItem.issuer()).isEqualTo("Amazon");
+
+        LanguageItem langItem = (LanguageItem) saved.getResumeContent().sections().get(6).items().get(0);
+        assertThat(langItem.language()).isEqualTo("Spanish");
+        assertThat(langItem.proficiency()).isEqualTo("ADVANCED");
+    }
+
+    @Test
+    void buildFromProfile_emptySections() {
+        User user = buildUser();
+        Profile profile = new Profile();
+        profile.setUser(user);
+        // No summary, no items in any list
+
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(profileRepository.findByUser(user)).thenReturn(Optional.of(profile));
+
+        ArgumentCaptor<Resume> captor = ArgumentCaptor.forClass(Resume.class);
+        Resume savedResume = new Resume();
+        savedResume.setUser(user);
+        savedResume.setName("Empty Profile Resume");
+        when(resumeRepository.save(captor.capture())).thenReturn(savedResume);
+
+        resumeService.createResume(EMAIL, new CreateResumeRequest("Empty Profile Resume", null));
+
+        Resume saved = captor.getValue();
+        assertThat(saved.getResumeContent().sections()).hasSize(8);
+
+        // All sections visible: false
+        saved.getResumeContent().sections().forEach(s ->
+                assertThat(s.visible()).as("section %s should be invisible", s.sectionType()).isFalse());
+
+        // SUMMARY has 1 SummaryItem with empty text; all other sections have empty item lists
+        assertThat(saved.getResumeContent().sections().get(0).sectionType()).isEqualTo(ResumeSectionType.SUMMARY);
+        assertThat(saved.getResumeContent().sections().get(0).items()).hasSize(1);
+        SummaryItem emptySummary = (SummaryItem) saved.getResumeContent().sections().get(0).items().get(0);
+        assertThat(emptySummary.text()).isEmpty();
+
+        for (int i = 1; i < 8; i++) {
+            assertThat(saved.getResumeContent().sections().get(i).items())
+                    .as("section at index %d should have empty items", i)
+                    .isEmpty();
+        }
     }
 
     // ─── listResumes ──────────────────────────────────────────────────────────
