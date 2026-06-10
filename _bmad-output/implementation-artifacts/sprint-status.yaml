@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-10 # review complete
+last_updated: 2026-06-10 # Epic 4 created; Epics 4-7 shifted to 5-8
 project: resume-enhancer
 project_key: NOKEY
 tracking_system: file-system
@@ -78,33 +78,48 @@ development_status:
   3-15-section-specific-frontend-resume-renderers: done
   epic-3-retrospective: optional
 
-  # ─── Epic 4: AI Enhancement & Conversational Chat ───
-  epic-4: backlog
-  4-1-ai-streaming-spike-spring-ai-ollama-sse-end-to-end: backlog
-  4-2-documentpatchservice-and-useresumestore-applypatch: backlog
-  4-3-ai-chat-panel-and-sse-streaming-integration: backlog
-  4-4-ai-enhancement-suggestions-with-accept-reject: backlog
-  4-5-ai-job-description-tailoring: backlog
-  4-6-ai-qa-chat-without-document-edits: backlog
-  4-7-accessibility-audit-and-focus-management-for-ai-features: backlog
+  # ─── Epic 4: Resume Experience Polish & Foundations ───
+  epic-4: in-progress
+  4-1-rendering-polish-sidebar-collapse-template-title-date-formatting-certification-display: ready-for-dev
+  4-2-classic-template-two-column-layout-fix: ready-for-dev
+  4-3-dashboard-resume-card-live-preview: ready-for-dev
+  4-4-section-item-add-delete-and-drag-to-reorder: ready-for-dev
+  4-5-section-order-override-in-resume-canvas: ready-for-dev
+  4-6-profile-page-navigation-and-first-entry-deletion: ready-for-dev
+  4-7-settings-page-with-password-change: ready-for-dev
+  4-8-skillitem-domain-simplification: ready-for-dev
+  4-9-extended-summary-profile-fields-contact-and-links: ready-for-dev
+  4-10-parsing-service-and-parsedresumedto-refactor: ready-for-dev
+  4-11-multi-page-a4-resume-rendering: ready-for-dev
   epic-4-retrospective: optional
 
-  # ─── Epic 5: Export & Document Generation ───
+  # ─── Epic 5: AI Enhancement & Conversational Chat ───
   epic-5: backlog
-  5-1-documentrenderer-interface-and-pdfrenderer: backlog
-  5-2-docxrenderer-and-export-download-ux: backlog
+  5-1-ai-streaming-spike-spring-ai-ollama-sse-end-to-end: backlog
+  5-2-documentpatchservice-and-useresumestore-applypatch: backlog
+  5-3-ai-chat-panel-and-sse-streaming-integration: backlog
+  5-4-ai-enhancement-suggestions-with-accept-reject: backlog
+  5-5-ai-job-description-tailoring: backlog
+  5-6-ai-qa-chat-without-document-edits: backlog
+  5-7-accessibility-audit-and-focus-management-for-ai-features: backlog
   epic-5-retrospective: optional
 
-  # ─── Epic 6: Administration & Observability ───
+  # ─── Epic 6: Export & Document Generation ───
   epic-6: backlog
-  6-1-admin-user-management-api-and-ui: backlog
-  6-2-admin-template-management-api-and-ui: backlog
-  6-3-opentelemetry-span-propagation-through-sse-and-log-correlation: backlog
-  6-4-grafana-dashboard-provisioning: backlog
+  6-1-documentrenderer-interface-and-pdfrenderer: backlog
+  6-2-docxrenderer-and-export-download-ux: backlog
   epic-6-retrospective: optional
 
-  # ─── Epic 7: Custom Template Authoring (Deferred) ───
+  # ─── Epic 7: Administration & Observability ───
   epic-7: backlog
-  7-1-custom-template-data-model-and-crud-api: backlog
-  7-2-custom-template-authoring-ui: backlog
+  7-1-admin-user-management-api-and-ui: backlog
+  7-2-admin-template-management-api-and-ui: backlog
+  7-3-opentelemetry-span-propagation-through-sse-and-log-correlation: backlog
+  7-4-grafana-dashboard-provisioning: backlog
   epic-7-retrospective: optional
+
+  # ─── Epic 8: Custom Template Authoring (Deferred) ───
+  epic-8: backlog
+  8-1-custom-template-data-model-and-crud-api: backlog
+  8-2-custom-template-authoring-ui: backlog
+  epic-8-retrospective: optional
