@@ -1,4 +1,4 @@
-import { formatDateRange } from "@/lib/dateUtils"
+import { formatMonthYear } from "@/lib/dateUtils"
 import type { WorkExperienceItemDto } from "@/types/api"
 
 interface WorkExperienceSectionRendererProps {
@@ -78,7 +78,11 @@ export default function WorkExperienceSectionRenderer({
                   </span>
                 </>
               ) : (
-                <span>{formatDateRange(item.startDate, item.endDate, item.isCurrent)}</span>
+                <span>{(() => {
+                  const start = formatMonthYear(item.startDate)
+                  const end = item.isCurrent || !item.endDate ? "Present" : formatMonthYear(item.endDate)
+                  return start ? `${start} — ${end}` : end
+                })()}</span>
               )}
             </p>
           )}

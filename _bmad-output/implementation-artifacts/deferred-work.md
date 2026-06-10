@@ -68,6 +68,12 @@
 - `renderSectionContent` filter+map+throw pattern has dead-code `throw` branch — the `.filter(i => i.type === X)` already guarantees type; the `throw` is unreachable. Style/efficiency issue, not a bug. Address in a future refactor pass.
 - `WorkExperienceSectionRenderer.test` blur assertion may not accurately exercise `e.currentTarget.textContent` — `fireEvent.blur(field, { target: { textContent: 'Senior Engineer' } })` does not set `currentTarget.textContent` in jsdom; test passes but for reasons tied to jsdom's event model. Investigate with `userEvent.type` in a future test quality pass.
 
+## Deferred from: code review of 4-1-rendering-polish-sidebar-collapse-template-title-date-formatting-certification-display (2026-06-10)
+
+- Stale comment `"// In read-only mode, formatDateRange is used"` in `WorkExperienceSectionRenderer.test.tsx` line 77 — references removed `formatDateRange`; cosmetic stale comment; address in a future test quality pass.
+- `formatMonthYear`/`formatYear` return `"NaN/NaN"`/`"NaN"` for invalid date strings — `new Date("invalid")` produces `Invalid Date`; UTC accessors return `NaN`; same flaw exists in `formatDateRange`; upstream API validation is the correct guard; address if invalid-date values reach the frontend in practice.
+- Null `startDate` + non-null `endDate` in WorkExperience/Projects renders end date alone without separator — unspecified edge case not covered by AC4/5; not a regression vs previous `formatDateRange` behaviour; address when date display edge cases are formally specified.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

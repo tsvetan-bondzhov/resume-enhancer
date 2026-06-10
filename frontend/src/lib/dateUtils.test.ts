@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { formatDateRange } from "./dateUtils"
+import { formatDateRange, formatMonthYear, formatYear } from "./dateUtils"
 
 describe("formatDateRange", () => {
   it("returns empty string when both startDate and endDate are null", () => {
@@ -40,5 +40,29 @@ describe("formatDateRange", () => {
     const result = formatDateRange("2019-03-15", null, false)
     expect(result).toContain("2019")
     expect(result).toContain("Present")
+  })
+})
+
+describe("formatMonthYear", () => {
+  it("returns empty string for null input", () => {
+    expect(formatMonthYear(null)).toBe("")
+  })
+
+  it("formats a date with zero-padded month and year", () => {
+    expect(formatMonthYear("2022-03-15")).toBe("03/2022")
+  })
+
+  it("formats a date with two-digit month and year", () => {
+    expect(formatMonthYear("2022-12-01")).toBe("12/2022")
+  })
+})
+
+describe("formatYear", () => {
+  it("returns empty string for null input", () => {
+    expect(formatYear(null)).toBe("")
+  })
+
+  it("formats a date as year only", () => {
+    expect(formatYear("2018-09-01")).toBe("2018")
   })
 })

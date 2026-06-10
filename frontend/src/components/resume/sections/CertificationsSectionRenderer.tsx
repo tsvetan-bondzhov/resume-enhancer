@@ -68,7 +68,7 @@ export default function CertificationsSectionRenderer({
             ) : (
               item.issueDate != null && <span>{item.issueDate}</span>
             )}
-            {(item.issueDate != null || onFieldChange) && " — "}
+            {(item.expirationDate != null || onFieldChange) && " — "}
             {onFieldChange ? (
               <span
                 contentEditable
@@ -79,10 +79,10 @@ export default function CertificationsSectionRenderer({
                 className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                 aria-label="Edit expirationDate"
               >
-                {item.expirationDate ?? "No expiry"}
+                {item.expirationDate ?? ""}
               </span>
             ) : (
-              <span>{item.expirationDate ?? "No expiry"}</span>
+              item.expirationDate != null && <span>{item.expirationDate}</span>
             )}
           </p>
         </div>

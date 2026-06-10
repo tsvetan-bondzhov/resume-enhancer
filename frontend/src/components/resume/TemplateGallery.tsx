@@ -101,9 +101,17 @@ export default function TemplateGallery({
       ? templates
       : templates.filter((t) => t.name.toLowerCase().includes(tab))
 
+  const activeTemplate = templates.find(t => t.id === activeTemplateId)
+
   return (
     <div className="px-3 py-2">
       <p className="text-sm font-medium mb-3">Templates</p>
+      {activeTemplate && (
+        <p className="text-xs text-muted-foreground mb-2">
+          Active template:{" "}
+          <span className="font-medium text-foreground">{activeTemplate.name}</span>
+        </p>
+      )}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full mb-3">
           <TabsTrigger value="all" className="flex-1 text-xs">

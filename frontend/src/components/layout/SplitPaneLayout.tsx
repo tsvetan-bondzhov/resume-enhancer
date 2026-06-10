@@ -76,7 +76,9 @@ export default function SplitPaneLayout({
             )}
           </button>
         </div>
-        <div className="flex-1 overflow-hidden">{leftSlot}</div>
+        <div className="flex-1 overflow-hidden">
+          {!isCollapsed && leftSlot}
+        </div>
       </div>
 
       {/* Center column */}

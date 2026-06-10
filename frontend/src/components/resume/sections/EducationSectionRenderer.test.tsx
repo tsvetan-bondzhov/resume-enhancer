@@ -36,6 +36,15 @@ describe("EducationSectionRenderer", () => {
     expect(screen.getByText(/2020/)).toBeInTheDocument()
   })
 
+  it("renders year-only date range in read-only mode", () => {
+    render(
+      <EducationSectionRenderer
+        items={[buildItem({ startDate: "2018-09-01", endDate: "2022-06-01" })]}
+      />
+    )
+    expect(screen.getByText(/2018 — 2022/)).toBeInTheDocument()
+  })
+
   it("calls onFieldChange with (itemId, 'institution', value) on blur", () => {
     const onFieldChange = vi.fn()
     render(<EducationSectionRenderer items={[buildItem()]} onFieldChange={onFieldChange} />)

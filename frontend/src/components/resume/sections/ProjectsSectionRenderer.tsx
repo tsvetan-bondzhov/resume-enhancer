@@ -1,5 +1,5 @@
 import { ExternalLink } from "lucide-react"
-import { formatDateRange } from "@/lib/dateUtils"
+import { formatMonthYear } from "@/lib/dateUtils"
 import type { ProjectItemDto } from "@/types/api"
 
 interface ProjectsSectionRendererProps {
@@ -63,7 +63,11 @@ export default function ProjectsSectionRenderer({
                   </span>
                 </>
               ) : (
-                <span>{formatDateRange(item.startDate, item.endDate, item.isCurrent)}</span>
+                <span>{(() => {
+                  const start = formatMonthYear(item.startDate)
+                  const end = item.isCurrent || !item.endDate ? "Present" : formatMonthYear(item.endDate)
+                  return start ? `${start} — ${end}` : end
+                })()}</span>
               )}
             </p>
           )}

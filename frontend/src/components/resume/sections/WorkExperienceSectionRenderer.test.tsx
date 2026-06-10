@@ -26,12 +26,15 @@ describe("WorkExperienceSectionRenderer", () => {
   })
 
   it("renders formatted date range (not raw YYYY-MM-DD) in read-only mode", () => {
-    render(<WorkExperienceSectionRenderer items={[buildItem()]} />)
-    // Should contain year indicators but not raw ISO
-    expect(screen.queryByText(/2020-01-01/)).not.toBeInTheDocument()
-    // Should show formatted dates
-    expect(screen.getByText(/2020/)).toBeInTheDocument()
-    expect(screen.getByText(/2023/)).toBeInTheDocument()
+    render(
+      <WorkExperienceSectionRenderer
+        items={[buildItem({ startDate: "2022-03-01", endDate: "2024-06-01", isCurrent: false })]}
+      />
+    )
+    // Should not show raw ISO format
+    expect(screen.queryByText(/2022-03-01/)).not.toBeInTheDocument()
+    // Should show MM/YYYY — MM/YYYY format
+    expect(screen.getByText(/03\/2022 — 06\/2024/)).toBeInTheDocument()
   })
 
   it("renders company name", () => {

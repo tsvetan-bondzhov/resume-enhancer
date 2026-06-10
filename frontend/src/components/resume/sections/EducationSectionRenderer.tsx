@@ -1,4 +1,4 @@
-import { formatDateRange } from "@/lib/dateUtils"
+import { formatYear } from "@/lib/dateUtils"
 import type { EducationItemDto } from "@/types/api"
 
 interface EducationSectionRendererProps {
@@ -94,7 +94,11 @@ export default function EducationSectionRenderer({
                   </span>
                 </>
               ) : (
-                <span>{formatDateRange(item.startDate, item.endDate, false)}</span>
+                <span>{(() => {
+                  const start = formatYear(item.startDate)
+                  const end = !item.endDate ? "Present" : formatYear(item.endDate)
+                  return start ? `${start} — ${end}` : end
+                })()}</span>
               )}
             </p>
           )}
