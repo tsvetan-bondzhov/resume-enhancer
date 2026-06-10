@@ -19,7 +19,7 @@ function buildTemplate(overrides?: Partial<TemplateDto>): TemplateDto {
     description: null,
     isPrebuilt: true,
     isPublished: true,
-    templateDefinition: {},
+    templateDefinition: { layoutType: "single-column" },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -98,5 +98,43 @@ describe("TemplateGallery", () => {
     await waitFor(() =>
       expect(screen.getByText(/no templates in this category/i)).toBeInTheDocument()
     )
+  })
+
+  // AC9: two-column thumbnail renders narrow left block alongside wider right block
+  it("renders two-column thumbnail structure for classic layout (AC9)", async () => {
+    mockGet.mockResolvedValue([
+      buildTemplate({
+        id: "t-classic",
+        name: "Classic",
+        templateDefinition: { layoutType: "two-column", cssVariables: { "--accent-color": "#1d4ed8" } },
+      }),
+    ])
+    render(<TemplateGallery activeTemplateId={null} onApply={vi.fn()} />)
+    await waitFor(() => screen.getByLabelText(/apply classic template/i))
+    // two-column thumbnail uses flex layout with two column divs
+    const button = screen.getByLabelText(/apply classic template/i)
+    // The two-column thumbnail has a flex container with gap-0.5
+    const thumbContainer = button.querySelector(".flex.gap-0\\.5")
+    expect(thumbContainer).toBeInTheDocument()
+  })
+
+  // AC9: modern-accent thumbnail renders accent header band with accent color
+  it("renders modern-accent thumbnail with accent band (AC9)", async () => {
+    mockGet.mockResolvedValue([
+      buildTemplate({
+        id: "t-modern",
+        name: "Modern",
+        templateDefinition: {
+          layoutType: "modern-accent",
+          cssVariables: { "--accent-color": "#0d9488" },
+        },
+      }),
+    ])
+    render(<TemplateGallery activeTemplateId={null} onApply={vi.fn()} />)
+    await waitFor(() => screen.getByLabelText(/apply modern template/i))
+    const button = screen.getByLabelText(/apply modern template/i)
+    // The accent band div should have backgroundColor set via inline style
+    const accentBand = button.querySelector("[style*='background-color']")
+    expect(accentBand).toBeInTheDocument()
   })
 })

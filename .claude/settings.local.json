@@ -13,7 +13,6 @@
       "Bash(npx tsc *)",
       "Bash(npm test *)",
       "Bash(docker info *)",
-      "Bash(py \"C:\\\\Users\\\\tseko\\\\Documents\\\\Projects\\\\resume-enhancer\\\\_bmad\\\\scripts\\\\resolve_customization.py\" --skill \"C:\\\\Users\\\\tseko\\\\Documents\\\\Projects\\\\resume-enhancer\\\\.claude\\\\skills\\\\bmad-agent-dev\" --key agent)",
       "Bash(py *)",
       "Bash(npx vitest *)",
       "Bash(git checkout *)",
@@ -23,7 +22,6 @@
       "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\tseko\\\\Documents\\\\Projects\\\\resume-enhancer\\\\src\\\\test\\\\resources\\\\samples\")",
       "Bash(Out-Null)",
       "PowerShell(New-Item *)",
-      "Bash(dir C:\\\\Users\\\\tseko\\\\Documents\\\\Projects\\\\resume-enhancer\\\\src\\\\test\\\\resources\\\\samples *)",
       "Bash(dir *)",
       "Bash(PYTHONUTF8=1 python3 *)",
       "Bash(git add *)",
@@ -43,7 +41,8 @@
       "Bash(node -e ' *)",
       "Bash(npx eslint *)",
       "Bash(echo \"mkdir result: $?\")",
-      "Bash(set PYTHONIOENCODING=utf-8)"
+      "Bash(set PYTHONIOENCODING=utf-8)",
+      "Bash(Write-Output \"Deleted\")"
     ]
   }
 }

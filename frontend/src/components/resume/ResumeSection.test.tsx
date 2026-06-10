@@ -4,7 +4,7 @@ import { useResumeStore } from "@/stores/useResumeStore"
 import { useAutosave } from "@/hooks/useAutosave"
 import { apiClient } from "@/lib/apiClient"
 import ResumeSection from "./ResumeSection"
-import type { ResumeSectionDto, ResumeDto } from "@/types/api"
+import type { ResumeSectionDto, ResumeDto, WorkExperienceItemDto, SummaryItemDto, GenericItemDto } from "@/types/api"
 
 vi.mock("@/lib/apiClient", () => ({
   apiClient: {
@@ -17,17 +17,26 @@ vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn() }),
 }))
 
+function buildWorkExperienceItem(overrides?: Partial<WorkExperienceItemDto>): WorkExperienceItemDto {
+  return {
+    type: "WORK_EXPERIENCE",
+    id: "item-1",
+    jobTitle: "Engineer",
+    company: "Acme Corp",
+    startDate: null,
+    endDate: null,
+    isCurrent: false,
+    description: null,
+    ...overrides,
+  }
+}
+
 function buildSection(overrides?: Partial<ResumeSectionDto>): ResumeSectionDto {
   return {
-    id: "test-section",
+    sectionType: "WORK_EXPERIENCE",
     title: "Work Experience",
     visible: true,
-    items: [
-      {
-        id: "item-1",
-        fields: { jobTitle: "Engineer", company: "Acme Corp" },
-      },
-    ],
+    items: [buildWorkExperienceItem()],
     ...overrides,
   }
 }
@@ -122,10 +131,7 @@ describe("ResumeSection", () => {
   it("does not render items with empty field values", () => {
     const section = buildSection({
       items: [
-        {
-          id: "item-empty",
-          fields: { jobTitle: "", company: "Only Company" },
-        },
+        buildWorkExperienceItem({ id: "item-empty", jobTitle: null, company: "Only Company" }),
       ],
     })
     const onFieldChange = vi.fn()
@@ -140,7 +146,7 @@ describe("ResumeSection", () => {
     )
 
     expect(screen.getByText("Only Company")).toBeInTheDocument()
-    // Empty jobTitle should not be rendered
+    // Null jobTitle should not be rendered
     expect(screen.queryByText("jobTitle")).not.toBeInTheDocument()
   })
 
@@ -158,10 +164,10 @@ describe("ResumeSection", () => {
       <ResumeSection
         section={section}
         onTitleChange={(title) =>
-          useResumeStore.getState().updateSectionTitle(section.id, title)
+          useResumeStore.getState().updateSectionTitle(section.sectionType, title)
         }
         onFieldChange={(itemId, field, value) =>
-          useResumeStore.getState().updateItemField(section.id, itemId, field, value)
+          useResumeStore.getState().updateItemField(section.sectionType, itemId, field, value)
         }
       />
     )
@@ -169,10 +175,10 @@ describe("ResumeSection", () => {
     const field = screen.getByText("Engineer")
     fireEvent.blur(field, { target: { textContent: "Senior Engineer" } })
 
-    const updatedFields =
+    const updatedItem =
       useResumeStore.getState().currentResume?.content.sections[0].items[0]
-        .fields
-    expect(updatedFields?.jobTitle).toBe("Senior Engineer")
+    // After updateItemField with { ...item, [field]: value }, the field is set at top level
+    expect((updatedItem as WorkExperienceItemDto).jobTitle).toBe("Senior Engineer")
   })
 
   it("onTitleChange wired to updateSectionTitle mutates useResumeStore state", () => {
@@ -187,10 +193,10 @@ describe("ResumeSection", () => {
       <ResumeSection
         section={section}
         onTitleChange={(title) =>
-          useResumeStore.getState().updateSectionTitle(section.id, title)
+          useResumeStore.getState().updateSectionTitle(section.sectionType, title)
         }
         onFieldChange={(itemId, field, value) =>
-          useResumeStore.getState().updateItemField(section.id, itemId, field, value)
+          useResumeStore.getState().updateItemField(section.sectionType, itemId, field, value)
         }
       />
     )
@@ -212,7 +218,7 @@ describe("ResumeSection", () => {
         sections: [
           {
             ...section,
-            items: [{ id: "item-1", fields: { jobTitle: "Senior Engineer", company: "Acme Corp" } }],
+            items: [buildWorkExperienceItem({ jobTitle: "Senior Engineer" })],
           },
         ],
       },
@@ -231,7 +237,7 @@ describe("ResumeSection", () => {
     act(() => {
       useResumeStore
         .getState()
-        .updateItemField(section.id, "item-1", "jobTitle", "Senior Engineer")
+        .updateItemField(section.sectionType, "item-1", "jobTitle", "Senior Engineer")
     })
 
     // Before 500ms elapses, PUT should not have been called
@@ -273,7 +279,7 @@ describe("ResumeSection", () => {
     act(() => {
       useResumeStore
         .getState()
-        .updateItemField(section.id, "item-1", "jobTitle", "Changed Title")
+        .updateItemField(section.sectionType, "item-1", "jobTitle", "Changed Title")
     })
 
     // Advance past the 500ms debounce to trigger the PUT
@@ -287,9 +293,73 @@ describe("ResumeSection", () => {
     })
 
     // Store should have reverted to the original field value
-    const revertedField =
+    const revertedItem =
       useResumeStore.getState().currentResume?.content.sections[0].items[0]
-        .fields.jobTitle
-    expect(revertedField).toBe("Engineer")
+    expect((revertedItem as WorkExperienceItemDto).jobTitle).toBe("Engineer")
+  })
+
+  // ─── AC5: sectionType-based routing dispatch ─────────────────────────────
+
+  it("sectionType WORK_EXPERIENCE dispatches to WorkExperienceSectionRenderer", () => {
+    const section = buildSection({ sectionType: "WORK_EXPERIENCE" })
+    render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    // WorkExperienceSectionRenderer renders jobTitle with font-semibold <p>
+    const jobTitleEl = screen.getByText("Engineer")
+    expect(jobTitleEl.closest("p")).toHaveClass("font-semibold")
+  })
+
+  it("sectionType SUMMARY dispatches to SummarySectionRenderer (single <p>)", () => {
+    const summaryItem: SummaryItemDto = {
+      type: "SUMMARY",
+      id: "summary-1",
+      text: "A brief professional summary.",
+    }
+    const section: ResumeSectionDto = {
+      sectionType: "SUMMARY",
+      title: "Summary",
+      visible: true,
+      items: [summaryItem],
+    }
+    const { container } = render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    // SummarySectionRenderer renders exactly one <p> for the text (excluding h2)
+    // The section has an h2 + a p from SummarySectionRenderer
+    const paragraphs = container.querySelectorAll("p")
+    expect(paragraphs).toHaveLength(1)
+    expect(paragraphs[0]).toHaveTextContent("A brief professional summary.")
+  })
+
+  it("sectionType UNKNOWN dispatches to GenericSectionRenderer (ul/li list)", () => {
+    const genericItem: GenericItemDto = {
+      type: "UNKNOWN",
+      id: "generic-1",
+      fields: { skill: "TypeScript", tool: "Vite" },
+    }
+    const section: ResumeSectionDto = {
+      sectionType: "UNKNOWN",
+      title: "Other",
+      visible: true,
+      items: [genericItem],
+    }
+    render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    expect(screen.getByText("TypeScript")).toBeInTheDocument()
+    expect(screen.getByText("Vite")).toBeInTheDocument()
   })
 })

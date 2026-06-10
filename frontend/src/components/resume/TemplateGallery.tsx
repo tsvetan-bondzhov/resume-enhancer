@@ -9,6 +9,64 @@ interface TemplateGalleryProps {
   onApply: (templateId: string) => void
 }
 
+function TemplateThumbnail({ template }: { template: TemplateDto }) {
+  const layoutType = template.templateDefinition?.layoutType
+  const accentColor = template.templateDefinition?.cssVariables?.["--accent-color"] ?? "#3b82f6"
+
+  if (layoutType === "two-column") {
+    return (
+      <div className="w-full aspect-[1/1.414] bg-zinc-100 rounded-sm mb-1.5 flex gap-0.5 p-1 overflow-hidden">
+        {/* Narrow left column */}
+        <div className="w-1/3 flex flex-col gap-0.5">
+          <div className="h-0.5 bg-zinc-300 rounded-full w-full" />
+          <div className="h-0.5 bg-zinc-200 rounded-full w-4/5" />
+          <div className="h-0.5 bg-zinc-200 rounded-full w-3/5" />
+          <div className="h-0.5 bg-zinc-300 rounded-full w-full mt-1" />
+          <div className="h-0.5 bg-zinc-200 rounded-full w-4/5" />
+        </div>
+        {/* Wider right column */}
+        <div className="flex-1 flex flex-col gap-0.5">
+          <div className="h-1 bg-zinc-300 rounded-full w-3/4" />
+          <div className="h-0.5 bg-zinc-200 rounded-full w-full" />
+          <div className="h-0.5 bg-zinc-200 rounded-full w-5/6" />
+          <div className="h-0.5 bg-zinc-200 rounded-full w-4/6" />
+        </div>
+      </div>
+    )
+  }
+
+  if (layoutType === "modern-accent") {
+    return (
+      <div className="w-full aspect-[1/1.414] bg-white rounded-sm mb-1.5 overflow-hidden">
+        {/* Accent header band */}
+        <div className="h-3 w-full" style={{ backgroundColor: accentColor }} />
+        {/* Content lines */}
+        <div className="flex flex-col gap-0.5 p-1">
+          <div className="h-0.5 bg-zinc-200 rounded-full w-full" />
+          <div className="h-0.5 bg-zinc-200 rounded-full w-5/6" />
+          <div className="h-0.5 bg-zinc-200 rounded-full w-4/6" />
+          <div className="h-1 bg-zinc-300 rounded-full w-1/2 mt-0.5" />
+          <div className="h-0.5 bg-zinc-200 rounded-full w-full" />
+          <div className="h-0.5 bg-zinc-200 rounded-full w-5/6" />
+        </div>
+      </div>
+    )
+  }
+
+  // Default: single-column (also handles undefined layoutType — graceful fallback)
+  return (
+    <div className="w-full aspect-[1/1.414] bg-zinc-100 rounded-sm mb-1.5 flex flex-col gap-0.5 p-1 overflow-hidden">
+      <div className="h-1 bg-zinc-300 rounded-full w-3/4" />
+      <div className="h-0.5 bg-zinc-200 rounded-full w-full mt-0.5" />
+      <div className="h-0.5 bg-zinc-200 rounded-full w-5/6" />
+      <div className="h-0.5 bg-zinc-200 rounded-full w-4/6" />
+      <div className="h-1 bg-zinc-300 rounded-full w-1/2 mt-1" />
+      <div className="h-0.5 bg-zinc-200 rounded-full w-full" />
+      <div className="h-0.5 bg-zinc-200 rounded-full w-5/6" />
+    </div>
+  )
+}
+
 const FILTER_TABS = ["all", "minimal", "classic", "modern"] as const
 type FilterTab = (typeof FILTER_TABS)[number]
 
@@ -92,16 +150,7 @@ export default function TemplateGallery({
                           : "border-border bg-card hover:border-zinc-400",
                       ].join(" ")}
                     >
-                      {/* Thumbnail placeholder — mini document representation */}
-                      <div className="w-full aspect-[1/1.414] bg-zinc-100 rounded-sm mb-1.5 flex flex-col gap-0.5 p-1 overflow-hidden">
-                        <div className="h-1 bg-zinc-300 rounded-full w-3/4" />
-                        <div className="h-0.5 bg-zinc-200 rounded-full w-full mt-0.5" />
-                        <div className="h-0.5 bg-zinc-200 rounded-full w-5/6" />
-                        <div className="h-0.5 bg-zinc-200 rounded-full w-4/6" />
-                        <div className="h-1 bg-zinc-300 rounded-full w-1/2 mt-1" />
-                        <div className="h-0.5 bg-zinc-200 rounded-full w-full" />
-                        <div className="h-0.5 bg-zinc-200 rounded-full w-5/6" />
-                      </div>
+                      <TemplateThumbnail template={template} />
 
                       <p className="text-xs font-medium truncate">{template.name}</p>
 

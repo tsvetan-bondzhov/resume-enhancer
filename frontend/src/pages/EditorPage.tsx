@@ -5,13 +5,12 @@ import { apiClient } from "@/lib/apiClient"
 import { useResumeStore } from "@/stores/useResumeStore"
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout"
 import SectionsPanel from "@/components/resume/SectionsPanel"
-import ResumeSection from "@/components/resume/ResumeSection"
+import ResumeCanvas from "@/components/resume/ResumeCanvas"
 import EditorToolbar from "@/components/resume/EditorToolbar"
 import SaveAsDialog from "@/components/resume/SaveAsDialog"
 import TemplateGallery from "@/components/resume/TemplateGallery"
 import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
 import { useAutosave } from "@/hooks/useAutosave"
-import { Skeleton } from "@/components/ui/skeleton"
 import type { ResumeDto } from "@/types/api"
 
 export default function EditorPage() {
@@ -39,7 +38,9 @@ export default function EditorPage() {
   const [duplicatingSidebarId, setDuplicatingSidebarId] = useState<string | null>(null)
   const pendingSidebarDeletes = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
-  const { status: autosaveStatus } = useAutosave(id)
+  const currentTemplateId = useResumeStore((state) => state.currentResume?.templateId ?? null)
+
+  const { status: autosaveStatus, isDirty, lastSavedAt, saveNow } = useAutosave(id)
 
   useEffect(() => {
     if (!id) return
@@ -243,8 +244,11 @@ export default function EditorPage() {
             <EditorToolbar
               resumeName={currentResume?.name ?? ""}
               autosaveStatus={autosaveStatus}
+              isDirty={isDirty}
+              lastSavedAt={lastSavedAt}
               isSavingAs={isSavingAs}
               onNameChange={handleNameChange}
+              onSave={saveNow}
               onSaveAs={() => setIsSaveAsOpen(true)}
               onBack={handleBack}
             />
@@ -260,70 +264,15 @@ export default function EditorPage() {
                   {autosaveStatus === "saved" && "Saved"}
                   {autosaveStatus === "error" && "Save failed"}
                 </div>
-                <div className="flex-1 overflow-y-auto bg-zinc-100 py-8 px-4 flex flex-col items-center">
-                {isLoading ? (
-                  <div
-                    id="resume-canvas"
-                    aria-label="Resume preview loading"
-                    className="bg-white shadow-lg w-full max-w-[794px] p-8 space-y-6"
-                  >
-                    <Skeleton className="h-6 w-48" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-5/6" />
-                      <Skeleton className="h-4 w-4/6" />
-                    </div>
-                    <div className="space-y-2 pt-4">
-                      <Skeleton className="h-5 w-32" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-3/4" />
-                    </div>
-                    <div className="space-y-2 pt-4">
-                      <Skeleton className="h-5 w-40" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-5/6" />
-                    </div>
-                  </div>
-                ) : currentResume === null ? (
-                  <article
-                    id="resume-canvas"
-                    aria-label="Resume preview"
-                    className="bg-white shadow-lg w-full max-w-[794px] p-8 min-h-[200px]"
-                  />
-                ) : (
-                  <article
-                    id="resume-canvas"
-                    aria-label="Resume preview"
-                    className="bg-white shadow-lg w-full max-w-[794px] p-8"
-                  >
-                    <div
-                      role="status"
-                      aria-live="polite"
-                      aria-label="AI is updating your resume"
-                      className="sr-only"
-                    >
-                      {/* SSE streaming stub — Story 4.3 */}
-                    </div>
-                    {currentResume.content.sections
-                      .filter((s) => s.visible)
-                      .map((section) => (
-                        <ResumeSection
-                          key={section.id}
-                          section={section}
-                          onTitleChange={(title) =>
-                            handleTitleChange(section.id, title)
-                          }
-                          onFieldChange={(itemId, field, value) =>
-                            handleFieldChange(section.id, itemId, field, value)
-                          }
-                        />
-                      ))}
-                  </article>
-                )}
-              </div>
-            </>
-          )}
+                <ResumeCanvas
+                  document={currentResume?.content ?? null}
+                  templateId={currentTemplateId}
+                  isLoading={isLoading}
+                  onTitleChange={handleTitleChange}
+                  onFieldChange={handleFieldChange}
+                />
+              </>
+            )}
           </div>
         }
         rightSlot={

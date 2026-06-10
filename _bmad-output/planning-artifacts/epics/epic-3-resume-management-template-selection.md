@@ -388,3 +388,262 @@ This story backfills real template definitions, adds the Java `TemplateDefinitio
 **Then** `TemplateServiceTest.java` includes a test asserting `rem`/`em` CSS units are rejected on update; `ResumeCanvas.test.tsx` verifies: (a) `cssVariables` are applied as inline `style` on the root `<article>`, (b) section render order follows template `sectionOrder`, (c) `templateId: null` applies defaults without making an API call, (d) two-column layout routes sections to correct grid areas; `TemplateGallery.test.tsx` verifies thumbnail layout structure and accent color differ by `layoutType`
 
 ---
+
+### Story 3.11: ResumeSectionType as Core Domain Concept â€” Typed Section Identifiers
+
+As a developer,
+I want `ResumeSection` to be identified by a typed `ResumeSectionType` enum instead of a freeform string,
+So that section identity is enforced at compile time, section ordering in templates is unambiguous, and the arbitrary UUID / hardcoded-string inconsistency is eliminated.
+
+**Background / Scope:**
+
+`ResumeSectionType` currently lives in `upload.parsers` â€” a parsing utility package â€” despite being a core domain concept used by both the resume domain and the parser. `ResumeSection.id` is today either a random UUID (from `LlmSectionExtractor`) or a hardcoded semantic string like `"experience"` (from `ResumeService.buildFromProfile()`). Template ordering arrays in the database reference those same hardcoded strings. This story promotes `ResumeSectionType` to `resume.domain`, replaces the freeform `id` field with a typed `sectionType` field, and migrates all callers, stored data, and frontend references.
+
+**In scope:** moving `ResumeSectionType`; renaming `ResumeSection.id` â†’ `sectionType`; updating `LlmSectionExtractor`, `ResumeService.buildFromProfile()`, `ResumeDocumentConverter`; Flyway migration for existing JSONB; updating `TemplateDefinition.DEFAULT` and prebuilt template seed JSON; updating all frontend references (`ResumeSectionDto`, `templateUtils.ts`, `ResumeCanvas.tsx`, `SectionsPanel.tsx`, tests).
+
+**Out of scope:** typed item records (Story 3.13), new profile section types (Story 3.12), section-specific renderers (Story 3.15).
+
+**Acceptance Criteria:**
+
+**Given** `ResumeSectionType` is moved to `resume.domain`
+**When** the project compiles
+**Then** `upload.parsers` imports `ResumeSectionType` from its new location; no other package holds a copy of the enum; no compilation errors
+
+**Given** the `ResumeSection` record is updated
+**When** any code constructs or reads a `ResumeSection`
+**Then** the record signature is `ResumeSection(ResumeSectionType sectionType, String title, boolean visible, List<ResumeItem> items)`; the `sectionType` field serializes as `"sectionType"` in JSON; the compact constructor rejects a `null` `sectionType` with `NullPointerException` (consistent with the existing `items` guard)
+
+**Given** `ResumeService.buildFromProfile()` is updated
+**When** a resume is created from a profile
+**Then** the three sections are constructed with `ResumeSectionType.WORK_EXPERIENCE`, `ResumeSectionType.EDUCATION`, and `ResumeSectionType.SKILLS`; no hardcoded string identifiers remain
+
+**Given** `LlmSectionExtractor.extract()` is updated
+**When** it processes a raw section
+**Then** the already-resolved `ResumeSectionType` (from `fromHeader()`) is used directly as the `sectionType` of the new `ResumeSection`; `UUID.randomUUID().toString()` is no longer used as a section identifier; `UNKNOWN` sections receive `ResumeSectionType.UNKNOWN`
+
+**Given** Flyway migration `V7__migrate_section_ids_to_type.sql` is applied
+**When** the application starts against a database with existing resume records
+**Then** every section object inside `resumes.resume_content` JSONB has its `"id"` key renamed to `"sectionType"` and its value converted: `"experience"` â†’ `"WORK_EXPERIENCE"`, `"education"` â†’ `"EDUCATION"`, `"skills"` â†’ `"SKILLS"`; any unrecognised string value maps to `"UNKNOWN"`; all other section fields are unchanged; the migration is idempotent (re-running does not corrupt data)
+
+**Given** `TemplateDefinition.DEFAULT` and the prebuilt template seed SQL are updated
+**When** `GET /api/v1/resume-templates` is called
+**Then** all `sectionOrder` and `columns.left` / `columns.right` arrays in template definitions reference `ResumeSectionType` name strings (e.g. `"WORK_EXPERIENCE"`, `"EDUCATION"`, `"SKILLS"`); `TemplateDefinition.DEFAULT.sectionOrder` equals `["WORK_EXPERIENCE", "EDUCATION", "SKILLS"]`
+
+**Given** the frontend `ResumeSectionDto` interface is updated
+**When** the API response is consumed
+**Then** the `id: string` field is replaced by `sectionType: ResumeSectionType` where `ResumeSectionType` is a TypeScript string-literal union of all Java enum values (`"WORK_EXPERIENCE" | "EDUCATION" | "SKILLS" | "CERTIFICATIONS" | "PROJECTS" | "SUMMARY" | "LANGUAGES" | "VOLUNTEERING" | "UNKNOWN"`); no frontend file references `section.id`
+
+**Given** `templateUtils.ts` and `ResumeCanvas.tsx` are updated
+**When** sections are ordered, column assignments are resolved, or ARIA `id` attributes are generated
+**Then** `getOrderedSections` matches sections via `section.sectionType`; `leftColumnIds` and `rightColumnIds` are `Set<string>` values compared against `section.sectionType`; `aria-labelledby` and React `key` props use `section.sectionType`, producing stable human-readable DOM identifiers
+
+**Given** the story is implemented
+**When** tests are run
+**Then** `ResumeCanvas.test.tsx` and `ResumeSection.test.tsx` are updated to use `sectionType` throughout; a `ResumeSectionMigrationTest.java` unit test applies the V7 migration logic to a fixture JSON document and asserts correct `sectionType` output values for all three known section types plus the `UNKNOWN` fallback
+
+---
+
+### Story 3.12: Extended Profile Domain â€” Certifications, Languages, Projects, Volunteering
+
+As a user,
+I want my profile to store certifications, languages, projects, and volunteering experience in addition to work history, education, and skills,
+So that my resume can accurately reflect my full professional background across all common section types.
+
+**Background / Scope:**
+
+`Profile` currently persists only `WorkExperience`, `Education`, and `Skill`. The `ResumeSectionType` enum already defines `CERTIFICATIONS`, `LANGUAGES`, `PROJECTS`, and `VOLUNTEERING`, but there are no domain entities, DB tables, DTOs, or service methods to back them. This story fills that gap end-to-end: from database tables through to the profile edit form.
+
+**In scope:** Flyway migration; four new JPA entities; `Profile.java` OneToMany additions; Request/DTO records; `ProfileUpdateRequest`, `ProfileDto`, `ProfileService`, and `ProfileController` updates; frontend `ProfileDto` type and profile edit form additions; unit and integration tests.
+
+**Out of scope:** mapping new entities to resume sections (Story 3.14), typed `ResumeItem` records (Story 3.13).
+
+**Acceptance Criteria:**
+
+**Given** Flyway migration `V8__add_profile_extended_sections.sql` is applied
+**When** the application starts
+**Then** four new tables exist: `profile_certifications(id UUID PK, profile_id UUID FK NOT NULL, name VARCHAR NOT NULL, issuer VARCHAR, issue_date DATE, expiration_date DATE, created_at, updated_at)`; `profile_languages(id UUID PK, profile_id UUID FK NOT NULL, name VARCHAR NOT NULL, proficiency_level VARCHAR NOT NULL, created_at, updated_at)`; `profile_projects(id UUID PK, profile_id UUID FK NOT NULL, name VARCHAR NOT NULL, description TEXT, technologies VARCHAR, link VARCHAR, start_date DATE, end_date DATE, is_current BOOLEAN NOT NULL DEFAULT false, created_at, updated_at)`; `profile_volunteering(id UUID PK, profile_id UUID FK NOT NULL, role VARCHAR NOT NULL, organization VARCHAR NOT NULL, description TEXT, start_date DATE, end_date DATE, is_current BOOLEAN NOT NULL DEFAULT false, created_at, updated_at)`
+
+**Given** the four new JPA entities are defined in `profile.domain`
+**When** Hibernate validates the schema
+**Then** `Certification`, `Language`, `Project`, and `Volunteering` each extend `BaseEntity`; each has a `@ManyToOne` to `Profile`; `Language.proficiencyLevel` is stored as `VARCHAR` mapped to a `LanguageProficiencyLevel` enum (`BEGINNER`, `ELEMENTARY`, `INTERMEDIATE`, `UPPER_INTERMEDIATE`, `ADVANCED`, `NATIVE`) using `@Enumerated(EnumType.STRING)`; all nullable columns are reflected as nullable Java fields
+
+**Given** `Profile.java` is updated
+**When** profile data is loaded or cascaded
+**Then** `Profile` gains `@OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)` lists for `certifications`, `languages`, `projects`, and `volunteering`; all four follow the same pattern as the existing `workExperiences`, `education`, and `skills` lists
+
+**Given** Request and DTO records are defined in `profile.dto`
+**When** a caller uses them
+**Then** `CertificationRequest(@NotBlank String name, String issuer, LocalDate issueDate, LocalDate expirationDate)`; `LanguageRequest(@NotBlank String name, @NotNull LanguageProficiencyLevel proficiencyLevel)`; `ProjectRequest(@NotBlank String name, String description, String technologies, String link, LocalDate startDate, LocalDate endDate, boolean isCurrent)`; `VolunteeringRequest(@NotBlank String role, @NotBlank String organization, String description, LocalDate startDate, LocalDate endDate, boolean isCurrent)`; corresponding `*Dto` records mirror the same fields without validation annotations
+
+**Given** `ProfileUpdateRequest` and `ProfileDto` are updated
+**When** `PUT /api/v1/profile` is called
+**Then** `ProfileUpdateRequest` gains optional `List<CertificationRequest> certifications`, `List<LanguageRequest> languages`, `List<ProjectRequest> projects`, `List<VolunteeringRequest> volunteering` fields; `ProfileDto` gains the four corresponding list fields; null request lists are treated as empty lists (PUT-replace strategy unchanged)
+
+**Given** `ProfileService.updateProfile()` is updated
+**When** a profile update is persisted
+**Then** the same clear-and-repopulate strategy is applied to all four new lists; `toDto()` includes all four new lists; existing behaviour for `workExperiences`, `education`, and `skills` is unchanged
+
+**Given** the frontend `ProfileDto` TypeScript interface is updated
+**When** the API response is parsed
+**Then** `ProfileDto` gains `certifications: CertificationDto[]`, `languages: LanguageDto[]`, `projects: ProjectDto[]`, `volunteering: VolunteeringDto[]`; all four default to empty arrays when absent (backward-compatible with older API responses)
+
+**Given** the profile edit form is updated
+**When** the user opens the profile page
+**Then** collapsible subsections for Certifications, Languages, Projects, and Volunteering are rendered below the existing Skills section; each subsection supports adding, inline editing, and deleting individual items using the same UX pattern as work experiences and education
+
+**Given** the story is implemented
+**When** tests are run
+**Then** `ProfileServiceTest.java` covers create, update, and clear for each of the four new entity lists; `ProfileControllerIntegrationTest.java` verifies a round-trip `PUT /api/v1/profile` with all four new lists persists correctly and is returned by `GET /api/v1/profile`
+
+---
+
+### Story 3.13: Typed Section-Specific ResumeItem Records
+
+As a developer,
+I want each resume section to hold typed item records with named, schema-enforced fields instead of a generic `Map<String, String>`,
+So that field access is compile-time safe, date values are preserved as `LocalDate`, and LLM extraction output is validated against a known per-section schema.
+
+**Background / Scope:**
+
+`ResumeItem(String id, Map<String, String> fields)` cannot enforce which fields exist, conflates structured data (dates, booleans) with raw strings, and makes renderer code brittle. This story replaces it with a sealed interface hierarchy of typed records, wires Jackson polymorphism for JSONB round-trips, migrates existing stored data, and updates `LlmSectionExtractor` to construct typed items.
+
+**In scope:** `ResumeItem` sealed interface; nine typed record implementations in `resume.domain.items`; Jackson `@JsonTypeInfo` / `@JsonSubTypes` configuration; `ResumeDocumentConverter` Jackson configuration; Flyway migration; `LlmSectionExtractor` typed construction; frontend `ResumeItemDto` discriminated union.
+
+**Out of scope:** frontend renderers (Story 3.15), full profile â†’ resume mapping for new section types (Story 3.14).
+
+**Dependencies:** Story 3.11 must be complete (`ResumeSectionType` is in `resume.domain` and `sectionType` is present on sections for the data migration).
+
+**Acceptance Criteria:**
+
+**Given** `ResumeItem` is refactored to a sealed interface
+**When** the project compiles
+**Then** `ResumeItem` in `resume.domain` is a `sealed interface` annotated with `@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")` and `@JsonSubTypes` mapping each `ResumeSectionType` name to its concrete record; nine concrete records exist in `resume.domain.items`: `WorkExperienceItem`, `EducationItem`, `SkillItem`, `CertificationItem`, `LanguageItem`, `ProjectItem`, `VolunteeringItem`, `SummaryItem`, and `GenericItem`; all implement `ResumeItem`; the old `ResumeItem(String id, Map<String, String> fields)` record is deleted
+
+**Given** the typed record fields are defined
+**When** a record is constructed
+**Then** `WorkExperienceItem(String id, String jobTitle, String company, LocalDate startDate, LocalDate endDate, boolean isCurrent, String description)` â€” `endDate` nullable; `EducationItem(String id, String institution, String degree, String fieldOfStudy, LocalDate startDate, LocalDate endDate)` â€” `degree`, `fieldOfStudy`, `endDate` nullable; `SkillItem(String id, String name, String category, String proficiency)` â€” `category`, `proficiency` nullable; `CertificationItem(String id, String name, String issuer, LocalDate issueDate, LocalDate expirationDate)` â€” `expirationDate` nullable; `LanguageItem(String id, String language, String proficiency)` â€” `proficiency` nullable; `ProjectItem(String id, String name, String description, String technologies, String link, LocalDate startDate, LocalDate endDate, boolean isCurrent)` â€” `description`, `technologies`, `link`, `endDate` nullable; `VolunteeringItem(String id, String role, String organization, String description, LocalDate startDate, LocalDate endDate, boolean isCurrent)` â€” `description`, `endDate` nullable; `SummaryItem(String id, String text)`; `GenericItem(String id, Map<String, String> fields)` â€” used for `UNKNOWN` sections and unrecognisable LLM output
+
+**Given** `ResumeDocumentConverter` is configured for polymorphism
+**When** a `ResumeDocument` containing mixed item types is serialized then deserialized
+**Then** round-trip fidelity is guaranteed: the `"type"` discriminator is written to and read from JSON; `LocalDate` fields serialize as ISO-8601 strings (`"YYYY-MM-DD"`); no item type information is lost; the `ObjectMapper` instance used is the centrally configured Spring bean (no ad-hoc `ObjectMapper` instantiation)
+
+**Given** Flyway migration `V9__migrate_resume_items_to_typed.sql` is applied
+**When** the application starts against an existing database
+**Then** for each section in each resume's `resume_content` JSONB, every item object in `{"id":"...", "fields":{...}}` form is rewritten: `fields` map entries are lifted to top-level properties; a `"type"` discriminator is added matching the parent section's `sectionType` value; items in sections with `sectionType` `"UNKNOWN"` become `GenericItem` objects with their original `fields` map preserved under a `"fields"` key; the migration is idempotent
+
+**Given** `LlmSectionExtractor` is updated
+**When** it processes LLM JSON output for a known section type
+**Then** it constructs the corresponding typed `ResumeItem` subclass directly (e.g. `new WorkExperienceItem(...)`) instead of building a `Map<String, String>`; string-to-`LocalDate` parsing failures null the affected date field and log at WARN; `GenericItem` is used only when the section type is `UNKNOWN` or when the LLM JSON cannot be mapped to the typed schema despite a valid section type; the `validateAndConvert` method is replaced or superseded by per-type construction logic
+
+**Given** `UpdateResumeRequest` carries a full `ResumeDocument` from the frontend
+**When** `ResumeDocumentConverter` deserializes it on `PUT /api/v1/resumes/{id}`
+**Then** polymorphic item types are correctly reconstructed from the frontend JSON; no `ClassCastException` or deserialization error occurs for any known `ResumeItem` subtype
+
+**Given** the story is implemented
+**When** tests are run
+**Then** `ResumeItemSerializationTest.java` round-trips each of the nine item types through `ObjectMapper.writeValueAsString` â†’ `readValue` and asserts field-level equality including `LocalDate` values; `LlmSectionExtractorTest.java` is extended to verify typed item construction for each of the eight known section types plus `GenericItem` fallback on `UNKNOWN`
+
+---
+
+### Story 3.14: Profile-to-Resume Mapping Refactor â€” All Section Types
+
+As a user,
+I want all sections from my profile â€” including certifications, languages, projects, volunteering, and summary â€” to appear in a newly created resume,
+So that my resume is pre-populated with my complete professional history without manual re-entry.
+
+**Background / Scope:**
+
+`ResumeService.buildFromProfile()` currently maps only `WorkExperience`, `Education`, and `Skill`. After Stories 3.12 and 3.13 are complete, four new profile entities and eight typed `ResumeItem` subclasses exist but are not yet connected. This story wires the full mapping and expands `TemplateDefinition.DEFAULT` to cover all section types.
+
+**In scope:** `ResumeService.buildFromProfile()` expansion to all eight non-`UNKNOWN` section types; typed item construction per section; default visibility rules for empty sections; `TemplateDefinition.DEFAULT` sectionOrder update; unit tests.
+
+**Out of scope:** frontend renderers (Story 3.15), API changes.
+
+**Dependencies:** Story 3.12 (new profile entities must exist), Story 3.13 (typed item records must exist).
+
+**Acceptance Criteria:**
+
+**Given** `buildFromProfile()` is called on a fully-populated profile
+**When** the `ResumeDocument` is returned
+**Then** it contains exactly eight sections in the following default order: `SUMMARY`, `WORK_EXPERIENCE`, `EDUCATION`, `SKILLS`, `CERTIFICATIONS`, `PROJECTS`, `LANGUAGES`, `VOLUNTEERING`; each section uses the correct `ResumeSectionType` enum value; each item is the correct typed `ResumeItem` subclass
+
+**Given** `buildFromProfile()` maps each entity type
+**When** items are constructed
+**Then** `WorkExperienceItem` fields are mapped 1-to-1 from `WorkExperience` entity fields with `LocalDate` values preserved; `EducationItem` from `Education`; `SkillItem` from `Skill` (`category` and `proficiency` are null); `CertificationItem` from `Certification`; `LanguageItem` from `Language` (proficiency from `proficiencyLevel.name()`); `ProjectItem` from `Project`; `VolunteeringItem` from `Volunteering`; the `SUMMARY` section contains a single `SummaryItem` whose `text` is `profile.getSummary()`
+
+**Given** a profile section has no items (e.g. no certifications on file)
+**When** `buildFromProfile()` constructs that section
+**Then** the section is still added to the document with `visible: false` and an empty items list; sections that do have items default to `visible: true`; this ensures `SectionsPanel` can reveal a section later without requiring a re-parse
+
+**Given** the profile `summary` field is null or blank
+**When** the `SUMMARY` section is constructed
+**Then** it is added with `visible: false` and a single `SummaryItem` with an empty string `text`
+
+**Given** `TemplateDefinition.DEFAULT` is updated
+**When** `getOrderedSections()` is called without a template
+**Then** the default section order is `["SUMMARY", "WORK_EXPERIENCE", "EDUCATION", "SKILLS", "CERTIFICATIONS", "PROJECTS", "LANGUAGES", "VOLUNTEERING"]`; the prebuilt template seed SQL (`V6`) is updated so the three existing templates either adopt this expanded order or define explicit overrides
+
+**Given** `deepCopyDocument()` is called during a clone operation
+**When** the document contains all eight section types with typed items
+**Then** all typed item subclasses are correctly reconstructed; no `ClassCastException`; no data loss
+
+**Given** the story is implemented
+**When** unit tests are run
+**Then** `ResumeServiceTest.java` contains a `buildFromProfile_allSections` test with a fully-populated profile fixture asserting: section count is eight, sections appear in the correct order, each item is the correct subclass, and key field values are correctly mapped; a second `buildFromProfile_emptySections` test verifies sections with no profile data are added with `visible: false`
+
+---
+
+### Story 3.15: Section-Specific Frontend Resume Renderers
+
+As a user editing or previewing a resume,
+I want each section to render with a layout and typography appropriate to its content type (e.g. date ranges in muted italic, skill chips, project links),
+So that the resume canvas looks like a polished, structured resume rather than a uniform list of raw field values.
+
+**Background / Scope:**
+
+`ResumeSection.tsx` iterates `Object.entries(item.fields)` and renders each value as an unstyled span. `ResumeCanvas.tsx` duplicates this logic in a separate read-only branch. After Stories 3.11 and 3.13 are complete, sections carry a typed `sectionType` and items are discriminated-union DTOs â€” this story builds section-specific renderer components, consolidates the two `ResumeCanvas` render paths, and adds a date formatting utility.
+
+**In scope:** `lib/dateUtils.ts`; frontend `ResumeItemDto` discriminated union; nine renderer components in `components/resume/sections/`; `ResumeSection.tsx` refactor as a routing component; `ResumeCanvas.tsx` consolidation; tests.
+
+**Out of scope:** export rendering (Epic 5), template-driven per-section style overrides from `TemplateSectionStyle` (Epic 5).
+
+**Dependencies:** Story 3.11 (`sectionType` on `ResumeSectionDto`), Story 3.13 (typed `ResumeItemDto`), Story 3.14 (all section types present in resume documents).
+
+**Acceptance Criteria:**
+
+**Given** `lib/dateUtils.ts` is added
+**When** `formatDateRange(startDate, endDate, isCurrent)` is called
+**Then** it returns a human-readable range formatted as `"MMM YYYY â€“ MMM YYYY"` (e.g. `"Jan 2020 â€“ Jun 2023"`); when `isCurrent` is `true` or `endDate` is `null` it returns `"MMM YYYY â€“ Present"`; when both `startDate` and `endDate` are `null` it returns an empty string; month abbreviations are derived from `Intl.DateTimeFormat` using the user's locale
+
+**Given** `types/api.ts` is updated
+**When** the frontend consumes `ResumeSectionDto.items`
+**Then** `ResumeItemDto` is a TypeScript discriminated union keyed on `type: ResumeSectionType` with nine members â€” `WorkExperienceItemDto`, `EducationItemDto`, `SkillItemDto`, `CertificationItemDto`, `LanguageItemDto`, `ProjectItemDto`, `VolunteeringItemDto`, `SummaryItemDto`, `GenericItemDto` â€” each with fields matching the corresponding Java record from Story 3.13; `ResumeSectionDto.items` is typed as `ResumeItemDto[]`; TypeScript exhaustiveness checking (`never` default branch) is enforced wherever the union is switched on
+
+**Given** section renderer components are created in `components/resume/sections/`
+**When** they receive their typed items
+**Then** the following nine components render correct structure:
+- `WorkExperienceSectionRenderer.tsx`: per-item block â€” job title (`font-semibold`), company + formatted date range on one line (`text-muted-foreground italic`), description as body text below
+- `EducationSectionRenderer.tsx`: per-item block â€” degree + field of study (`font-semibold`), institution + date range (`text-muted-foreground italic`)
+- `SkillsSectionRenderer.tsx`: skills as inline `<span>` chips; when `category` is present, skills are grouped under a category label
+- `CertificationsSectionRenderer.tsx`: per-item line â€” certification name (`font-medium`), issuer (`text-muted-foreground`), issue date and expiration date (or "No expiry")
+- `LanguagesSectionRenderer.tsx`: per-item line â€” language name and proficiency level badge
+- `ProjectsSectionRenderer.tsx`: per-item block â€” project name (`font-semibold`), technology chips, description, external link icon when `link` is present
+- `VolunteeringSectionRenderer.tsx`: per-item block â€” role (`font-semibold`), organization + date range (`text-muted-foreground italic`), description below
+- `SummarySectionRenderer.tsx`: single `<p>` element with prose text; no list wrapper
+- `GenericSectionRenderer.tsx`: fallback â€” renders `Object.entries(fields).filter(([, v]) => Boolean(v))` as an unstyled list, preserving current behaviour for `UNKNOWN` sections
+
+**Given** edit mode is active (callbacks are defined)
+**When** a user clicks any editable text field in any section renderer
+**Then** `contentEditable`, `suppressContentEditableWarning`, and `onBlur` â†’ `onFieldChange(itemId, fieldName, value)` are applied to every leaf text node mapping to a named item field; the `fieldName` passed to `onFieldChange` matches the typed record field name (e.g. `"jobTitle"`, `"company"`), not an arbitrary map key; date fields are rendered and edited as plain `YYYY-MM-DD` strings
+
+**Given** `ResumeSection.tsx` is refactored as a routing component
+**When** it renders a section
+**Then** it reads `section.sectionType` and delegates to the matching renderer from `components/resume/sections/`; the `<section>` wrapper and editable `<h2>` title remain in `ResumeSection.tsx` and are not duplicated inside individual renderers; the prop interface `{ section: ResumeSectionDto; onTitleChange: (title: string) => void; onFieldChange: (itemId: string, field: string, value: string) => void }` is unchanged
+
+**Given** `ResumeCanvas.tsx` is updated
+**When** it renders in either editable or read-only mode
+**Then** the duplicated inline read-only `<section>` / `<ul>` / `<li>` render path inside `ResumeCanvas.tsx` is removed; `ResumeCanvas` always renders `<ResumeSection>` components regardless of whether edit callbacks are passed; read-only behaviour is handled inside each section renderer by the absence of `onFieldChange`; the `isEditable` variable in `ResumeCanvas.tsx` is deleted
+
+**Given** the story is implemented
+**When** tests are run
+**Then** `WorkExperienceSectionRenderer.test.tsx` verifies date range formatting, `font-semibold` job title, and `onFieldChange` callback on blur; `EducationSectionRenderer.test.tsx` verifies the same patterns; `SummarySectionRenderer.test.tsx` verifies a single `<p>` is rendered; `GenericSectionRenderer.test.tsx` verifies fallback field rendering; `ResumeSection.test.tsx` verifies `sectionType`-based routing dispatches to the correct renderer component; `lib/dateUtils.test.ts` covers all `formatDateRange` branches (both dates present, `isCurrent` true, both null)

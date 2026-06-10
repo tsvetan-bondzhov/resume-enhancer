@@ -3,6 +3,8 @@ package com.tsvetanbondzhov.resumeenhancer.common;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeAccessDeniedException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeNotFoundException;
 import com.tsvetanbondzhov.resumeenhancer.template.TemplateNotFoundException;
+import com.tsvetanbondzhov.resumeenhancer.template.TemplateValidationException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -92,6 +95,13 @@ public class GlobalExceptionHandler {
                 HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Not Found");
         return problem;
+    }
+
+    @ExceptionHandler(TemplateValidationException.class)
+    public ProblemDetail handleTemplateValidation(TemplateValidationException ex, HttpServletRequest request) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        pd.setInstance(URI.create(request.getRequestURI()));
+        return pd;
     }
 
     /**

@@ -36,6 +36,38 @@
 - Stale closure in `handleApplyTemplate` revert path (`EditorPage.tsx:131`) — under rapid successive template clicks, a failed API call reverts to the `templateId` captured in the callback's closure at creation time, which may not be the original template if the user clicked multiple templates quickly. Pre-existing React closure pattern; no user-visible impact under normal usage.
 - No EditorPage-level integration test for `handleApplyTemplate` / "Template applied" toast — `TemplateGallery.test.tsx` covers the `onApply` callback invocation path; EditorPage-level integration test for this flow is not required by the story spec.
 
+## Deferred from: code review of 3-9-llm-based-resume-parsing-pipeline (2026-06-08)
+
+- `HttpClient` created on every `OllamaHealthGuard.isAvailable()` call — no connection pooling; acceptable for single call per upload request per story design intent. Refactor to a shared `HttpClient` field in a future performance pass.
+- Empty sections (no content lines) still trigger a LLM call with empty `sectionText` — wasted API call; graceful fallback handles it; add guard `if (sectionText.isBlank()) return heuristicItems(rawSection)` in a future quality pass.
+- `CompletableFuture.get()` blocks calling servlet thread for up to 30s — thread starvation risk under concurrent load; accepted trade-off in story dev notes; address with virtual threads or async servlet in a future scalability story.
+- `ExecutionException.getCause()` not unwrapped in `catch (Exception e)` fallback log message in `ParsingService` — diagnostic quality only; unwrap cause for better log readability in a future refactor pass.
+
+## Deferred from: code review of 3-10-template-definition-backfill-and-resumecanvas-template-application (2026-06-08)
+
+- **F1** `Promise.resolve().then()` pattern in useEffect null-reset path — intentional ESLint `react-hooks/set-state-in-effect` workaround; synchronous `setState` in effect body is forbidden by project config; revisit if ESLint rule is relaxed or React changes its guidance on this pattern.
+- **F4** `TemplateDefinition.DEFAULT` missing `--item-spacing` — `Map.of()` is at 10-entry capacity; `--item-spacing` not consumed by current frontend rendering; add when DEFAULT map is restructured or `--item-spacing` is used in export rendering (Epic 5).
+- **F5** `TemplateService` CSS unit validation uses a denylist (rem/em) rather than an allowlist (px/in) — denylist is spec-mandated; unitless values like `"1.5"` for `line-height` must pass validation; tighten to an allowlist in a future template management story when all valid value formats are enumerated.
+- **F7** `getOrderedSections` in `templateUtils.ts` has no dedicated unit tests — function is covered indirectly by `ResumeCanvas.test.tsx`; add `templateUtils.test.ts` in a future test quality pass.
+- **F8** No test for `modern-accent` layout rendering in `ResumeCanvas.test.tsx` — not required by AC12; add in a future test quality pass.
+- **F10** `TemplateLayout.resolvedSectionOrder()` is spec-mandated infrastructure for Epic 5 but never called and untested — add usage and tests when `DocumentRenderer` / `PdfRenderer` are implemented in Story 5.1.
+
+## Deferred from: code review of 3-13-typed-section-specific-resumeitem-records (2026-06-09)
+
+- AC7 incomplete: `LlmSectionExtractorTest` has no typed-item test cases for `CertificationItem`, `LanguageItem`, `ProjectItem`, `VolunteeringItem`, or `EducationItem` — only `WORK_EXPERIENCE`, `SKILLS`, and `UNKNOWN` are tested. Story 3-15 adds typed section renderers; cover remaining types in that story's test expansion or a dedicated test quality pass.
+- `parseDate` silently converts year-only strings (e.g., `"2020"`) to January 1 without logging a WARN — current behavior acceptable for MVP; add a WARN log level when year-only dates are inferred to improve diagnostic traceability.
+- `GenericItem` compact constructor would NPE on maps with null values (`Map.copyOf` rejects null values) — mitigated by `toStringMap` filtering nulls before construction; risk exists if `GenericItem` is constructed directly with a user-supplied map containing null values. Add a null-value guard in the compact constructor if direct construction becomes common.
+
+## Deferred from: code review of 3-13-typed-section-specific-resumeitem-records round 2 (2026-06-10)
+
+- `isCurrent: false` and other boolean fields render as editable "false" text via `getItemFields`/`getItemDisplayValues` — the bridge approach exposes boolean record fields as contenteditable spans, which is wrong UX and allows type corruption. Deferred to Story 3.15 typed renderers which will remove contenteditable from boolean/date fields entirely.
+- Editing a boolean field (e.g. `isCurrent`) via contenteditable writes a string `"true"`/`"false"` back to the typed record via `updateItemField` — type invariant corrupted at the Zustand level; Jackson coerces string-to-boolean on next deserialization so no data loss at rest, but Zustand in-memory type is wrong. Deferred to Story 3.15.
+
+## Deferred from: code review of 3-15-section-specific-frontend-resume-renderers (2026-06-10)
+
+- `renderSectionContent` filter+map+throw pattern has dead-code `throw` branch — the `.filter(i => i.type === X)` already guarantees type; the `throw` is unreachable. Style/efficiency issue, not a bug. Address in a future refactor pass.
+- `WorkExperienceSectionRenderer.test` blur assertion may not accurately exercise `e.currentTarget.textContent` — `fireEvent.blur(field, { target: { textContent: 'Senior Engineer' } })` does not set `currentTarget.textContent` in jsdom; test passes but for reasons tied to jsdom's event model. Investigate with `userEvent.type` in a future test quality pass.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

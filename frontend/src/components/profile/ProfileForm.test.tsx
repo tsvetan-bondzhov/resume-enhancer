@@ -8,6 +8,10 @@ import ExperienceStep from "./ExperienceStep"
 import EducationStep from "./EducationStep"
 import SkillsStep from "./SkillsStep"
 import SummaryStep from "./SummaryStep"
+import CertificationsStep from "./CertificationsStep"
+import LanguagesStep from "./LanguagesStep"
+import ProjectsStep from "./ProjectsStep"
+import VolunteeringStep from "./VolunteeringStep"
 
 // Mock apiClient
 vi.mock("@/lib/apiClient", () => ({
@@ -17,12 +21,20 @@ vi.mock("@/lib/apiClient", () => ({
       workExperiences: [],
       education: [],
       skills: [],
+      certifications: [],
+      languages: [],
+      projects: [],
+      volunteering: [],
     }),
     get: vi.fn().mockResolvedValue({
       summary: null,
       workExperiences: [],
       education: [],
       skills: [],
+      certifications: [],
+      languages: [],
+      projects: [],
+      volunteering: [],
     }),
   },
 }))
@@ -52,6 +64,10 @@ function resetProfileStore() {
       workExperiences: [],
       education: [],
       skills: [],
+      certifications: [],
+      languages: [],
+      projects: [],
+      volunteering: [],
     },
     isSaving: false,
     isLoading: false,
@@ -388,5 +404,341 @@ describe("SummaryStep", () => {
 
     expect(onSaveAndContinue).not.toHaveBeenCalled()
     expect(mockNavigate).toHaveBeenCalledWith("/")
+  })
+})
+
+describe("CertificationsStep", () => {
+  beforeEach(() => {
+    resetProfileStore()
+    vi.clearAllMocks()
+  })
+
+  it("blur on empty certification name renders text-red-600 error below the field", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<CertificationsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const nameInput = screen.getByPlaceholderText("e.g. AWS Cloud Practitioner")
+    await user.click(nameInput)
+    await user.tab() // blur
+
+    await waitFor(() => {
+      const errorEl = screen.getByText("Certification name is required")
+      expect(errorEl).toBeInTheDocument()
+      expect(errorEl).toHaveClass("text-red-600")
+    })
+  })
+
+  it("clicking 'Add another' appends a new certification entry", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<CertificationsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const initialInputs = screen.getAllByPlaceholderText("e.g. AWS Cloud Practitioner")
+    expect(initialInputs).toHaveLength(1)
+
+    const addButton = screen.getByRole("button", { name: /add another/i })
+    await user.click(addButton)
+
+    await waitFor(() => {
+      const updatedInputs = screen.getAllByPlaceholderText("e.g. AWS Cloud Practitioner")
+      expect(updatedInputs).toHaveLength(2)
+    })
+  })
+
+  it("filling a valid certification and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {
+    const user = userEvent.setup()
+
+    const capturedPayload = { current: null as Partial<ProfileUpdateRequest> | null }
+    const onSaveAndContinue = vi
+      .fn()
+      .mockImplementation(async (partial: Partial<ProfileUpdateRequest>) => {
+        capturedPayload.current = partial
+      })
+
+    render(<CertificationsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const nameInput = screen.getByPlaceholderText("e.g. AWS Cloud Practitioner")
+    await user.type(nameInput, "AWS Solutions Architect")
+
+    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    await user.click(saveButton)
+
+    await waitFor(() => {
+      expect(onSaveAndContinue).toHaveBeenCalledTimes(1)
+    })
+
+    expect(capturedPayload.current).not.toBeNull()
+    expect(capturedPayload.current?.certifications).toBeDefined()
+    expect(capturedPayload.current?.certifications![0].name).toBe("AWS Solutions Architect")
+  })
+
+  it("does not call onSaveAndContinue when certification name is empty on submit", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<CertificationsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    await user.click(saveButton)
+
+    expect(onSaveAndContinue).not.toHaveBeenCalled()
+
+    await waitFor(() => {
+      expect(screen.getByText("Certification name is required")).toBeInTheDocument()
+    })
+  })
+})
+
+describe("LanguagesStep", () => {
+  beforeEach(() => {
+    resetProfileStore()
+    vi.clearAllMocks()
+  })
+
+  it("blur on empty language name renders text-red-600 error below the field", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<LanguagesStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const nameInput = screen.getByPlaceholderText("e.g. English")
+    await user.click(nameInput)
+    await user.tab() // blur
+
+    await waitFor(() => {
+      const errorEl = screen.getByText("Language name is required")
+      expect(errorEl).toBeInTheDocument()
+      expect(errorEl).toHaveClass("text-red-600")
+    })
+  })
+
+  it("clicking 'Add another' appends a new language entry", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<LanguagesStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const initialInputs = screen.getAllByPlaceholderText("e.g. English")
+    expect(initialInputs).toHaveLength(1)
+
+    const addButton = screen.getByRole("button", { name: /add another/i })
+    await user.click(addButton)
+
+    await waitFor(() => {
+      const updatedInputs = screen.getAllByPlaceholderText("e.g. English")
+      expect(updatedInputs).toHaveLength(2)
+    })
+  })
+
+  it("filling a valid language with proficiency and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {
+    const user = userEvent.setup()
+
+    const capturedPayload = { current: null as Partial<ProfileUpdateRequest> | null }
+    const onSaveAndContinue = vi
+      .fn()
+      .mockImplementation(async (partial: Partial<ProfileUpdateRequest>) => {
+        capturedPayload.current = partial
+      })
+
+    render(<LanguagesStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const nameInput = screen.getByPlaceholderText("e.g. English")
+    await user.type(nameInput, "German")
+
+    const select = screen.getByRole("combobox")
+    await user.selectOptions(select, "ADVANCED")
+
+    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    await user.click(saveButton)
+
+    await waitFor(() => {
+      expect(onSaveAndContinue).toHaveBeenCalledTimes(1)
+    })
+
+    expect(capturedPayload.current).not.toBeNull()
+    expect(capturedPayload.current?.languages).toBeDefined()
+    expect(capturedPayload.current?.languages![0].name).toBe("German")
+    expect(capturedPayload.current?.languages![0].proficiencyLevel).toBe("ADVANCED")
+  })
+
+  it("does not call onSaveAndContinue when proficiency level is not selected on submit", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<LanguagesStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const nameInput = screen.getByPlaceholderText("e.g. English")
+    await user.type(nameInput, "German")
+
+    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    await user.click(saveButton)
+
+    expect(onSaveAndContinue).not.toHaveBeenCalled()
+
+    await waitFor(() => {
+      expect(screen.getByText("Proficiency level is required")).toBeInTheDocument()
+    })
+  })
+})
+
+describe("ProjectsStep", () => {
+  beforeEach(() => {
+    resetProfileStore()
+    vi.clearAllMocks()
+  })
+
+  it("blur on empty project name renders text-red-600 error below the field", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<ProjectsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const nameInput = screen.getByPlaceholderText("e.g. Resume Enhancer")
+    await user.click(nameInput)
+    await user.tab() // blur
+
+    await waitFor(() => {
+      const errorEl = screen.getByText("Project name is required")
+      expect(errorEl).toBeInTheDocument()
+      expect(errorEl).toHaveClass("text-red-600")
+    })
+  })
+
+  it("clicking 'Add another' appends a new project entry", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<ProjectsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const initialInputs = screen.getAllByPlaceholderText("e.g. Resume Enhancer")
+    expect(initialInputs).toHaveLength(1)
+
+    const addButton = screen.getByRole("button", { name: /add another/i })
+    await user.click(addButton)
+
+    await waitFor(() => {
+      const updatedInputs = screen.getAllByPlaceholderText("e.g. Resume Enhancer")
+      expect(updatedInputs).toHaveLength(2)
+    })
+  })
+
+  it("filling a valid project and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {
+    const user = userEvent.setup()
+
+    const capturedPayload = { current: null as Partial<ProfileUpdateRequest> | null }
+    const onSaveAndContinue = vi
+      .fn()
+      .mockImplementation(async (partial: Partial<ProfileUpdateRequest>) => {
+        capturedPayload.current = partial
+      })
+
+    render(<ProjectsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const nameInput = screen.getByPlaceholderText("e.g. Resume Enhancer")
+    await user.type(nameInput, "My Portfolio Site")
+
+    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    await user.click(saveButton)
+
+    await waitFor(() => {
+      expect(onSaveAndContinue).toHaveBeenCalledTimes(1)
+    })
+
+    expect(capturedPayload.current).not.toBeNull()
+    expect(capturedPayload.current?.projects).toBeDefined()
+    expect(capturedPayload.current?.projects![0].name).toBe("My Portfolio Site")
+  })
+})
+
+describe("VolunteeringStep", () => {
+  beforeEach(() => {
+    resetProfileStore()
+    vi.clearAllMocks()
+  })
+
+  it("blur on empty role renders text-red-600 error below the field", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const roleInput = screen.getByPlaceholderText("e.g. Mentor")
+    await user.click(roleInput)
+    await user.tab() // blur
+
+    await waitFor(() => {
+      const errorEl = screen.getByText("Role is required")
+      expect(errorEl).toBeInTheDocument()
+      expect(errorEl).toHaveClass("text-red-600")
+    })
+  })
+
+  it("clicking 'Add another' appends a new volunteering entry", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const initialInputs = screen.getAllByPlaceholderText("e.g. Mentor")
+    expect(initialInputs).toHaveLength(1)
+
+    const addButton = screen.getByRole("button", { name: /add another/i })
+    await user.click(addButton)
+
+    await waitFor(() => {
+      const updatedInputs = screen.getAllByPlaceholderText("e.g. Mentor")
+      expect(updatedInputs).toHaveLength(2)
+    })
+  })
+
+  it("filling valid role and organization and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {
+    const user = userEvent.setup()
+
+    const capturedPayload = { current: null as Partial<ProfileUpdateRequest> | null }
+    const onSaveAndContinue = vi
+      .fn()
+      .mockImplementation(async (partial: Partial<ProfileUpdateRequest>) => {
+        capturedPayload.current = partial
+      })
+
+    render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const roleInput = screen.getByPlaceholderText("e.g. Mentor")
+    await user.type(roleInput, "Code Instructor")
+
+    const orgInput = screen.getByPlaceholderText("e.g. Code.org")
+    await user.type(orgInput, "Local School")
+
+    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    await user.click(saveButton)
+
+    await waitFor(() => {
+      expect(onSaveAndContinue).toHaveBeenCalledTimes(1)
+    })
+
+    expect(capturedPayload.current).not.toBeNull()
+    expect(capturedPayload.current?.volunteering).toBeDefined()
+    expect(capturedPayload.current?.volunteering![0].role).toBe("Code Instructor")
+    expect(capturedPayload.current?.volunteering![0].organization).toBe("Local School")
+  })
+
+  it("does not call onSaveAndContinue when required fields are empty on submit", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    await user.click(saveButton)
+
+    expect(onSaveAndContinue).not.toHaveBeenCalled()
+
+    await waitFor(() => {
+      expect(screen.getByText("Role is required")).toBeInTheDocument()
+      expect(screen.getByText("Organization is required")).toBeInTheDocument()
+    })
   })
 })
