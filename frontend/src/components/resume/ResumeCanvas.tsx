@@ -56,15 +56,81 @@ export default function ResumeCanvas({
     Object.entries(cssVars as Record<string, string>).filter(([, v]) => v !== undefined)
   ) as React.CSSProperties
 
-  // Two-column gets gridTemplateColumns via inline style (AC8, avoids Tailwind JIT scan issues)
-  const rootStyle: React.CSSProperties =
-    layoutType === "two-column"
-      ? { ...baseStyle, color: "var(--text-color, #111827)", gridTemplateColumns: "1fr 2fr" }
-      : { ...baseStyle, color: "var(--text-color, #111827)" }
+  const rootStyle: React.CSSProperties = {
+    ...baseStyle,
+    color: "var(--text-color, #111827)",
+  }
 
-  // Two-column: sets of section IDs belonging to each column (AC8)
-  const leftColumnIds = new Set(template?.templateDefinition?.layout?.columns?.left ?? [])
-  const rightColumnIds = new Set(template?.templateDefinition?.layout?.columns?.right ?? [])
+  // Compute ordered sections once — used by both the two-column and single-column render paths.
+  const orderedSections = document ? getOrderedSections(document.sections ?? [], template) : []
+
+  // Two-column: sets of section IDs belonging to each column (AC1/AC2/AC4)
+  const leftColumnDef = template?.templateDefinition?.layout?.columns?.left ?? []
+  const rightColumnDef = template?.templateDefinition?.layout?.columns?.right ?? []
+  const leftColumnIds = new Set(leftColumnDef)
+  const rightColumnIds = new Set(rightColumnDef)
+
+  // Build the section content node — extracted from JSX to avoid an IIFE in the render.
+  let sectionContent: React.ReactNode
+
+  if (document !== null) {
+    const isTwoColumn =
+      layoutType === "two-column" &&
+      leftColumnDef.length > 0 &&
+      rightColumnDef.length > 0
+
+    if (isTwoColumn) {
+      const leftSections = orderedSections.filter((s) => leftColumnIds.has(s.sectionType))
+      const rightSections = orderedSections.filter((s) => rightColumnIds.has(s.sectionType))
+
+      sectionContent = (
+        <div className="flex gap-6">
+          <div className="flex flex-col gap-4 basis-1/3">
+            {leftSections.map((section) => (
+              <ResumeSection
+                key={section.sectionType}
+                section={section}
+                onTitleChange={(title) => onTitleChange?.(section.sectionType, title)}
+                onFieldChange={
+                  onFieldChange
+                    ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+          <div className="flex flex-col gap-4 flex-1">
+            {rightSections.map((section) => (
+              <ResumeSection
+                key={section.sectionType}
+                section={section}
+                onTitleChange={(title) => onTitleChange?.(section.sectionType, title)}
+                onFieldChange={
+                  onFieldChange
+                    ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )
+    } else {
+      // Single-column, modern-accent, or two-column graceful degradation when column arrays are empty.
+      sectionContent = orderedSections.map((section) => (
+        <ResumeSection
+          key={section.sectionType}
+          section={section}
+          onTitleChange={(title) => onTitleChange?.(section.sectionType, title)}
+          onFieldChange={
+            onFieldChange
+              ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
+              : undefined
+          }
+        />
+      ))
+    }
+  }
 
   return (
     <div className="h-full overflow-y-auto bg-zinc-100 py-8 px-4 flex flex-col items-center">
@@ -104,11 +170,7 @@ export default function ResumeCanvas({
           id="resume-canvas"
           aria-label="Resume preview"
           style={rootStyle}
-          className={
-            layoutType === "two-column"
-              ? "bg-white shadow-lg w-full max-w-[794px] grid gap-4 p-8"
-              : "bg-white shadow-lg w-full max-w-[794px] p-8"
-          }
+          className="bg-white shadow-lg w-full max-w-[794px] p-8"
         >
           {/* ARIA live region stub for streaming — used in Story 4.3 */}
           <div
@@ -125,26 +187,7 @@ export default function ResumeCanvas({
             <div aria-hidden="true" className="bg-[var(--accent-color)] p-4 mb-6" />
           )}
 
-          {getOrderedSections(document.sections ?? [], template).map((section) => (
-            <div
-              key={section.sectionType}
-              style={
-                layoutType === "two-column"
-                  ? { gridColumn: leftColumnIds.has(section.sectionType) ? 1 : rightColumnIds.has(section.sectionType) ? 2 : undefined }
-                  : undefined
-              }
-            >
-              <ResumeSection
-                section={section}
-                onTitleChange={(title) => onTitleChange?.(section.sectionType, title)}
-                onFieldChange={
-                  onFieldChange
-                    ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
-                    : undefined
-                }
-              />
-            </div>
-          ))}
+          {sectionContent}
         </article>
       )}
     </div>

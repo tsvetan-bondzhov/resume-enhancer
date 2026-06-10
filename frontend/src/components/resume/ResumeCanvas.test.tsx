@@ -35,6 +35,18 @@ function buildTemplate(overrides: Partial<TemplateDto> = {}): TemplateDto {
   }
 }
 
+function buildTwoColumnTemplate(): TemplateDto {
+  return buildTemplate({
+    templateDefinition: {
+      layoutType: "two-column",
+      cssVariables: { "--accent-color": "#1d4ed8" },
+      layout: {
+        columns: { left: ["SKILLS"], right: ["WORK_EXPERIENCE"] },
+      },
+    },
+  })
+}
+
 describe("ResumeCanvas", () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -89,14 +101,82 @@ describe("ResumeCanvas", () => {
     })
   })
 
-  // AC8: two-column layout uses CSS Grid
-  it("applies grid layout for two-column template", async () => {
+  // AC1, AC2, AC4: two-column layout renders two sibling flex containers
+  it("renders two sibling flex column containers for two-column template", async () => {
+    mockGet.mockResolvedValue(buildTwoColumnTemplate())
+    const { container } = render(
+      <ResumeCanvas document={mockDocument} templateId="t1" />
+    )
+    await waitFor(() => expect(mockGet).toHaveBeenCalled())
+    const article = container.querySelector("#resume-canvas")!
+    await waitFor(() => {
+      // Outer flex wrapper containing both columns
+      const flexWrapper = article.querySelector(".flex.gap-6")
+      expect(flexWrapper).not.toBeNull()
+      expect(flexWrapper).toBeInTheDocument()
+      // Left column: basis-1/3
+      expect(flexWrapper!.querySelector(".basis-1\\/3")).toBeInTheDocument()
+      // Right column: flex-1
+      expect(flexWrapper!.querySelector(".flex-1")).toBeInTheDocument()
+    })
+  })
+
+  // AC2: no gridTemplateColumns injected for two-column (flex approach, not grid)
+  it("does not inject gridTemplateColumns inline style for two-column template", async () => {
+    mockGet.mockResolvedValue(buildTwoColumnTemplate())
+    const { container } = render(
+      <ResumeCanvas document={mockDocument} templateId="t1" />
+    )
+    await waitFor(() => expect(mockGet).toHaveBeenCalled())
+    await waitFor(() => {
+      const article = container.querySelector("#resume-canvas")!
+      expect(article.getAttribute("style") ?? "").not.toContain("grid-template-columns")
+    })
+  })
+
+  // AC5 regression: single-column template renders a flat list without .flex.gap-6 wrapper
+  it("renders sections without a flex wrapper for single-column template", async () => {
+    mockGet.mockResolvedValue(buildTemplate())
+    const { container } = render(
+      <ResumeCanvas document={mockDocument} templateId="t1" />
+    )
+    await waitFor(() => expect(mockGet).toHaveBeenCalled())
+    const article = container.querySelector("#resume-canvas")!
+    await waitFor(() => {
+      expect(screen.getByText("Skills")).toBeInTheDocument()
+      expect(article.querySelector(".flex.gap-6")).not.toBeInTheDocument()
+    })
+  })
+
+  // AC5 regression: modern-accent template renders a flat list without .flex.gap-6 wrapper
+  it("renders sections without a flex wrapper for modern-accent template", async () => {
+    const template = buildTemplate({
+      templateDefinition: {
+        layoutType: "modern-accent",
+        cssVariables: { "--accent-color": "#7c3aed" },
+        layout: { sectionOrder: ["SKILLS", "WORK_EXPERIENCE"] },
+      },
+    })
+    mockGet.mockResolvedValue(template)
+    const { container } = render(
+      <ResumeCanvas document={mockDocument} templateId="t1" />
+    )
+    await waitFor(() => expect(mockGet).toHaveBeenCalled())
+    const article = container.querySelector("#resume-canvas")!
+    await waitFor(() => {
+      expect(screen.getByText("Skills")).toBeInTheDocument()
+      expect(article.querySelector(".flex.gap-6")).not.toBeInTheDocument()
+    })
+  })
+
+  // Graceful degradation: two-column with empty column arrays falls back to single-column rendering
+  it("falls back to single-column rendering when two-column column arrays are empty", async () => {
     const template = buildTemplate({
       templateDefinition: {
         layoutType: "two-column",
-        cssVariables: { "--accent-color": "#1d4ed8" },
+        cssVariables: {},
         layout: {
-          columns: { left: ["SKILLS"], right: ["WORK_EXPERIENCE"] },
+          columns: { left: [], right: [] },
         },
       },
     })
@@ -106,8 +186,9 @@ describe("ResumeCanvas", () => {
     )
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
     const article = container.querySelector("#resume-canvas")!
-    await waitFor(() =>
-      expect(article.getAttribute("style")).toContain("grid-template-columns")
-    )
+    await waitFor(() => {
+      expect(screen.getByText("Skills")).toBeInTheDocument()
+      expect(article.querySelector(".flex.gap-6")).not.toBeInTheDocument()
+    })
   })
 })

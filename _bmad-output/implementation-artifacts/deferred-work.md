@@ -74,6 +74,10 @@
 - `formatMonthYear`/`formatYear` return `"NaN/NaN"`/`"NaN"` for invalid date strings — `new Date("invalid")` produces `Invalid Date`; UTC accessors return `NaN`; same flaw exists in `formatDateRange`; upstream API validation is the correct guard; address if invalid-date values reach the frontend in practice.
 - Null `startDate` + non-null `endDate` in WorkExperience/Projects renders end date alone without separator — unspecified edge case not covered by AC4/5; not a regression vs previous `formatDateRange` behaviour; address when date display edge cases are formally specified.
 
+## Deferred from: code review of 4-2-classic-template-two-column-layout-fix (2026-06-10)
+
+- V13 migration `DO` block raises `RAISE EXCEPTION` when the Classic template row is absent — makes the migration fail-fast on a missing seed row rather than silently no-op. Pre-existing fail-fast pattern; acceptable for seeded environments; if a zero-row-count scenario is ever possible in CI, convert to a plain `UPDATE` (no DO block) or add a conditional guard.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 
