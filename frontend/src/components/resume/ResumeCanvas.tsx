@@ -3,20 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { apiClient } from "@/lib/apiClient"
 import { getOrderedSections } from "@/lib/templateUtils"
 import ResumeSection from "@/components/resume/ResumeSection"
-import type { ResumeDocumentDto, ResumeItemDto, TemplateDto } from "@/types/api"
-
-/**
- * Extracts displayable values from any ResumeItemDto subtype for read-only rendering.
- * Story 3.15 will replace this with per-type renderers.
- */
-function getItemDisplayValues(item: ResumeItemDto): string[] {
-  if (item.type === "UNKNOWN") return Object.values(item.fields).filter(Boolean)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, type, ...rest } = item as Record<string, unknown>
-  return Object.values(rest)
-    .filter((v) => v !== null && v !== undefined && v !== "")
-    .map(String)
-}
+import type { ResumeDocumentDto, TemplateDto } from "@/types/api"
 
 interface ResumeCanvasProps {
   document: ResumeDocumentDto | null
@@ -79,8 +66,6 @@ export default function ResumeCanvas({
   const leftColumnIds = new Set(template?.templateDefinition?.layout?.columns?.left ?? [])
   const rightColumnIds = new Set(template?.templateDefinition?.layout?.columns?.right ?? [])
 
-  const isEditable = onTitleChange !== undefined && onFieldChange !== undefined
-
   return (
     <div className="h-full overflow-y-auto bg-zinc-100 py-8 px-4 flex flex-col items-center">
       {isLoading ? (
@@ -140,53 +125,26 @@ export default function ResumeCanvas({
             <div aria-hidden="true" className="bg-[var(--accent-color)] p-4 mb-6" />
           )}
 
-          {getOrderedSections(document.sections ?? [], template).map((section) =>
-            isEditable ? (
-              <div
-                key={section.sectionType}
-                style={
-                  layoutType === "two-column"
-                    ? { gridColumn: leftColumnIds.has(section.sectionType) ? 1 : rightColumnIds.has(section.sectionType) ? 2 : undefined }
+          {getOrderedSections(document.sections ?? [], template).map((section) => (
+            <div
+              key={section.sectionType}
+              style={
+                layoutType === "two-column"
+                  ? { gridColumn: leftColumnIds.has(section.sectionType) ? 1 : rightColumnIds.has(section.sectionType) ? 2 : undefined }
+                  : undefined
+              }
+            >
+              <ResumeSection
+                section={section}
+                onTitleChange={(title) => onTitleChange?.(section.sectionType, title)}
+                onFieldChange={
+                  onFieldChange
+                    ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
                     : undefined
                 }
-              >
-                <ResumeSection
-                  section={section}
-                  onTitleChange={(title) => onTitleChange(section.sectionType, title)}
-                  onFieldChange={(itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)}
-                />
-              </div>
-            ) : (
-              <section
-                key={section.sectionType}
-                aria-labelledby={`section-title-${section.sectionType}`}
-                className="mb-6"
-                style={
-                  layoutType === "two-column"
-                    ? { gridColumn: leftColumnIds.has(section.sectionType) ? 1 : rightColumnIds.has(section.sectionType) ? 2 : undefined }
-                    : undefined
-                }
-              >
-                <h2
-                  id={`section-title-${section.sectionType}`}
-                  className={
-                    layoutType === "modern-accent"
-                      ? "text-base font-semibold border-b-2 border-[var(--accent-color)] pb-1 mb-2 uppercase tracking-wide"
-                      : "text-base font-semibold border-b border-zinc-200 pb-1 mb-2 uppercase tracking-wide"
-                  }
-                >
-                  {section.title}
-                </h2>
-                <ul className="space-y-1 text-sm list-none p-0">
-                  {section.items.map((item) => (
-                    <li key={item.id}>
-                      {getItemDisplayValues(item).join(" · ")}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )
-          )}
+              />
+            </div>
+          ))}
         </article>
       )}
     </div>

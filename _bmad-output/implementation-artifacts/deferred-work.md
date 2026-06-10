@@ -63,6 +63,11 @@
 - `isCurrent: false` and other boolean fields render as editable "false" text via `getItemFields`/`getItemDisplayValues` — the bridge approach exposes boolean record fields as contenteditable spans, which is wrong UX and allows type corruption. Deferred to Story 3.15 typed renderers which will remove contenteditable from boolean/date fields entirely.
 - Editing a boolean field (e.g. `isCurrent`) via contenteditable writes a string `"true"`/`"false"` back to the typed record via `updateItemField` — type invariant corrupted at the Zustand level; Jackson coerces string-to-boolean on next deserialization so no data loss at rest, but Zustand in-memory type is wrong. Deferred to Story 3.15.
 
+## Deferred from: code review of 3-15-section-specific-frontend-resume-renderers (2026-06-10)
+
+- `renderSectionContent` filter+map+throw pattern has dead-code `throw` branch — the `.filter(i => i.type === X)` already guarantees type; the `throw` is unreachable. Style/efficiency issue, not a bug. Address in a future refactor pass.
+- `WorkExperienceSectionRenderer.test` blur assertion may not accurately exercise `e.currentTarget.textContent` — `fireEvent.blur(field, { target: { textContent: 'Senior Engineer' } })` does not set `currentTarget.textContent` in jsdom; test passes but for reasons tied to jsdom's event model. Investigate with `userEvent.type` in a future test quality pass.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

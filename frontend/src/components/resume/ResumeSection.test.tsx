@@ -4,7 +4,7 @@ import { useResumeStore } from "@/stores/useResumeStore"
 import { useAutosave } from "@/hooks/useAutosave"
 import { apiClient } from "@/lib/apiClient"
 import ResumeSection from "./ResumeSection"
-import type { ResumeSectionDto, ResumeDto, WorkExperienceItemDto } from "@/types/api"
+import type { ResumeSectionDto, ResumeDto, WorkExperienceItemDto, SummaryItemDto, GenericItemDto } from "@/types/api"
 
 vi.mock("@/lib/apiClient", () => ({
   apiClient: {
@@ -296,5 +296,70 @@ describe("ResumeSection", () => {
     const revertedItem =
       useResumeStore.getState().currentResume?.content.sections[0].items[0]
     expect((revertedItem as WorkExperienceItemDto).jobTitle).toBe("Engineer")
+  })
+
+  // ─── AC5: sectionType-based routing dispatch ─────────────────────────────
+
+  it("sectionType WORK_EXPERIENCE dispatches to WorkExperienceSectionRenderer", () => {
+    const section = buildSection({ sectionType: "WORK_EXPERIENCE" })
+    render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    // WorkExperienceSectionRenderer renders jobTitle with font-semibold <p>
+    const jobTitleEl = screen.getByText("Engineer")
+    expect(jobTitleEl.closest("p")).toHaveClass("font-semibold")
+  })
+
+  it("sectionType SUMMARY dispatches to SummarySectionRenderer (single <p>)", () => {
+    const summaryItem: SummaryItemDto = {
+      type: "SUMMARY",
+      id: "summary-1",
+      text: "A brief professional summary.",
+    }
+    const section: ResumeSectionDto = {
+      sectionType: "SUMMARY",
+      title: "Summary",
+      visible: true,
+      items: [summaryItem],
+    }
+    const { container } = render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    // SummarySectionRenderer renders exactly one <p> for the text (excluding h2)
+    // The section has an h2 + a p from SummarySectionRenderer
+    const paragraphs = container.querySelectorAll("p")
+    expect(paragraphs).toHaveLength(1)
+    expect(paragraphs[0]).toHaveTextContent("A brief professional summary.")
+  })
+
+  it("sectionType UNKNOWN dispatches to GenericSectionRenderer (ul/li list)", () => {
+    const genericItem: GenericItemDto = {
+      type: "UNKNOWN",
+      id: "generic-1",
+      fields: { skill: "TypeScript", tool: "Vite" },
+    }
+    const section: ResumeSectionDto = {
+      sectionType: "UNKNOWN",
+      title: "Other",
+      visible: true,
+      items: [genericItem],
+    }
+    render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    expect(screen.getByText("TypeScript")).toBeInTheDocument()
+    expect(screen.getByText("Vite")).toBeInTheDocument()
   })
 })

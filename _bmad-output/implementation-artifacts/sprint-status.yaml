@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-10
+last_updated: 2026-06-10 # review complete
 project: resume-enhancer
 project_key: NOKEY
 tracking_system: file-system
@@ -75,7 +75,7 @@ development_status:
   3-12-extended-profile-domain-certifications-languages-projects-volunteering: done
   3-13-typed-section-specific-resumeitem-records: done
   3-14-profile-to-resume-mapping-refactor-all-section-types: done
-  3-15-section-specific-frontend-resume-renderers: backlog
+  3-15-section-specific-frontend-resume-renderers: done
   epic-3-retrospective: optional
 
   # ─── Epic 4: AI Enhancement & Conversational Chat ───
