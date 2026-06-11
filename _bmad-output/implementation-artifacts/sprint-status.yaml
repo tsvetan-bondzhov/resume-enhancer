@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-11 # Epic 4 created; Epics 4-7 shifted to 5-8; 4-1 → done; 4-2 → done; 4-3 → done; 4-4 → done; 4-5 → done; 4-6 → done; 4-7 → done; 4-8 → done
+last_updated: 2026-06-11 # Epic 4 created; Epics 4-7 shifted to 5-8; 4-1 → done; 4-2 → done; 4-3 → done; 4-4 → done; 4-5 → done; 4-6 → done; 4-7 → done; 4-8 → done; 4-9 → done
 project: resume-enhancer
 project_key: NOKEY
 tracking_system: file-system
@@ -88,7 +88,7 @@ epic-4: in-progress
   4-6-profile-page-navigation-and-first-entry-deletion: done
   4-7-settings-page-with-password-change: done
   4-8-skillitem-domain-simplification: done
-  4-9-extended-summary-profile-fields-contact-and-links: ready-for-dev
+  4-9-extended-summary-profile-fields-contact-and-links: done
   4-10-parsing-service-and-parsedresumedto-refactor: ready-for-dev
   4-11-multi-page-a4-resume-rendering: ready-for-dev
   epic-4-retrospective: optional

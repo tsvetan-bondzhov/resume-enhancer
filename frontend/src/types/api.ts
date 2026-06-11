@@ -97,6 +97,12 @@ export interface SummaryItemDto {
   type: "SUMMARY"
   id: string
   text: string | null
+  linkedInUrl: string | null
+  personalPageUrl: string | null
+  blogUrl: string | null
+  contactEmail: string | null
+  locationCountry: string | null
+  locationCity: string | null
 }
 
 export interface GenericItemDto {
@@ -228,6 +234,12 @@ export interface VolunteeringDto {
 
 export interface ProfileDto {
   summary: string | null
+  linkedInUrl: string | null
+  personalPageUrl: string | null
+  blogUrl: string | null
+  contactEmail: string | null
+  locationCountry: string | null
+  locationCity: string | null
   workExperiences: WorkExperienceDto[]
   education: EducationDto[]
   skills: SkillDto[]
@@ -287,6 +299,12 @@ export interface VolunteeringRequest {
 
 export interface ProfileUpdateRequest {
   summary: string | null
+  linkedInUrl: string | null
+  personalPageUrl: string | null
+  blogUrl: string | null
+  contactEmail: string | null
+  locationCountry: string | null
+  locationCity: string | null
   workExperiences: WorkExperienceRequest[]
   education: EducationRequest[]
   skills: SkillRequest[]

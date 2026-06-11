@@ -5,6 +5,12 @@ import java.util.List;
 
 public record ProfileUpdateRequest(
         String summary,
+        String linkedInUrl,
+        String personalPageUrl,
+        String blogUrl,
+        String contactEmail,
+        String locationCountry,
+        String locationCity,
 
         @Valid
         List<WorkExperienceRequest> workExperiences,

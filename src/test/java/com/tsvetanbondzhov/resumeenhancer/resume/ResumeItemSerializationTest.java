@@ -149,7 +149,7 @@ class ResumeItemSerializationTest {
 
     @Test
     void summaryItem_roundTrip() throws Exception {
-        SummaryItem original = new SummaryItem("id-8", "Experienced engineer passionate about clean code.");
+        SummaryItem original = new SummaryItem("id-8", "Experienced engineer passionate about clean code.", null, null, null, null, null, null);
         String json = mapper.writeValueAsString(original);
         assertThat(json).contains("\"type\":\"SUMMARY\"");
 

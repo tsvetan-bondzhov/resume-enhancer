@@ -82,9 +82,19 @@ export function useResumeUpload(): {
       } else {
         const seeded: ProfileDto = {
           summary: null,
+          linkedInUrl: null,
+          personalPageUrl: null,
+          blogUrl: null,
+          contactEmail: null,
+          locationCountry: null,
+          locationCity: null,
           workExperiences: mapped.workExperiences ?? [],
           education: mapped.education ?? [],
           skills: mapped.skills ?? [],
+          certifications: [],
+          languages: [],
+          projects: [],
+          volunteering: [],
         }
         setProfile(seeded)
         setHasStarted(true)
