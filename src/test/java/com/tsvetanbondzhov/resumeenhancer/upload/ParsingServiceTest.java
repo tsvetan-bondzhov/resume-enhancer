@@ -1,7 +1,7 @@
 package com.tsvetanbondzhov.resumeenhancer.upload;
 
 import com.tsvetanbondzhov.resumeenhancer.ai.OllamaHealthGuard;
-import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem;
 import com.tsvetanbondzhov.resumeenhancer.upload.dto.ParsedResumeDto;
 import com.tsvetanbondzhov.resumeenhancer.upload.parsers.DocxParser;
 import com.tsvetanbondzhov.resumeenhancer.upload.parsers.LlmSectionExtractor;
@@ -34,11 +34,22 @@ class ParsingServiceTest {
     @InjectMocks
     private ParsingService parsingService;
 
-    // AC5: When Ollama unavailable, heuristic DTO returned, LlmSectionExtractor never called
+    // AC3/AC4: When Ollama unavailable, heuristic DTO returned, LlmSectionExtractor never called
     @Test
     void parse_ollamaUnavailable_returnsHeuristicDtoWithoutCallingLlm() {
+        WorkExperienceItem workItem = new WorkExperienceItem(
+            "id-1", "Engineer at Acme", null, null, null, false, null);
         ParsedResumeDto heuristic = new ParsedResumeDto(
-            "raw text", List.of("Engineer at Acme"), List.of("BS CS"), List.of("Java"));
+            "raw text",
+            List.of(workItem),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            null
+        );
         MockMultipartFile file = new MockMultipartFile(
             "file", "resume.pdf", "application/pdf", new byte[]{1, 2, 3});
 
@@ -51,24 +62,69 @@ class ParsingServiceTest {
         verify(llmSectionExtractor, never()).extract(any(), any());
     }
 
-    // AC4: When Ollama available, LlmSectionExtractor is called
+    // AC3: When Ollama available, LLM dto is returned (not heuristic)
     @Test
-    void parse_ollamaAvailable_callsLlmSectionExtractor() {
+    void parse_ollamaAvailable_returnsLlmDto() {
         ParsedResumeDto heuristic = new ParsedResumeDto(
-            "raw text", List.of(), List.of(), List.of());
+            "raw text", List.of(), List.of(), List.of(),
+            List.of(), List.of(), List.of(), List.of(), null);
+        WorkExperienceItem llmWorkItem = new WorkExperienceItem(
+            "llm-id", "Software Engineer", "Acme Corp", null, null, false, "Built services");
+        ParsedResumeDto llmDto = new ParsedResumeDto(
+            "raw text",
+            List.of(llmWorkItem),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            null
+        );
+        MockMultipartFile file = new MockMultipartFile(
+            "file", "resume.pdf", "application/pdf", new byte[]{1, 2, 3});
+
+        when(pdfParser.parse(file)).thenReturn(heuristic);
+        when(ollamaHealthGuard.isAvailable()).thenReturn(true);
+        when(llmSectionExtractor.extract(any(), any())).thenReturn(llmDto);
+
+        ParsedResumeDto result = parsingService.parse(file);
+
+        // LLM dto is returned — NOT the heuristic dto
+        assertThat(result).isEqualTo(llmDto);
+        assertThat(result).isNotEqualTo(heuristic);
+        assertThat(result.workExperiences()).hasSize(1);
+        assertThat(result.workExperiences().get(0).jobTitle()).isEqualTo("Software Engineer");
+        verify(llmSectionExtractor).extract(any(), any());
+    }
+
+    // AC3: When Ollama available but LLM throws, heuristic DTO is returned
+    @Test
+    void parse_ollamaAvailable_llmThrows_returnsHeuristicDto() {
+        WorkExperienceItem workItem = new WorkExperienceItem(
+            "heuristic-id", "Developer at Corp", null, null, null, false, null);
+        ParsedResumeDto heuristic = new ParsedResumeDto(
+            "raw text",
+            List.of(workItem),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            null
+        );
         MockMultipartFile file = new MockMultipartFile(
             "file", "resume.pdf", "application/pdf", new byte[]{1, 2, 3});
 
         when(pdfParser.parse(file)).thenReturn(heuristic);
         when(ollamaHealthGuard.isAvailable()).thenReturn(true);
         when(llmSectionExtractor.extract(any(), any()))
-            .thenReturn(new ResumeDocument(List.of()));
+            .thenThrow(new RuntimeException("LLM extraction failed"));
 
         ParsedResumeDto result = parsingService.parse(file);
 
-        // Heuristic DTO still returned (backward compat) — LLM was called
         assertThat(result).isEqualTo(heuristic);
-        verify(llmSectionExtractor).extract(any(), any());
     }
 
     // Upload endpoint always HTTP 200 — verified via UploadController returning ResponseEntity.ok()

@@ -1,6 +1,6 @@
 # Story 4.2: Classic Template Two-Column Layout Fix
 
-**Status:** backlog
+**Status:** done
 **Epic:** 4 — Resume Experience Polish & Foundations
 **Story Key:** 4-2-classic-template-two-column-layout-fix
 **Dependencies:** Story 3.10 (done), Story 3.15 (done)
@@ -48,8 +48,8 @@ So that items in the right column are not forced to align row-by-row with items 
 
 ### Task 1: Update `ResumeCanvas.tsx` — replace grid two-column path with two flex containers (AC: 1, 2, 4, 5)
 
-- [ ] Open `frontend/src/components/resume/ResumeCanvas.tsx`
-- [ ] Locate the `<article>` className ternary (line 108):
+- [x] Open `frontend/src/components/resume/ResumeCanvas.tsx`
+- [x] Locate the `<article>` className ternary (line 108):
   ```tsx
   className={
     layoutType === "two-column"
@@ -61,7 +61,7 @@ So that items in the right column are not forced to align row-by-row with items 
   ```tsx
   className="bg-white shadow-lg w-full max-w-[794px] p-8"
   ```
-- [ ] Locate the `rootStyle` two-column branch (line 61–63) that injects `gridTemplateColumns: "1fr 2fr"`:
+- [x] Locate the `rootStyle` two-column branch (line 61–63) that injects `gridTemplateColumns: "1fr 2fr"`:
   ```tsx
   const rootStyle: React.CSSProperties =
     layoutType === "two-column"
@@ -75,7 +75,7 @@ So that items in the right column are not forced to align row-by-row with items 
     color: "var(--text-color, #111827)",
   }
   ```
-- [ ] Replace the single `getOrderedSections(...).map(...)` block with a two-path render:
+- [x] Replace the single `getOrderedSections(...).map(...)` block with a two-path render:
   ```tsx
   {layoutType === "two-column" ? (() => {
     const allSections = getOrderedSections(document.sections ?? [], template)
@@ -128,12 +128,12 @@ So that items in the right column are not forced to align row-by-row with items 
     ))
   )}
   ```
-- [ ] Remove the now-unused `style={{ gridColumn: ... }}` wrapper `<div>` from the old `.map()` — it no longer exists in the two-column path
-- [ ] The `leftColumnIds` and `rightColumnIds` `Set` derivations (lines 66–67) are still used — keep them
+- [x] Remove the now-unused `style={{ gridColumn: ... }}` wrapper `<div>` from the old `.map()` — it no longer exists in the two-column path
+- [x] The `leftColumnIds` and `rightColumnIds` `Set` derivations (lines 66–67) are still used — keep them
 
 ### Task 2: Create Flyway migration `V13__classic_template_summary_in_right_column.sql` (AC: 3)
 
-- [ ] Create `src/main/resources/db/migration/V13__classic_template_summary_in_right_column.sql`:
+- [x] Create `src/main/resources/db/migration/V13__classic_template_summary_in_right_column.sql`:
   ```sql
   -- V13: Move SUMMARY to first position in Classic template right column.
   -- DATA migration only — no DDL changes.
@@ -147,13 +147,13 @@ So that items in the right column are not forced to align row-by-row with items 
   )
   WHERE id = '11111111-0000-0000-0000-000000000002'::uuid;
   ```
-- [ ] Verify: the left column array `["SKILLS", "LANGUAGES", "CERTIFICATIONS"]` is NOT touched by this migration (V12 already set it correctly)
-- [ ] Naming: must follow Flyway convention `V<N>__<description>.sql` — V13 is the next available number (V1 through V12 are all applied per project context)
+- [x] Verify: the left column array `["SKILLS", "LANGUAGES", "CERTIFICATIONS"]` is NOT touched by this migration (V12 already set it correctly)
+- [x] Naming: must follow Flyway convention `V<N>__<description>.sql` — V13 is the next available number (V1 through V12 are all applied per project context)
 
 ### Task 3: Update `ResumeCanvas.test.tsx` — verify two flex containers for two-column (AC: 1, 2, 5)
 
-- [ ] Open `frontend/src/components/resume/ResumeCanvas.test.tsx`
-- [ ] Update the existing `"applies grid layout for two-column template"` test (currently asserts `style contains grid-template-columns`) to instead verify the two sibling flex containers:
+- [x] Open `frontend/src/components/resume/ResumeCanvas.test.tsx`
+- [x] Update the existing `"applies grid layout for two-column template"` test (currently asserts `style contains grid-template-columns`) to instead verify the two sibling flex containers:
   ```tsx
   it("renders two sibling flex column containers for two-column template", async () => {
     const template = buildTemplate({
@@ -182,7 +182,7 @@ So that items in the right column are not forced to align row-by-row with items 
     })
   })
   ```
-- [ ] Add a test verifying `grid-template-columns` is NOT in the article style for two-column (style simplification):
+- [x] Add a test verifying `grid-template-columns` is NOT in the article style for two-column (style simplification):
   ```tsx
   it("does not inject gridTemplateColumns inline style for two-column template", async () => {
     // ... same setup as above ...
@@ -268,6 +268,33 @@ V13 changes only `right` to prepend `"SUMMARY"`:
 
 ---
 
+## Dev Agent Record
+
+### Implementation Plan
+- Task 1: Removed CSS Grid approach from `ResumeCanvas.tsx`. Simplified `rootStyle` to a single unconditional object (no `gridTemplateColumns`). Changed article `className` from a ternary to a single string. Replaced the single `.map()` block (with `gridColumn` style wrapper divs) with an IIFE two-path render: two-column gets `<div className="flex gap-6">` containing `basis-1/3` (left) and `flex-1` (right) sibling flex columns; non-two-column falls through to flat `<ResumeSection>` map.
+- Task 2: Created `V13__classic_template_summary_in_right_column.sql` — DATA-only migration, idempotent `jsonb_set` updating the Classic template right column to prepend `"SUMMARY"`. Left column untouched.
+- Task 3: Replaced old `"applies grid layout for two-column template"` test (asserting `grid-template-columns` in style) with two new tests: one asserting `flex.gap-6` wrapper, `.basis-1\/3` and `.flex-1` children exist; one asserting `grid-template-columns` is NOT in article style.
+
+### Completion Notes
+- AC1: `<article>` contains exactly `<div className="flex gap-6">` with two child divs (`basis-1/3` and `flex-1`) for two-column template.
+- AC2: No `gridColumn` style assignment; columns flow independently as sibling flex containers.
+- AC3: `V13` migration sets Classic right column to `["SUMMARY", "WORK_EXPERIENCE", "EDUCATION", "PROJECTS", "VOLUNTEERING"]`.
+- AC4: Left column `basis-1/3`, right column `flex-1` — preserves approx 1:2 ratio.
+- AC5: Single-column and modern-accent templates unaffected — flat `<ResumeSection>` map path unchanged.
+- All 139 frontend tests pass; 0 lint errors.
+
+---
+
+## Tasks/Subtasks
+
+### Review Findings
+
+- [x] [Review][Defer] V13 migration DO block throws RAISE EXCEPTION when Classic template row absent [src/main/resources/db/migration/V13__classic_template_summary_in_right_column.sql] — deferred, pre-existing pattern, not a regression introduced by this story
+
+---
+
 ## Change Log
 
 - 2026-06-10: Story created
+- 2026-06-10: Implemented — two flex-column layout replaces CSS Grid; V13 migration added; tests updated. Status → review.
+- 2026-06-10: Code review passed — 0 decision-needed, 0 patch, 1 deferred, 4 dismissed. Status → done.

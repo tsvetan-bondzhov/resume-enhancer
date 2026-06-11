@@ -1,6 +1,6 @@
 # Story 4.3: Dashboard Resume Card Live Preview
 
-**Status:** backlog
+**Status:** done
 **Epic:** 4 — Resume Experience Polish & Foundations
 **Story Key:** 4-3-dashboard-resume-card-live-preview
 **Dependencies:** Story 3.15 (done), Story 3.10 (done)
@@ -53,12 +53,12 @@ So that I can identify my resumes at a glance without needing to open them.
 
 ### Task 1: Update `ResumeDashboardCard.tsx` — replace placeholder with scaled ResumeCanvas (AC: 1, 2, 3, 4, 5, 6)
 
-- [ ] Open `frontend/src/components/resume/ResumeDashboardCard.tsx`
-- [ ] Add import:
+- [x] Open `frontend/src/components/resume/ResumeDashboardCard.tsx`
+- [x] Add import:
   ```tsx
   import ResumeCanvas from "@/components/resume/ResumeCanvas"
   ```
-- [ ] Replace the existing placeholder block:
+- [x] Replace the existing placeholder block:
   ```tsx
   {/* Mini preview area — A4 aspect ratio placeholder */}
   <div className="aspect-[1/1.414] w-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-t-xl overflow-hidden">
@@ -83,26 +83,26 @@ So that I can identify my resumes at a glance without needing to open them.
     </div>
   </div>
   ```
-- [ ] Rationale for `width: ${100 / 0.3}%` on the inner div: `ResumeCanvas` is designed for full-width rendering and uses `max-w-[794px]` internally. When the outer wrapper is narrow (card width ~220px), scaling down by 0.3 means the inner div must be `100% / 0.3 ≈ 333%` wide so that after `scale(0.3)` it occupies 100% of the outer div's width. This allows the canvas to render at its natural size, then scale down.
-- [ ] `pointer-events-none` is on the inner transformed div — the outer clipping wrapper does not need it (the parent card's `onClick` handles navigation)
-- [ ] Do NOT pass `onTitleChange` or `onFieldChange` — `ResumeCanvas` renders read-only when these are absent
+- [x] Rationale for `width: ${100 / 0.3}%` on the inner div: `ResumeCanvas` is designed for full-width rendering and uses `max-w-[794px]` internally. When the outer wrapper is narrow (card width ~220px), scaling down by 0.3 means the inner div must be `100% / 0.3 ≈ 333%` wide so that after `scale(0.3)` it occupies 100% of the outer div's width. This allows the canvas to render at its natural size, then scale down.
+- [x] `pointer-events-none` is on the inner transformed div — the outer clipping wrapper does not need it (the parent card's `onClick` handles navigation)
+- [x] Do NOT pass `onTitleChange` or `onFieldChange` — `ResumeCanvas` renders read-only when these are absent
 
 ### Task 2: Verify `DashboardPage.tsx` passes complete `ResumeDto` (AC: 2)
 
-- [ ] Open `frontend/src/pages/DashboardPage.tsx`
-- [ ] Confirm `ResumeDashboardCard` already receives the full `ResumeDto` object (line 159: `resume={resume}`) — **no changes required**; `resume` is typed as `ResumeDto` which includes the `content: ResumeDocumentDto` field; the `GET /api/v1/resumes` API response includes full content (confirmed by `ResumeDto` type in `types/api.ts`)
-- [ ] This task is a verification step only — no code changes
+- [x] Open `frontend/src/pages/DashboardPage.tsx`
+- [x] Confirm `ResumeDashboardCard` already receives the full `ResumeDto` object (line 159: `resume={resume}`) — **no changes required**; `resume` is typed as `ResumeDto` which includes the `content: ResumeDocumentDto` field; the `GET /api/v1/resumes` API response includes full content (confirmed by `ResumeDto` type in `types/api.ts`)
+- [x] This task is a verification step only — no code changes
 
 ### Task 3: Add/update `ResumeDashboardCard.test.tsx` — verify ResumeCanvas rendered inside preview (AC: 1, 4)
 
-- [ ] Check if `frontend/src/pages/DashboardPage.test.tsx` already covers `ResumeDashboardCard` rendering, or create `frontend/src/components/resume/ResumeDashboardCard.test.tsx`
-- [ ] Mock `ResumeCanvas` to avoid API calls in the test:
+- [x] Check if `frontend/src/pages/DashboardPage.test.tsx` already covers `ResumeDashboardCard` rendering, or create `frontend/src/components/resume/ResumeDashboardCard.test.tsx`
+- [x] Mock `ResumeCanvas` to avoid API calls in the test:
   ```tsx
   vi.mock("@/components/resume/ResumeCanvas", () => ({
     default: vi.fn(() => <div data-testid="resume-canvas-mock" />),
   }))
   ```
-- [ ] Write test verifying `ResumeCanvas` is rendered inside the card:
+- [x] Write test verifying `ResumeCanvas` is rendered inside the card:
   ```tsx
   it("renders ResumeCanvas inside the preview area", () => {
     const resume: ResumeDto = {
@@ -125,7 +125,7 @@ So that I can identify my resumes at a glance without needing to open them.
     expect(screen.getByTestId("resume-canvas-mock")).toBeInTheDocument()
   })
   ```
-- [ ] Write test verifying the preview wrapper has `pointer-events-none` on the scaled inner div:
+- [x] Write test verifying the preview wrapper has `pointer-events-none` on the scaled inner div:
   ```tsx
   it("preview inner div has pointer-events-none", () => {
     // ...same resume setup...
@@ -134,7 +134,7 @@ So that I can identify my resumes at a glance without needing to open them.
     expect(pointerNoneDiv).toBeInTheDocument()
   })
   ```
-- [ ] Write test verifying action buttons and info bar still render:
+- [x] Write test verifying action buttons and info bar still render:
   ```tsx
   it("preserves resume name and action buttons", () => {
     // ...render same resume...
@@ -209,6 +209,37 @@ Passing `isLoading={false}` explicitly to `ResumeCanvas` prevents the skeleton r
 
 ---
 
+## Dev Agent Record
+
+### Implementation Notes
+
+- Task 1: Added `ResumeCanvas` import to `ResumeDashboardCard.tsx`; replaced the static `aspect-[1/1.414]` placeholder with a 200px clipping wrapper containing a `scale(0.3)` inner div with `pointer-events-none`. Inner div width set to `${100/0.3}%` so canvas renders at natural width before scaling. `isLoading={false}` passed explicitly. No `onTitleChange`/`onFieldChange` passed — read-only mode.
+- Task 2: Verified `DashboardPage.tsx` already passes full `ResumeDto` (including `content`) to `ResumeDashboardCard`. No changes required.
+- Task 3: Created `ResumeDashboardCard.test.tsx` with 5 tests covering AC1 (`ResumeCanvas` rendered), AC4 (`pointer-events-none` on inner div, outer wrapper unaffected), AC5 (info bar preserved). `ResumeCanvas` mocked via `vi.mock` to prevent `apiClient` calls. All 5 tests pass; full 147-test suite passes with 0 regressions; lint 0 errors.
+
+### Completion Notes
+
+AC1 ✅ — `ResumeCanvas` replaces the gray placeholder in `ResumeDashboardCard`
+AC2 ✅ — `document={resume.content}` and `templateId={resume.templateId}` passed; no extra API calls from card
+AC3 ✅ — `scale(0.3)` + `width: 333%` inner div + 200px clipping outer wrapper achieves visual scale-to-fit
+AC4 ✅ — `pointer-events-none` on inner div; outer wrapper allows parent card `onClick` to fire
+AC5 ✅ — Info bar (name, badge, date, action buttons) unchanged; card border/shadow unchanged
+AC6 ✅ — `isLoading={false}` passed explicitly; no skeleton shown when content is already present
+
+---
+
+## Tasks / Subtasks (Review Findings)
+
+### Review Findings
+
+- [x] [Review][Patch] Extract `PREVIEW_SCALE` constant — magic number `0.3` duplicated in two style props; extracted to `const PREVIEW_SCALE = 0.3` [ResumeDashboardCard.tsx] — **applied**
+- [x] [Review][Patch] Replace `bg-white` with `bg-card` design token — hardcoded white breaks dark-mode card consistency [ResumeDashboardCard.tsx:28] — **applied**
+- [x] [Review][Patch] Add `aria-hidden="true"` to outer preview wrapper — decorative ResumeCanvas was traversable by screen readers [ResumeDashboardCard.tsx:28] — **applied**
+
+---
+
 ## Change Log
 
 - 2026-06-10: Story created
+- 2026-06-10: Implemented — replaced placeholder with scaled `ResumeCanvas`, added `ResumeDashboardCard.test.tsx` (5 tests), all ACs satisfied
+- 2026-06-10: Code review — 3 patches applied (PREVIEW_SCALE constant, bg-card token, aria-hidden); all 6 ACs verified ✅; 147 tests pass; lint 0 errors → status: done

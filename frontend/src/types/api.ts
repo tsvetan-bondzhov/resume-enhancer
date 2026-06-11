@@ -52,8 +52,6 @@ export interface SkillItemDto {
   type: "SKILLS"
   id: string
   name: string | null
-  category: string | null
-  proficiency: string | null
 }
 
 export interface CertificationItemDto {
@@ -99,6 +97,12 @@ export interface SummaryItemDto {
   type: "SUMMARY"
   id: string
   text: string | null
+  linkedInUrl: string | null
+  personalPageUrl: string | null
+  blogUrl: string | null
+  contactEmail: string | null
+  locationCountry: string | null
+  locationCity: string | null
 }
 
 export interface GenericItemDto {
@@ -230,6 +234,12 @@ export interface VolunteeringDto {
 
 export interface ProfileDto {
   summary: string | null
+  linkedInUrl: string | null
+  personalPageUrl: string | null
+  blogUrl: string | null
+  contactEmail: string | null
+  locationCountry: string | null
+  locationCity: string | null
   workExperiences: WorkExperienceDto[]
   education: EducationDto[]
   skills: SkillDto[]
@@ -289,6 +299,12 @@ export interface VolunteeringRequest {
 
 export interface ProfileUpdateRequest {
   summary: string | null
+  linkedInUrl: string | null
+  personalPageUrl: string | null
+  blogUrl: string | null
+  contactEmail: string | null
+  locationCountry: string | null
+  locationCity: string | null
   workExperiences: WorkExperienceRequest[]
   education: EducationRequest[]
   skills: SkillRequest[]
@@ -298,11 +314,74 @@ export interface ProfileUpdateRequest {
   volunteering: VolunteeringRequest[]
 }
 
+export interface ParsedResumeDtoWorkExperience {
+  jobTitle: string | null
+  company: string | null
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean
+  description: string | null
+}
+
+export interface ParsedResumeDtoEducation {
+  institution: string | null
+  degree: string | null
+  fieldOfStudy: string | null
+  startDate: string | null
+  endDate: string | null
+}
+
+export interface ParsedResumeDtoSkill {
+  name: string | null
+  category: string | null
+  proficiency: string | null
+}
+
+export interface ParsedResumeDtoCertification {
+  name: string | null
+  issuer: string | null
+  issueDate: string | null
+  expirationDate: string | null
+}
+
+export interface ParsedResumeDtoLanguage {
+  language: string | null
+  proficiency: string | null
+}
+
+export interface ParsedResumeDtoProject {
+  name: string | null
+  description: string | null
+  technologies: string | null
+  link: string | null
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean
+}
+
+export interface ParsedResumeDtoVolunteering {
+  role: string | null
+  organization: string | null
+  description: string | null
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean
+}
+
+export interface ParsedResumeDtoSummary {
+  text: string | null
+}
+
 export interface ParsedResumeDtoResponse {
   rawText: string
-  workExperienceLines: string[]
-  educationLines: string[]
-  skillLines: string[]
+  workExperiences: ParsedResumeDtoWorkExperience[]
+  education: ParsedResumeDtoEducation[]
+  skills: ParsedResumeDtoSkill[]
+  certifications: ParsedResumeDtoCertification[]
+  languages: ParsedResumeDtoLanguage[]
+  projects: ParsedResumeDtoProject[]
+  volunteering: ParsedResumeDtoVolunteering[]
+  summary: ParsedResumeDtoSummary | null
 }
 
 export interface TemplateCssVariables {

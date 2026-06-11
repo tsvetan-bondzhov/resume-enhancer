@@ -74,9 +74,34 @@ describe("useResumeUpload", () => {
     const { apiClient } = await import("@/lib/apiClient")
     vi.mocked(apiClient.uploadFile).mockResolvedValueOnce({
       rawText: "raw",
-      workExperienceLines: ["Software Engineer at Acme, 2020-2023"],
-      educationLines: ["BSc Computer Science, MIT"],
-      skillLines: ["TypeScript", "React"],
+      workExperiences: [
+        {
+          jobTitle: "Software Engineer",
+          company: "Acme Corp",
+          startDate: "2020-01-01",
+          endDate: "2023-06-01",
+          isCurrent: false,
+          description: "Built services",
+        },
+      ],
+      education: [
+        {
+          institution: "MIT",
+          degree: "BSc",
+          fieldOfStudy: "Computer Science",
+          startDate: "2016-09-01",
+          endDate: "2020-05-01",
+        },
+      ],
+      skills: [
+        { name: "TypeScript", category: null, proficiency: null },
+        { name: "React", category: null, proficiency: null },
+      ],
+      certifications: [],
+      languages: [],
+      projects: [],
+      volunteering: [],
+      summary: null,
     })
 
     const { result } = renderHook(() => useResumeUpload())
@@ -87,10 +112,10 @@ describe("useResumeUpload", () => {
     expect(state.hasStarted).toBe(true)
     expect(state.profile).not.toBeNull()
     expect(state.profile?.workExperiences).toHaveLength(1)
-    expect(state.profile?.workExperiences[0].jobTitle).toBe("Software Engineer at Acme, 2020-2023")
-    expect(state.profile?.workExperiences[0].company).toBe("")
+    expect(state.profile?.workExperiences[0].jobTitle).toBe("Software Engineer")
+    expect(state.profile?.workExperiences[0].company).toBe("Acme Corp")
     expect(state.profile?.education).toHaveLength(1)
-    expect(state.profile?.education[0].institution).toBe("BSc Computer Science, MIT")
+    expect(state.profile?.education[0].institution).toBe("MIT")
     expect(state.profile?.skills).toHaveLength(2)
     expect(state.profile?.skills[0].name).toBe("TypeScript")
     expect(result.current.isUploading).toBe(false)
@@ -117,15 +142,20 @@ describe("useResumeUpload", () => {
     expect(result.current.isUploading).toBe(false)
   })
 
-  it("Test 3: Successful upload but all line lists empty → toast.warning called; hasStarted becomes true; profile not seeded", async () => {
+  it("Test 3: Successful upload but all typed section arrays empty → toast.warning called; hasStarted becomes true; profile not seeded", async () => {
     const { apiClient } = await import("@/lib/apiClient")
     const { toast } = await import("sonner")
 
     vi.mocked(apiClient.uploadFile).mockResolvedValueOnce({
       rawText: "some raw text",
-      workExperienceLines: [],
-      educationLines: [],
-      skillLines: [],
+      workExperiences: [],
+      education: [],
+      skills: [],
+      certifications: [],
+      languages: [],
+      projects: [],
+      volunteering: [],
+      summary: null,
     })
 
     const { result } = renderHook(() => useResumeUpload())
@@ -156,5 +186,63 @@ describe("useResumeUpload", () => {
     const state = useProfileStore.getState()
     expect(state.profile).toBeNull()
     expect(result.current.isUploading).toBe(false)
+  })
+
+  it("Test 5: LLM result with all 8 section types → all sections mapped to profile store", async () => {
+    const { apiClient } = await import("@/lib/apiClient")
+
+    vi.mocked(apiClient.uploadFile).mockResolvedValueOnce({
+      rawText: "raw",
+      workExperiences: [
+        { jobTitle: "Engineer", company: "Corp", startDate: null, endDate: null, isCurrent: true, description: null },
+      ],
+      education: [
+        { institution: "University", degree: "BSc", fieldOfStudy: "CS", startDate: null, endDate: null },
+      ],
+      skills: [{ name: "Java", category: null, proficiency: null }],
+      certifications: [
+        { name: "AWS Certified", issuer: "Amazon", issueDate: "2022-01-01", expirationDate: null },
+      ],
+      languages: [{ language: "English", proficiency: "Native" }],
+      projects: [
+        {
+          name: "My Project",
+          description: "A cool project",
+          technologies: "React",
+          link: null,
+          startDate: null,
+          endDate: null,
+          isCurrent: false,
+        },
+      ],
+      volunteering: [
+        {
+          role: "Mentor",
+          organization: "Code Club",
+          description: null,
+          startDate: null,
+          endDate: null,
+          isCurrent: false,
+        },
+      ],
+      summary: { text: "Experienced engineer." },
+    })
+
+    const { result } = renderHook(() => useResumeUpload())
+
+    await simulateFileSelect(result, makeFile("resume.pdf", "application/pdf"))
+
+    const state = useProfileStore.getState()
+    expect(state.hasStarted).toBe(true)
+    expect(state.profile?.workExperiences).toHaveLength(1)
+    expect(state.profile?.education).toHaveLength(1)
+    expect(state.profile?.skills).toHaveLength(1)
+    expect(state.profile?.certifications).toHaveLength(1)
+    expect(state.profile?.certifications[0].name).toBe("AWS Certified")
+    expect(state.profile?.languages).toHaveLength(1)
+    expect(state.profile?.projects).toHaveLength(1)
+    expect(state.profile?.projects[0].name).toBe("My Project")
+    expect(state.profile?.volunteering).toHaveLength(1)
+    expect(state.profile?.summary).toBe("Experienced engineer.")
   })
 })

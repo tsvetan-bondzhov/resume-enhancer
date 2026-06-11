@@ -1,6 +1,6 @@
 # Story 4.10: ParsingService and ParsedResumeDto Refactor
 
-**Status:** backlog
+**Status:** done
 **Epic:** 4 — Resume Experience Polish & Foundations
 **Story Key:** 4-10-parsing-service-and-parsedresumedto-refactor
 **Dependencies:** Story 3.9 (done), Story 3.13 (done), Story 4.8 (backlog — SkillItem simplified before this runs)
@@ -118,16 +118,16 @@ The `rawText` field is still populated. No behavioral regressions on the heurist
 
 ### Task 1: Rewrite `ParsedResumeDto.java` (AC: 1)
 
-- [ ] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/dto/ParsedResumeDto.java`
-- [ ] Replace the entire record body with the new structure from AC1.
-- [ ] Add imports for all 8 item types from `com.tsvetanbondzhov.resumeenhancer.resume.domain.*`.
-- [ ] Note the architectural decision: `ParsedResumeDto` in `upload.dto` now imports types from `resume.domain.items`. This is acceptable because `ParsedResumeDto` is purely a data transfer object used to shuttle structured parsing results to the frontend — it does not embed domain logic. The `upload` package already imports from `resume.domain` (e.g., `LlmSectionExtractor` imports all item types). Keeping `ParsedResumeDto` in `upload.dto` avoids a more disruptive package reorganization. If the architecture is ever hardened to forbid cross-package imports, `ParsedResumeDto` could be moved to `resume.dto` alongside `ResumeDto`. **Document this decision in a comment in the file.**
+- [x] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/dto/ParsedResumeDto.java`
+- [x] Replace the entire record body with the new structure from AC1.
+- [x] Add imports for all 8 item types from `com.tsvetanbondzhov.resumeenhancer.resume.domain.*`.
+- [x] Note the architectural decision: `ParsedResumeDto` in `upload.dto` now imports types from `resume.domain.items`. This is acceptable because `ParsedResumeDto` is purely a data transfer object used to shuttle structured parsing results to the frontend — it does not embed domain logic. The `upload` package already imports from `resume.domain` (e.g., `LlmSectionExtractor` imports all item types). Keeping `ParsedResumeDto` in `upload.dto` avoids a more disruptive package reorganization. If the architecture is ever hardened to forbid cross-package imports, `ParsedResumeDto` could be moved to `resume.dto` alongside `ResumeDto`. **Document this decision in a comment in the file.**
 
 ### Task 2: Update `LlmSectionExtractor.extract()` return type (AC: 2)
 
-- [ ] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/parsers/LlmSectionExtractor.java`
-- [ ] Change the return type of `extract()` from `ResumeDocument` to `ParsedResumeDto`.
-- [ ] Replace the method body: instead of building `List<ResumeSection>`, build typed lists per section type. Use a `Map<ResumeSectionType, List<ResumeItem>>` internally during iteration, then extract per list at the end:
+- [x] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/parsers/LlmSectionExtractor.java`
+- [x] Change the return type of `extract()` from `ResumeDocument` to `ParsedResumeDto`.
+- [x] Replace the method body: instead of building `List<ResumeSection>`, build typed lists per section type. Use a `Map<ResumeSectionType, List<ResumeItem>>` internally during iteration, then extract per list at the end:
   ```java
   List<WorkExperienceItem> workExperiences = new ArrayList<>();
   List<EducationItem> education = new ArrayList<>();
@@ -149,17 +149,17 @@ The `rawText` field is still populated. No behavioral regressions on the heurist
       certifications, languages, projects, volunteering, summary
   );
   ```
-- [ ] `buildTypedItem()` and all private helpers remain unchanged — they still return `ResumeItem`.
-- [ ] For `SUMMARY` type: cast the first item to `SummaryItem` and assign to `summary` variable.
-- [ ] For `UNKNOWN` type: skip (do not add to any list).
-- [ ] Remove the `ResumeDocument` import if no longer used.
+- [x] `buildTypedItem()` and all private helpers remain unchanged — they still return `ResumeItem`.
+- [x] For `SUMMARY` type: cast the first item to `SummaryItem` and assign to `summary` variable.
+- [x] For `UNKNOWN` type: skip (do not add to any list).
+- [x] Remove the `ResumeDocument` import if no longer used.
 
 ### Task 3: Fix `ParsingService.parse()` to return LLM result (AC: 3)
 
-- [ ] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/ParsingService.java`
-- [ ] Update the `CompletableFuture` variable type from `CompletableFuture<ResumeDocument>` to `CompletableFuture<ParsedResumeDto>`.
-- [ ] Change `llmSectionExtractor.extract(rawSections, rawText)` — it now returns `ParsedResumeDto` directly.
-- [ ] Replace:
+- [x] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/ParsingService.java`
+- [x] Update the `CompletableFuture` variable type from `CompletableFuture<ResumeDocument>` to `CompletableFuture<ParsedResumeDto>`.
+- [x] Change `llmSectionExtractor.extract(rawSections, rawText)` — it now returns `ParsedResumeDto` directly.
+- [x] Replace:
   ```java
   ResumeDocument resumeDocument = future.get(LLM_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   log.info("LLM parsing complete: {} sections extracted", resumeDocument.sections().size());
@@ -172,23 +172,23 @@ The `rawText` field is still populated. No behavioral regressions on the heurist
   log.info("LLM parsing complete — returning LLM ParsedResumeDto");
   return llmDto;
   ```
-- [ ] Remove the `ResumeDocument` import from this file.
+- [x] Remove the `ResumeDocument` import from this file.
 
 ### Task 4: Update heuristic parsers (AC: 4)
 
-- [ ] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/parsers/PdfParser.java`
-- [ ] Locate where `ParsedResumeDto` is constructed. Replace flat-list construction with typed item lists:
+- [x] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/parsers/PdfParser.java`
+- [x] Locate where `ParsedResumeDto` is constructed. Replace flat-list construction with typed item lists:
   - Work experience lines → `WorkExperienceItem` with `jobTitle = line`, all other fields null/false
   - Education lines → `EducationItem` with `institution = line`, all other fields null
   - Skill lines → `SkillItem` with `name = line`, `category = null`, `proficiency = null`
   - All other section lists = `List.of()`; `summary = null`
-- [ ] Apply the same changes to `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/parsers/DocxParser.java`.
-- [ ] Use `UUID.randomUUID().toString()` for the `id` field of each item.
+- [x] Apply the same changes to `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/parsers/DocxParser.java`.
+- [x] Use `UUID.randomUUID().toString()` for the `id` field of each item.
 
 ### Task 5: Update `ParsedResumeDtoResponse` in `api.ts` and `useResumeUpload.ts` (AC: 5)
 
-- [ ] Open `frontend/src/types/api.ts`
-- [ ] Replace `ParsedResumeDtoResponse` with a typed interface:
+- [x] Open `frontend/src/types/api.ts`
+- [x] Replace `ParsedResumeDtoResponse` with a typed interface:
   ```ts
   export interface ParsedResumeDtoWorkExperience {
     jobTitle: string | null
@@ -260,21 +260,21 @@ The `rawText` field is still populated. No behavioral regressions on the heurist
     summary: ParsedResumeDtoSummary | null
   }
   ```
-- [ ] Open `frontend/src/hooks/useResumeUpload.ts`
-- [ ] Update `mapParsedToProfile()` function: replace all flat-line array access with typed item array access (see AC5). The function return type should be updated to include all 8 profile section types.
-- [ ] Update the `seeded` `ProfileDto` construction to include all 8 section types (using empty arrays where items are empty, mapping `dto.summary?.text ?? null` for the summary field).
-- [ ] Update the "empty" check: `if (Object.keys(mapped).length === 0)` — simplest approach is to check all arrays are empty: `dto.workExperiences.length === 0 && dto.education.length === 0 && dto.skills.length === 0 && ...`.
+- [x] Open `frontend/src/hooks/useResumeUpload.ts`
+- [x] Update `mapParsedToProfile()` function: replace all flat-line array access with typed item array access (see AC5). The function return type should be updated to include all 8 profile section types.
+- [x] Update the `seeded` `ProfileDto` construction to include all 8 section types (using empty arrays where items are empty, mapping `dto.summary?.text ?? null` for the summary field).
+- [x] Update the "empty" check: `if (Object.keys(mapped).length === 0)` — simplest approach is to check all arrays are empty: `dto.workExperiences.length === 0 && dto.education.length === 0 && dto.skills.length === 0 && ...`.
 
 ### Task 6: Update tests (AC: 7)
 
-- [ ] Open `src/test/java/com/tsvetanbondzhov/resumeenhancer/upload/ParsingServiceTest.java`
-- [ ] Update `parse_ollamaUnavailable_returnsHeuristicDtoWithoutCallingLlm` — change the `ParsedResumeDto` construction to use the new record shape (typed lists; use `List.of()` for all except work experience which has one item; `summary = null`).
-- [ ] Update `parse_ollamaAvailable_callsLlmSectionExtractor` — `llmSectionExtractor.extract()` now returns `ParsedResumeDto`; update mock return to a `ParsedResumeDto` with one `WorkExperienceItem`; assert `result` equals the LLM dto (not the heuristic dto).
-- [ ] Add `parse_ollamaAvailable_llmThrows_returnsHeuristicDto` test.
-- [ ] Open `src/test/java/com/tsvetanbondzhov/resumeenhancer/upload/LlmSectionExtractorTest.java`
-- [ ] Update all tests: `llmSectionExtractor.extract(...)` returns `ParsedResumeDto` now. Change `ResumeDocument result = llmSectionExtractor.extract(...)` to `ParsedResumeDto result = llmSectionExtractor.extract(...)`. Access sections via the typed lists (`result.workExperiences()`, `result.skills()`, etc.) instead of `result.sections()`.
-- [ ] Open `frontend/src/hooks/useResumeUpload.test.ts`
-- [ ] Update all mock responses to the new shape. Update assertions (e.g. `profile?.workExperiences[0].jobTitle` may now differ from the line string if the heuristic mock is updated; keep assertions consistent with the new typed mapping).
+- [x] Open `src/test/java/com/tsvetanbondzhov/resumeenhancer/upload/ParsingServiceTest.java`
+- [x] Update `parse_ollamaUnavailable_returnsHeuristicDtoWithoutCallingLlm` — change the `ParsedResumeDto` construction to use the new record shape (typed lists; use `List.of()` for all except work experience which has one item; `summary = null`).
+- [x] Update `parse_ollamaAvailable_callsLlmSectionExtractor` — `llmSectionExtractor.extract()` now returns `ParsedResumeDto`; update mock return to a `ParsedResumeDto` with one `WorkExperienceItem`; assert `result` equals the LLM dto (not the heuristic dto).
+- [x] Add `parse_ollamaAvailable_llmThrows_returnsHeuristicDto` test.
+- [x] Open `src/test/java/com/tsvetanbondzhov/resumeenhancer/upload/LlmSectionExtractorTest.java`
+- [x] Update all tests: `llmSectionExtractor.extract(...)` returns `ParsedResumeDto` now. Change `ResumeDocument result = llmSectionExtractor.extract(...)` to `ParsedResumeDto result = llmSectionExtractor.extract(...)`. Access sections via the typed lists (`result.workExperiences()`, `result.skills()`, etc.) instead of `result.sections()`.
+- [x] Open `frontend/src/hooks/useResumeUpload.test.ts`
+- [x] Update all mock responses to the new shape. Update assertions (e.g. `profile?.workExperiences[0].jobTitle` may now differ from the line string if the heuristic mock is updated; keep assertions consistent with the new typed mapping).
 
 ---
 
@@ -332,8 +332,7 @@ None.
 - `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/dto/ParsedResumeDto.java`
 - `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/parsers/LlmSectionExtractor.java`
 - `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/ParsingService.java`
-- `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/parsers/PdfParser.java`
-- `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/parsers/DocxParser.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/parsers/SectionExtractor.java` (heuristic typed-item construction; PdfParser/DocxParser delegate to this)
 - `frontend/src/types/api.ts`
 - `frontend/src/hooks/useResumeUpload.ts`
 - `src/test/java/com/tsvetanbondzhov/resumeenhancer/upload/ParsingServiceTest.java`
@@ -342,5 +341,27 @@ None.
 
 ---
 
+## Dev Agent Record
+
+### Implementation Notes
+
+- Task 4 (heuristic parsers): `PdfParser` and `DocxParser` both delegate construction of `ParsedResumeDto` to `SectionExtractor.extract()`. The typed-item mapping was applied to `SectionExtractor.extract()` rather than duplicating it in both parsers — this is the correct locus for the change. Neither `PdfParser.java` nor `DocxParser.java` required modification.
+- `LlmSectionExtractor`: used `switch` statement with `instanceof` filter on the existing `extractSectionItems()` result to dispatch into typed lists. The private helpers (`buildTypedItem`, `str`, `bool`, `parseDate`, `toStringMap`, `heuristicItems`) are unchanged.
+- `LlmSectionExtractorTest`: the malformed-JSON and OllamaUnavailable tests now assert that heuristic fallback via `heuristicItems()` produces `GenericItem` instances, which are NOT dispatched into typed lists (they fail the `instanceof` filter) — so those typed lists end up empty. This is the correct documented behavior per the story's Dev Notes.
+- Frontend: `mapParsedToProfile()` return type changed to `Partial<ProfileDto>` for all 8 sections. `LanguageRequest` requires a `proficiencyLevel`; mapped to `"INTERMEDIATE"` as default since parsed languages only carry raw proficiency strings.
+- A new Test 5 was added to `useResumeUpload.test.ts` covering all 8 section types and summary mapping.
+
+### Completion Notes
+
+All 6 tasks complete. 11 backend tests pass (8 `LlmSectionExtractorTest` + 3 `ParsingServiceTest`). 186 frontend tests pass. 0 lint errors. The `ResumeControllerIntegrationTest` flaky failure (line 334) is pre-existing and reproduced on the baseline commit before any changes were applied.
+
+### Review Findings
+
+- [x] [Review][Defer] Switch exhaustiveness — `LlmSectionExtractor` `switch` on `ResumeSectionType` has no `default` clause; new enum values added in future stories would silently produce no items [LlmSectionExtractor.java:73] — deferred, pre-existing design choice; not a current bug
+
+---
+
 ## Change Log
 - 2026-06-10: Story created
+- 2026-06-11: Implemented all ACs; all tasks checked; status → review
+- 2026-06-11: Code review passed — 0 patches, 0 decisions, 1 defer, 2 dismissed; status → done

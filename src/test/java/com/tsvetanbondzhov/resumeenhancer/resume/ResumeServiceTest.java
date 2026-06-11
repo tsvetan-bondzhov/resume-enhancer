@@ -176,6 +176,8 @@ class ResumeServiceTest {
         Profile profile = new Profile();
         profile.setUser(user);
         profile.setSummary("Experienced Java developer");
+        profile.setLinkedInUrl("https://linkedin.com/in/test");
+        profile.setContactEmail("user@example.com");
 
         WorkExperience we = new WorkExperience();
         we.setProfile(profile);
@@ -267,6 +269,8 @@ class ResumeServiceTest {
         // Spot-check key mapped fields
         SummaryItem summaryItem = (SummaryItem) saved.getResumeContent().sections().get(0).items().get(0);
         assertThat(summaryItem.text()).isEqualTo("Experienced Java developer");
+        assertThat(summaryItem.linkedInUrl()).isEqualTo("https://linkedin.com/in/test");
+        assertThat(summaryItem.contactEmail()).isEqualTo("user@example.com");
 
         CertificationItem certItem = (CertificationItem) saved.getResumeContent().sections().get(4).items().get(0);
         assertThat(certItem.name()).isEqualTo("AWS Solutions Architect");

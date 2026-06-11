@@ -13,6 +13,7 @@ import SignupPage from "@/pages/SignupPage"
 import DashboardPage from "@/pages/DashboardPage"
 import EditorPage from "@/pages/EditorPage"
 import ProfilePage from "@/pages/ProfilePage"
+import SettingsPage from "@/pages/SettingsPage"
 import NotFoundPage from "@/pages/NotFoundPage"
 
 const AdminPage = lazy(() => import("@/pages/AdminPage"))
@@ -51,6 +52,10 @@ export const router = createBrowserRouter([
       {
         path: "/profile",
         element: <ProfilePage />,
+      },
+      {
+        path: "/settings",
+        element: <SettingsPage />,
       },
     ],
   },

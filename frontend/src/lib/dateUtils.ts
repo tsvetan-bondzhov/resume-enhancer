@@ -18,3 +18,30 @@ export function formatDateRange(
   const end = isCurrent || !endDate ? "Present" : fmt(endDate)
   return start ? `${start} — ${end}` : end
 }
+
+/**
+ * Formats an ISO date string as "MM/YYYY" with zero-padded month.
+ * Uses UTC methods to avoid timezone drift.
+ *
+ * @param date ISO date string (e.g. "2022-03-15") or null
+ * @returns Formatted string such as "03/2022", or "" for null input
+ */
+export function formatMonthYear(date: string | null): string {
+  if (!date) return ""
+  const d = new Date(date)
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0")
+  const year = d.getUTCFullYear()
+  return `${month}/${year}`
+}
+
+/**
+ * Formats an ISO date string as "YYYY".
+ * Uses UTC methods for consistency.
+ *
+ * @param date ISO date string (e.g. "2018-09-01") or null
+ * @returns Formatted string such as "2018", or "" for null input
+ */
+export function formatYear(date: string | null): string {
+  if (!date) return ""
+  return String(new Date(date).getUTCFullYear())
+}

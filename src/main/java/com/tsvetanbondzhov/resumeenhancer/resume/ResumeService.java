@@ -139,7 +139,16 @@ public class ResumeService {
         // SUMMARY section — added first
         String summaryText = profile.getSummary() != null ? profile.getSummary() : "";
         boolean summaryVisible = profile.getSummary() != null && !profile.getSummary().isBlank();
-        List<ResumeItem> summaryItems = List.of(new SummaryItem(UUID.randomUUID().toString(), summaryText));
+        List<ResumeItem> summaryItems = List.of(new SummaryItem(
+                UUID.randomUUID().toString(),
+                summaryText,
+                profile.getLinkedInUrl(),
+                profile.getPersonalPageUrl(),
+                profile.getBlogUrl(),
+                profile.getContactEmail(),
+                profile.getLocationCountry(),
+                profile.getLocationCity()
+        ));
         sections.add(new ResumeSection(ResumeSectionType.SUMMARY, "Summary", summaryVisible, summaryItems));
 
         // Work Experience section
@@ -176,9 +185,7 @@ public class ResumeService {
                 ? profile.getSkills() : List.<Skill>of()).stream()
                 .<ResumeItem>map(s -> new SkillItem(
                         UUID.randomUUID().toString(),
-                        s.getName(),
-                        null,   // category — not in profile entity
-                        null    // proficiency — not in profile entity
+                        s.getName()
                 ))
                 .toList();
         sections.add(new ResumeSection(ResumeSectionType.SKILLS, "Skills", !skillItems.isEmpty(), skillItems));

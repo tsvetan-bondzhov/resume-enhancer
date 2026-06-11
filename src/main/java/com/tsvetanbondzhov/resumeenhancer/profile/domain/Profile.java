@@ -29,6 +29,24 @@ public class Profile extends BaseEntity {
     @Column(name = "summary")
     private String summary;
 
+    @Column(name = "linked_in_url")
+    private String linkedInUrl;
+
+    @Column(name = "personal_page_url")
+    private String personalPageUrl;
+
+    @Column(name = "blog_url")
+    private String blogUrl;
+
+    @Column(name = "contact_email")
+    private String contactEmail;
+
+    @Column(name = "location_country")
+    private String locationCountry;
+
+    @Column(name = "location_city")
+    private String locationCity;
+
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WorkExperience> workExperiences = new ArrayList<>();
 

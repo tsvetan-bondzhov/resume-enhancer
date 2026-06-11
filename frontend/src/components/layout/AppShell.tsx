@@ -41,6 +41,16 @@ export default function AppShell({ children }: AppShellProps) {
               >
                 Profile
               </NavLink>
+              <NavLink
+                to="/settings"
+                className={({ isActive }) =>
+                  isActive
+                    ? "text-sm font-medium text-blue-600"
+                    : "text-sm text-zinc-600 hover:text-zinc-900"
+                }
+              >
+                Settings
+              </NavLink>
               {user?.role === "ADMIN" && (
                 <NavLink
                   to="/admin"

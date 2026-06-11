@@ -1,6 +1,6 @@
 # Story 4.9: Extended Summary Profile Fields — Contact & Links
 
-**Status:** backlog
+**Status:** done
 **Epic:** 4 — Resume Experience Polish & Foundations
 **Story Key:** 4-9-extended-summary-profile-fields-contact-and-links
 **Dependencies:** Story 3.14 (done), Story 3.15 (done), Story 3.12 (done)
@@ -150,8 +150,8 @@ The `contactEmail` field is pre-populated from `useAuthStore((s) => s.user?.emai
 
 ### Task 1: Flyway migration V13 (AC: 1)
 
-- [ ] Create `src/main/resources/db/migration/V13__add_profile_contact_fields.sql`
-- [ ] Add six `ALTER TABLE profiles ADD COLUMN` statements (all nullable, no defaults):
+- [x] Create `src/main/resources/db/migration/V15__add_profile_contact_fields.sql` (V13/V14 were taken by prior stories; V15 is the correct next number)
+- [x] Add six `ALTER TABLE profiles ADD COLUMN` statements (all nullable, no defaults):
   ```sql
   ALTER TABLE profiles ADD COLUMN linked_in_url    VARCHAR(500);
   ALTER TABLE profiles ADD COLUMN personal_page_url VARCHAR(500);
@@ -160,182 +160,72 @@ The `contactEmail` field is pre-populated from `useAuthStore((s) => s.user?.emai
   ALTER TABLE profiles ADD COLUMN location_country  VARCHAR(100);
   ALTER TABLE profiles ADD COLUMN location_city     VARCHAR(100);
   ```
-- [ ] Confirm V10 = extended sections, V11 = typed items migration, V12 = template section orders. V13 is the correct next number.
+- [x] Confirmed V13 = classic template summary column fix, V14 = simplify skill items. V15 is the correct next number.
 
 ### Task 2: Update `Profile` entity (AC: 2)
 
-- [ ] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/domain/Profile.java`
-- [ ] Add six `@Column` fields after the existing `summary` column field:
-  ```java
-  @Column(name = "linked_in_url")
-  private String linkedInUrl;
-
-  @Column(name = "personal_page_url")
-  private String personalPageUrl;
-
-  @Column(name = "blog_url")
-  private String blogUrl;
-
-  @Column(name = "contact_email")
-  private String contactEmail;
-
-  @Column(name = "location_country")
-  private String locationCountry;
-
-  @Column(name = "location_city")
-  private String locationCity;
-  ```
-- [ ] Lombok `@Getter`/`@Setter` is already on the class — no explicit accessors needed.
+- [x] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/domain/Profile.java`
+- [x] Add six `@Column` fields after the existing `summary` column field
+- [x] Lombok `@Getter`/`@Setter` is already on the class — no explicit accessors needed.
 
 ### Task 3: Update `ProfileUpdateRequest` and `ProfileDto` (AC: 3)
 
-- [ ] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/ProfileUpdateRequest.java`
-- [ ] Add six nullable `String` fields after `summary`:
-  ```java
-  String linkedInUrl,
-  String personalPageUrl,
-  String blogUrl,
-  String contactEmail,
-  String locationCountry,
-  String locationCity,
-  ```
-- [ ] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/ProfileDto.java`
-- [ ] Add the same six nullable `String` fields after `summary`.
-- [ ] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/ProfileService.java`
-- [ ] In `updateProfile()`: after `profile.setSummary(request.summary())`, add:
-  ```java
-  profile.setLinkedInUrl(request.linkedInUrl());
-  profile.setPersonalPageUrl(request.personalPageUrl());
-  profile.setBlogUrl(request.blogUrl());
-  profile.setContactEmail(request.contactEmail());
-  profile.setLocationCountry(request.locationCountry());
-  profile.setLocationCity(request.locationCity());
-  ```
-- [ ] In `toDto(Profile profile)`: update the `ProfileDto` constructor call to include the six new fields.
-- [ ] In `emptyProfileDto()`: pass `null` for all six new fields.
+- [x] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/ProfileUpdateRequest.java`
+- [x] Add six nullable `String` fields after `summary`
+- [x] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/ProfileDto.java`
+- [x] Add the same six nullable `String` fields after `summary`
+- [x] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/ProfileService.java`
+- [x] In `updateProfile()`: after `profile.setSummary(request.summary())`, add six setters
+- [x] In `toDto(Profile profile)`: updated `ProfileDto` constructor call to include the six new fields
+- [x] In `emptyProfileDto()`: pass `null` for all six new fields
 
 ### Task 4: Update `SummaryItem` Java record (AC: 4)
 
-- [ ] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/resume/domain/SummaryItem.java`
-- [ ] Replace the record body with the expanded signature from AC4.
-- [ ] Verify `ResumeItem.java` — `SummaryItem` is already listed in `@JsonSubTypes` with `name = "SUMMARY"`. The new fields serialize as standard JSON properties and will deserialize from existing JSONB blobs as `null` (Jackson default). No `@JsonIgnoreProperties` needed since the `ObjectMapper` in `JacksonConfig` uses `MapperFeature.DEFAULT_VIEW_INCLUSION` defaults.
-- [ ] Confirm `ResumeDocumentConverter` uses the shared `ObjectMapper` bean — it will pick up the updated record automatically.
+- [x] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/resume/domain/SummaryItem.java`
+- [x] Replace the record body with the expanded 8-field signature from AC4
+- [x] Verified `ResumeItem.java` — `SummaryItem` already listed in `@JsonSubTypes` with `name = "SUMMARY"`. Existing JSONB rows deserialize missing fields as `null` (Jackson default).
+- [x] Confirmed `ResumeDocumentConverter` uses the shared `ObjectMapper` bean
 
 ### Task 5: Update `buildFromProfile()` in `ResumeService` (AC: 5)
 
-- [ ] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/resume/ResumeService.java`
-- [ ] Locate the `SummaryItem` construction in `buildFromProfile()` (line ~142)
-- [ ] Replace:
-  ```java
-  List<ResumeItem> summaryItems = List.of(new SummaryItem(UUID.randomUUID().toString(), summaryText));
-  ```
-  with:
-  ```java
-  List<ResumeItem> summaryItems = List.of(new SummaryItem(
-      UUID.randomUUID().toString(),
-      summaryText,
-      profile.getLinkedInUrl(),
-      profile.getPersonalPageUrl(),
-      profile.getBlogUrl(),
-      profile.getContactEmail(),
-      profile.getLocationCountry(),
-      profile.getLocationCity()
-  ));
-  ```
+- [x] Open `src/main/java/com/tsvetanbondzhov/resumeenhancer/resume/ResumeService.java`
+- [x] Updated `SummaryItem` construction in `buildFromProfile()` to pass all six profile contact fields
+- [x] Also updated `LlmSectionExtractor.java` SUMMARY case to pass `null` for all six new fields
 
 ### Task 6: Update `SummaryItemDto` in `api.ts` (AC: 6)
 
-- [ ] Open `frontend/src/types/api.ts`
-- [ ] Extend `SummaryItemDto` with the six new nullable fields (see AC6 snippet).
+- [x] Open `frontend/src/types/api.ts`
+- [x] Extended `SummaryItemDto` with the six new nullable fields
+- [x] Also extended `ProfileDto` TypeScript interface and `ProfileUpdateRequest` interface with the six new nullable fields
+- [x] Updated `useResumeUpload.ts` inline `ProfileDto` literal to include all required fields (six new nulls + missing list fields)
 
 ### Task 7: Update `SummarySectionRenderer.tsx` (AC: 7)
 
-- [ ] Open `frontend/src/components/resume/sections/SummarySectionRenderer.tsx`
-- [ ] Add `import { ExternalLink } from "lucide-react"` at the top.
-- [ ] Inside the `items.map()`, before the text `<p>`, add a contact row:
-  ```tsx
-  const hasContact =
-    item.contactEmail != null ||
-    item.linkedInUrl != null ||
-    item.personalPageUrl != null ||
-    item.blogUrl != null ||
-    item.locationCountry != null ||
-    item.locationCity != null
-
-  const location = [item.locationCity, item.locationCountry]
-    .filter(Boolean)
-    .join(", ")
-  ```
-  Then render:
-  ```tsx
-  {hasContact && (
-    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground mb-1">
-      {item.contactEmail != null && <span>{item.contactEmail}</span>}
-      {item.linkedInUrl != null && (
-        <a href={item.linkedInUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-0.5 hover:underline">
-          LinkedIn<ExternalLink className="inline h-3 w-3 ml-0.5" />
-        </a>
-      )}
-      {item.personalPageUrl != null && (
-        <a href={item.personalPageUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-0.5 hover:underline">
-          Website<ExternalLink className="inline h-3 w-3 ml-0.5" />
-        </a>
-      )}
-      {item.blogUrl != null && (
-        <a href={item.blogUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-0.5 hover:underline">
-          Blog<ExternalLink className="inline h-3 w-3 ml-0.5" />
-        </a>
-      )}
-      {location.length > 0 && <span>{location}</span>}
-    </div>
-  )}
-  ```
-- [ ] The existing text paragraph rendering (read-only and edit mode) is unchanged.
+- [x] Open `frontend/src/components/resume/sections/SummarySectionRenderer.tsx`
+- [x] Added `import { ExternalLink } from "lucide-react"` at the top
+- [x] Added contact row with `hasContact` guard, location join logic, and conditional rendering of email, LinkedIn, website, blog, and location fields
+- [x] Existing text paragraph rendering (read-only and edit mode) is unchanged
 
 ### Task 8: Update `SummaryStep.tsx` (AC: 8)
 
-- [ ] Open `frontend/src/components/profile/SummaryStep.tsx`
-- [ ] Add `import { useAuthStore } from "@/stores/useAuthStore"` and `import { Input } from "@/components/ui/input"`.
-- [ ] Add `const user = useAuthStore((s) => s.user)` inside the component.
-- [ ] Add six new state fields. For `contactEmail`, initialize from profile or fall back to authenticated user email:
-  ```ts
-  const [contactEmail, setContactEmail] = useState(
-    profile?.contactEmail ?? user?.email ?? ""
-  )
-  const [linkedInUrl, setLinkedInUrl] = useState(profile?.linkedInUrl ?? "")
-  const [personalPageUrl, setPersonalPageUrl] = useState(profile?.personalPageUrl ?? "")
-  const [blogUrl, setBlogUrl] = useState(profile?.blogUrl ?? "")
-  const [locationCity, setLocationCity] = useState(profile?.locationCity ?? "")
-  const [locationCountry, setLocationCountry] = useState(profile?.locationCountry ?? "")
-  ```
-- [ ] Update `handleSaveAndFinish()` to pass all six (convert empty string to null with `|| null`):
-  ```ts
-  await onSaveAndContinue({
-    summary: summary || null,
-    contactEmail: contactEmail || null,
-    linkedInUrl: linkedInUrl || null,
-    personalPageUrl: personalPageUrl || null,
-    blogUrl: blogUrl || null,
-    locationCity: locationCity || null,
-    locationCountry: locationCountry || null,
-  })
-  ```
-- [ ] Render six `<Input>` fields in the form below the Summary textarea, each with a `<label>`.
+- [x] Open `frontend/src/components/profile/SummaryStep.tsx`
+- [x] Added `import { useAuthStore } from "@/stores/useAuthStore"` and `import { Input } from "@/components/ui/input"`
+- [x] Added `const user = useAuthStore((s) => s.user)` inside the component
+- [x] Added six new state fields with `contactEmail` pre-populated from `profile?.contactEmail ?? user?.email ?? ""`
+- [x] Updated `handleSaveAndFinish()` to pass all six fields (empty string converted to null with `|| null`)
+- [x] Rendered six `<Input>` fields with labels below the Summary textarea
 
 ### Task 9: Update tests (AC: 9)
 
-- [ ] Open `src/test/java/com/tsvetanbondzhov/resumeenhancer/resume/ResumeServiceTest.java`
-- [ ] In `buildFromProfile_allSections()`: add `profile.setLinkedInUrl("https://linkedin.com/in/test")` and `profile.setContactEmail("user@example.com")` to the profile setup. After the existing `summaryItem.text()` assertion, add:
-  ```java
-  assertThat(summaryItem.linkedInUrl()).isEqualTo("https://linkedin.com/in/test");
-  assertThat(summaryItem.contactEmail()).isEqualTo("user@example.com");
-  ```
-- [ ] Open `frontend/src/components/resume/sections/SummarySectionRenderer.test.tsx`
-- [ ] Update `buildItem()` helper to include the six new nullable fields defaulting to `null`.
-- [ ] Add test: contact row renders when `linkedInUrl` is non-null (check `<a>` with `href` in DOM).
-- [ ] Add test: no contact row when all six fields are null (check no `<div>` with flex class).
-- [ ] Add test: location renders as `"Berlin, Germany"` when both city and country are set.
-- [ ] Existing tests continue to pass with defaults all null (contact row absent).
+- [x] Open `src/test/java/com/tsvetanbondzhov/resumeenhancer/resume/ResumeServiceTest.java`
+- [x] In `buildFromProfile_allSections()`: added `profile.setLinkedInUrl` and `profile.setContactEmail`; added assertions for `summaryItem.linkedInUrl()` and `summaryItem.contactEmail()`
+- [x] Open `frontend/src/components/resume/sections/SummarySectionRenderer.test.tsx`
+- [x] Updated `buildItem()` helper to include the six new nullable fields defaulting to `null`
+- [x] Added test: contact row renders when `linkedInUrl` is non-null (anchor with href)
+- [x] Added test: no contact row when all six fields are null
+- [x] Added test: location renders as `"Berlin, Germany"` when both city and country are set
+- [x] Added test: contactEmail renders as plain text
+- [x] All existing tests continue to pass (185/185 frontend tests green)
 
 ---
 
@@ -402,5 +292,42 @@ The JSONB backward-compatibility assumption was verified by reading `ResumeDocum
 
 ---
 
+## Dev Agent Record
+
+### Completion Notes
+
+Implemented all 9 tasks covering AC1–AC9. Key decisions:
+- Migration used V15 (not V13 as the story assumed) because V13 and V14 were added by earlier stories in epic 4.
+- `SummaryStep.tsx` contact row input fields are placed after the summary textarea, matching AC8 spec.
+- `useResumeUpload.ts` seeded ProfileDto literal was also updated to include all required fields (6 new nulls + the 4 existing list fields that were previously missing from the literal — fixing a latent TS issue).
+- The pre-existing flaky test `ResumeControllerIntegrationTest.put_updateResume_returns200WithUpdatedContent` fails due to a timestamp precision race condition unrelated to this story (confirmed by running it against main before my changes).
+
+---
+
+## File List
+
+### Created
+- `src/main/resources/db/migration/V15__add_profile_contact_fields.sql`
+
+### Modified
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/domain/Profile.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/ProfileUpdateRequest.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/dto/ProfileDto.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/profile/ProfileService.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/resume/domain/SummaryItem.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/resume/ResumeService.java`
+- `src/main/java/com/tsvetanbondzhov/resumeenhancer/upload/parsers/LlmSectionExtractor.java`
+- `frontend/src/types/api.ts`
+- `frontend/src/components/resume/sections/SummarySectionRenderer.tsx`
+- `frontend/src/components/profile/SummaryStep.tsx`
+- `frontend/src/hooks/useResumeUpload.ts`
+- `src/test/java/com/tsvetanbondzhov/resumeenhancer/resume/ResumeServiceTest.java`
+- `src/test/java/com/tsvetanbondzhov/resumeenhancer/profile/ProfileServiceTest.java`
+- `src/test/java/com/tsvetanbondzhov/resumeenhancer/resume/ResumeItemSerializationTest.java`
+- `frontend/src/components/resume/sections/SummarySectionRenderer.test.tsx`
+
+---
+
 ## Change Log
 - 2026-06-10: Story created
+- 2026-06-11: Implemented all tasks (AC1–AC9); 185/185 frontend tests pass; 0 TS errors; 0 ESLint errors

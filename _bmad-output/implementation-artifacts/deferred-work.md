@@ -68,6 +68,26 @@
 - `renderSectionContent` filter+map+throw pattern has dead-code `throw` branch — the `.filter(i => i.type === X)` already guarantees type; the `throw` is unreachable. Style/efficiency issue, not a bug. Address in a future refactor pass.
 - `WorkExperienceSectionRenderer.test` blur assertion may not accurately exercise `e.currentTarget.textContent` — `fireEvent.blur(field, { target: { textContent: 'Senior Engineer' } })` does not set `currentTarget.textContent` in jsdom; test passes but for reasons tied to jsdom's event model. Investigate with `userEvent.type` in a future test quality pass.
 
+## Deferred from: code review of 4-1-rendering-polish-sidebar-collapse-template-title-date-formatting-certification-display (2026-06-10)
+
+- Stale comment `"// In read-only mode, formatDateRange is used"` in `WorkExperienceSectionRenderer.test.tsx` line 77 — references removed `formatDateRange`; cosmetic stale comment; address in a future test quality pass.
+- `formatMonthYear`/`formatYear` return `"NaN/NaN"`/`"NaN"` for invalid date strings — `new Date("invalid")` produces `Invalid Date`; UTC accessors return `NaN`; same flaw exists in `formatDateRange`; upstream API validation is the correct guard; address if invalid-date values reach the frontend in practice.
+- Null `startDate` + non-null `endDate` in WorkExperience/Projects renders end date alone without separator — unspecified edge case not covered by AC4/5; not a regression vs previous `formatDateRange` behaviour; address when date display edge cases are formally specified.
+
+## Deferred from: code review of 4-2-classic-template-two-column-layout-fix (2026-06-10)
+
+- V13 migration `DO` block raises `RAISE EXCEPTION` when the Classic template row is absent — makes the migration fail-fast on a missing seed row rather than silently no-op. Pre-existing fail-fast pattern; acceptable for seeded environments; if a zero-row-count scenario is ever possible in CI, convert to a plain `UPDATE` (no DO block) or add a conditional guard.
+
+## Deferred from: code review of 4-4-section-item-add-delete-and-drag-to-reorder (2026-06-11)
+
+- `SortableItemWrapper` and `AddItemButton` duplicated verbatim across all 9 renderer files — architectural decision documented in Dev Notes (inline approach reduces import overhead); extract to a shared `SortableItemWrapper.tsx` component in a future cleanup story.
+
+## Deferred from: code review of 4-7-settings-page-with-password-change (2026-06-11)
+
+- Generic toast on API error — backend 400 detail (e.g. "Current password is incorrect") not surfaced to user on failed password change; `SettingsPage` shows only "Failed to change password — please try again"; AC8 only specifies the 204 success path; address when richer error detail display is specified.
+- `UserRepository` injected directly into `UserController` to reload full user from DB — bypasses service-layer encapsulation; explicitly documented in dev notes as the correct pattern given JWT principal only contains email/role; consolidate DB access into `UserService` in a future service-layer cleanup pass.
+- `@NotBlank` vs `@Size(min=8)` validation ordering on `ChangePasswordRequest.newPassword` — Spring fires `@NotBlank` before `@Size` for blank input, showing "must not be blank" instead of the length message; no AC coverage for this edge; address when validation message UX is formally reviewed.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 
@@ -80,3 +100,11 @@
 ## Deferred from: code review of 3-6-resume-save-save-as-and-name-management (2026-06-05)
 
 - JSX indentation misalignment in `EditorPage.tsx` centerSlot close tags (lines 206-209) — cosmetic; close tags for the inner canvas `div` and fragment are slightly misaligned relative to their open tags. Address in a future formatting/refactor pass.
+
+## Deferred from: code review of 4-6-profile-page-navigation-and-first-entry-deletion (2026-06-11)
+
+- `SkillsStep.tsx` uses `aria-label="Remove skill X"` while all other step components (Experience, Education, Certifications, Languages, Projects, Volunteering) use `aria-label="Remove entry X"`. Inconsistent screen-reader labelling for the delete button. Pre-existing — not introduced by story 4-6. Normalise to a consistent pattern in a future accessibility pass.
+
+## Deferred from: code review of 4-10-parsing-service-and-parsedresumedto-refactor (2026-06-11)
+
+- `LlmSectionExtractor.java` switch on `ResumeSectionType` has no `default` clause — new enum values added in future stories would silently produce no typed items in `ParsedResumeDto`. Not a current bug; address if new section types are added.

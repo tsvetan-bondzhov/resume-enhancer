@@ -1,6 +1,6 @@
 # Story 4.11: Multi-Page A4 Resume Rendering
 
-**Status:** backlog
+**Status:** done
 **Epic:** 4 — Resume Experience Polish & Foundations
 **Story Key:** 4-11-multi-page-a4-resume-rendering
 **Dependencies:** Story 3.4 (done), Story 3.10 (done), Story 4.2 (backlog — classic template two-column layout must be settled first)

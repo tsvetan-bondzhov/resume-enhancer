@@ -2,6 +2,10 @@ import { ExternalLink, Download, Copy, Trash2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import type { ResumeDto } from "@/types/api"
+import ResumeCanvas from "@/components/resume/ResumeCanvas"
+
+/** Scale factor applied to the full-size ResumeCanvas for the dashboard card preview. */
+const PREVIEW_SCALE = 0.3
 
 interface ResumeDashboardCardProps {
   resume: ResumeDto
@@ -23,11 +27,23 @@ export default function ResumeDashboardCard({
       className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-150 hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
       onClick={onOpen}
     >
-      {/* Mini preview area — A4 aspect ratio placeholder */}
-      <div className="aspect-[1/1.414] w-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center rounded-t-xl overflow-hidden">
-        <span className="text-xs text-zinc-400 select-none px-4 text-center line-clamp-2">
-          {resume.name}
-        </span>
+      {/* Mini preview area — scaled-down live ResumeCanvas */}
+      {/* aria-hidden: preview is decorative — screen readers see the info bar instead */}
+      <div
+        aria-hidden="true"
+        className="relative w-full overflow-hidden rounded-t-xl bg-card"
+        style={{ height: "200px" }}
+      >
+        <div
+          className="pointer-events-none absolute top-0 left-0 origin-top-left"
+          style={{ transform: `scale(${PREVIEW_SCALE})`, width: `${100 / PREVIEW_SCALE}%` }}
+        >
+          <ResumeCanvas
+            document={resume.content}
+            templateId={resume.templateId}
+            isLoading={false}
+          />
+        </div>
       </div>
 
       {/* Info bar */}

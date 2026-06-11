@@ -1,11 +1,15 @@
 package com.tsvetanbondzhov.resumeenhancer.upload.parsers;
 
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.EducationItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.SkillItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem;
 import com.tsvetanbondzhov.resumeenhancer.upload.dto.ParsedResumeDto;
 import com.tsvetanbondzhov.resumeenhancer.upload.dto.RawSection;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Shared heuristic section extractor used by both PdfParser and DocxParser.
@@ -59,7 +63,46 @@ public final class SectionExtractor {
             }
         }
 
-        return new ParsedResumeDto(rawText, workLines, educationLines, skillLines);
+        // Map heuristic lines to typed items with minimal fields.
+        // Fields not derivable from a plain text line are left null/false.
+        List<WorkExperienceItem> workExperiences = workLines.stream()
+            .map(line -> new WorkExperienceItem(
+                UUID.randomUUID().toString(),
+                line,       // jobTitle = the raw line
+                null,       // company
+                null,       // startDate
+                null,       // endDate
+                false,      // isCurrent
+                null        // description
+            ))
+            .toList();
+
+        List<EducationItem> education = educationLines.stream()
+            .map(line -> new EducationItem(
+                UUID.randomUUID().toString(),
+                line,       // institution = the raw line
+                null,       // degree
+                null,       // fieldOfStudy
+                null,       // startDate
+                null        // endDate
+            ))
+            .toList();
+
+        List<SkillItem> skills = skillLines.stream()
+            .map(line -> new SkillItem(UUID.randomUUID().toString(), line))
+            .toList();
+
+        return new ParsedResumeDto(
+            rawText,
+            workExperiences,
+            education,
+            skills,
+            List.of(),  // certifications
+            List.of(),  // languages
+            List.of(),  // projects
+            List.of(),  // volunteering
+            null        // summary
+        );
     }
 
     private static boolean containsKeyword(String line, Set<String> keywords) {

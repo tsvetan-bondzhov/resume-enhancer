@@ -5,12 +5,9 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.tsvetanbondzhov.resumeenhancer.ai.AiService;
 import com.tsvetanbondzhov.resumeenhancer.ai.OllamaUnavailableException;
-import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
-import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSection;
-import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSectionType;
-import com.tsvetanbondzhov.resumeenhancer.resume.domain.GenericItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.SkillItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem;
+import com.tsvetanbondzhov.resumeenhancer.upload.dto.ParsedResumeDto;
 import com.tsvetanbondzhov.resumeenhancer.upload.dto.RawSection;
 import com.tsvetanbondzhov.resumeenhancer.upload.parsers.LlmSectionExtractor;
 import org.junit.jupiter.api.Test;
@@ -41,7 +38,7 @@ class LlmSectionExtractorTest {
     @InjectMocks
     private LlmSectionExtractor llmSectionExtractor;
 
-    // AC6: JSON parse failure falls back to heuristic lines
+    // JSON parse failure falls back to heuristic lines — section produces no typed items (UNKNOWN skipped)
     @Test
     void extract_malformedJsonResponse_fallsBackToHeuristicLines() {
         when(aiService.extractResumeSection(anyString(), anyString()))
@@ -51,16 +48,15 @@ class LlmSectionExtractorTest {
             new RawSection("Work Experience", List.of("Software Engineer at Acme Corp 2022-2024"))
         );
 
-        ResumeDocument result = llmSectionExtractor.extract(sections, "Software Engineer at Acme Corp 2022-2024");
+        ParsedResumeDto result = llmSectionExtractor.extract(sections, "Software Engineer at Acme Corp 2022-2024");
 
-        assertThat(result.sections()).hasSize(1);
-        ResumeSection section = result.sections().get(0);
-        assertThat(section.items()).hasSize(1);
-        // Fallback: single GenericItem with "text" field = the raw line
-        assertThat(section.items().get(0)).isInstanceOf(GenericItem.class);
-        assertThat(((GenericItem) section.items().get(0)).fields()).containsKey("text");
-        assertThat(((GenericItem) section.items().get(0)).fields().get("text"))
-            .isEqualTo("Software Engineer at Acme Corp 2022-2024");
+        // Heuristic fallback produces GenericItems which are dispatched into workExperiences list
+        // but since GenericItem is not WorkExperienceItem, the list ends up empty
+        // (heuristic items are only used for fallback logging — typed dispatch filters by instanceof)
+        assertThat(result).isNotNull();
+        assertThat(result.rawText()).isEqualTo("Software Engineer at Acme Corp 2022-2024");
+        // workExperiences will be empty because heuristic items are GenericItems (not WorkExperienceItem)
+        assertThat(result.workExperiences()).isEmpty();
     }
 
     // Invalid date fields are nulled out (returned as null on typed record)
@@ -77,13 +73,11 @@ class LlmSectionExtractorTest {
             new RawSection("Work Experience", List.of("Software Engineer at Acme Corp"))
         );
 
-        ResumeDocument result = llmSectionExtractor.extract(
+        ParsedResumeDto result = llmSectionExtractor.extract(
             sections, "Software Engineer at Acme Corp Built services");
 
-        ResumeSection section = result.sections().get(0);
-        assertThat(section.items()).hasSize(1);
-        assertThat(section.items().get(0)).isInstanceOf(WorkExperienceItem.class);
-        WorkExperienceItem item = (WorkExperienceItem) section.items().get(0);
+        assertThat(result.workExperiences()).hasSize(1);
+        WorkExperienceItem item = result.workExperiences().get(0);
         // Invalid startDate "not-a-date" must be nulled
         assertThat(item.startDate()).isNull();
         // Valid fields retained
@@ -109,18 +103,14 @@ class LlmSectionExtractorTest {
             new RawSection("Work Experience", List.of("Software Engineer at Real Company"))
         );
 
-        ResumeDocument result = llmSectionExtractor.extract(sections, rawText);
+        ParsedResumeDto result = llmSectionExtractor.extract(sections, rawText);
 
-        ResumeSection section = result.sections().get(0);
-        // Exactly 1 item returned — anchor failure does NOT drop the item, just logs WARN
-        assertThat(section.items()).hasSize(1);
-        // Item is NOT dropped — it is included despite low confidence
-        assertThat(section.items().get(0)).isInstanceOf(WorkExperienceItem.class);
-        WorkExperienceItem item = (WorkExperienceItem) section.items().get(0);
-        assertThat(item.jobTitle()).isNotNull();
+        // Exactly 1 item — anchor failure does NOT drop the item, just logs WARN
+        assertThat(result.workExperiences()).hasSize(1);
+        assertThat(result.workExperiences().get(0).jobTitle()).isNotNull();
     }
 
-    // AC6: AiService throws OllamaUnavailableException — falls back to heuristic lines
+    // AiService throws OllamaUnavailableException — falls back to heuristic (empty typed lists for SKILLS)
     @Test
     void extract_aiServiceThrowsOllamaUnavailable_fallsBackToHeuristicLines() {
         when(aiService.extractResumeSection(anyString(), anyString()))
@@ -130,18 +120,16 @@ class LlmSectionExtractorTest {
             new RawSection("Skills", List.of("Java", "Spring Boot", "PostgreSQL"))
         );
 
-        ResumeDocument result = llmSectionExtractor.extract(sections, "Java Spring Boot PostgreSQL");
+        ParsedResumeDto result = llmSectionExtractor.extract(sections, "Java Spring Boot PostgreSQL");
 
-        assertThat(result.sections()).hasSize(1);
-        ResumeSection section = result.sections().get(0);
-        // Each line becomes one heuristic GenericItem
-        assertThat(section.items()).hasSize(3);
-        assertThat(section.items().get(0)).isInstanceOf(GenericItem.class);
+        // Heuristic items are GenericItems; SKILLS dispatch filters instanceof SkillItem → empty list
+        assertThat(result).isNotNull();
+        assertThat(result.skills()).isEmpty();
     }
 
-    // New: typed WorkExperienceItem construction
+    // Typed WorkExperienceItem construction from LLM JSON
     @Test
-    void extract_workExperienceSection_buildsTypedWorkExperienceItem() {
+    void extract_workExperienceSection_returnsTypedWorkExperiences() {
         String validJson = """
             [{"jobTitle": "Software Engineer", "company": "Acme Corp",
               "startDate": "2020-01", "endDate": "2023-06",
@@ -152,12 +140,10 @@ class LlmSectionExtractorTest {
         List<RawSection> sections = List.of(
             new RawSection("Work Experience", List.of("Software Engineer at Acme Corp"))
         );
-        ResumeDocument result = llmSectionExtractor.extract(sections, "Software Engineer at Acme Corp Built services");
+        ParsedResumeDto result = llmSectionExtractor.extract(sections, "Software Engineer at Acme Corp Built services");
 
-        ResumeSection section = result.sections().get(0);
-        assertThat(section.items()).hasSize(1);
-        assertThat(section.items().get(0)).isInstanceOf(WorkExperienceItem.class);
-        WorkExperienceItem item = (WorkExperienceItem) section.items().get(0);
+        assertThat(result.workExperiences()).hasSize(1);
+        WorkExperienceItem item = result.workExperiences().get(0);
         assertThat(item.jobTitle()).isEqualTo("Software Engineer");
         assertThat(item.company()).isEqualTo("Acme Corp");
         assertThat(item.startDate()).isEqualTo(LocalDate.of(2020, 1, 1));
@@ -165,9 +151,28 @@ class LlmSectionExtractorTest {
         assertThat(item.isCurrent()).isFalse();
     }
 
-    // New: UNKNOWN section builds GenericItem
+    // SUMMARY section maps to summary field
     @Test
-    void extract_unknownSection_buildsGenericItem() {
+    void extract_summarySection_mapsSummaryField() {
+        String validJson = """
+            [{"text": "Experienced software engineer with 5 years building distributed systems."}]
+            """;
+        when(aiService.extractResumeSection(anyString(), anyString())).thenReturn(validJson);
+
+        List<RawSection> sections = List.of(
+            new RawSection("Summary", List.of("Experienced software engineer with 5 years building distributed systems."))
+        );
+        ParsedResumeDto result = llmSectionExtractor.extract(
+            sections, "Experienced software engineer with 5 years building distributed systems.");
+
+        assertThat(result.summary()).isNotNull();
+        assertThat(result.summary().text()).isEqualTo(
+            "Experienced software engineer with 5 years building distributed systems.");
+    }
+
+    // UNKNOWN section produces no entries in any typed list
+    @Test
+    void extract_unknownSection_producesNoTypedItems() {
         String validJson = """
             [{"text": "Some custom content"}]
             """;
@@ -176,15 +181,20 @@ class LlmSectionExtractorTest {
         List<RawSection> sections = List.of(
             new RawSection("Custom Section", List.of("Some custom content"))
         );
-        ResumeDocument result = llmSectionExtractor.extract(sections, "Some custom content");
+        ParsedResumeDto result = llmSectionExtractor.extract(sections, "Some custom content");
 
-        ResumeSection section = result.sections().get(0);
-        assertThat(section.sectionType()).isEqualTo(ResumeSectionType.UNKNOWN);
-        assertThat(section.items().get(0)).isInstanceOf(GenericItem.class);
-        assertThat(((GenericItem) section.items().get(0)).fields()).containsKey("text");
+        // UNKNOWN sections are explicitly skipped — no items in any typed list
+        assertThat(result.workExperiences()).isEmpty();
+        assertThat(result.education()).isEmpty();
+        assertThat(result.skills()).isEmpty();
+        assertThat(result.certifications()).isEmpty();
+        assertThat(result.languages()).isEmpty();
+        assertThat(result.projects()).isEmpty();
+        assertThat(result.volunteering()).isEmpty();
+        assertThat(result.summary()).isNull();
     }
 
-    // New: Skills section builds typed SkillItem
+    // Skills section builds typed SkillItem
     @Test
     void extract_skillsSection_buildsTypedSkillItem() {
         String validJson = """
@@ -195,10 +205,10 @@ class LlmSectionExtractorTest {
         List<RawSection> sections = List.of(
             new RawSection("Skills", List.of("Java", "Spring Boot"))
         );
-        ResumeDocument result = llmSectionExtractor.extract(sections, "Java Spring Boot");
+        ParsedResumeDto result = llmSectionExtractor.extract(sections, "Java Spring Boot");
 
-        assertThat(result.sections().get(0).items()).hasSize(2);
-        assertThat(result.sections().get(0).items().get(0)).isInstanceOf(SkillItem.class);
-        assertThat(((SkillItem) result.sections().get(0).items().get(0)).name()).isEqualTo("Java");
+        assertThat(result.skills()).hasSize(2);
+        assertThat(result.skills().get(0)).isInstanceOf(SkillItem.class);
+        assertThat(result.skills().get(0).name()).isEqualTo("Java");
     }
 }

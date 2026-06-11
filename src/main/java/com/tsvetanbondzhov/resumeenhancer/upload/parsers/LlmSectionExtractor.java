@@ -3,19 +3,18 @@ package com.tsvetanbondzhov.resumeenhancer.upload.parsers;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tsvetanbondzhov.resumeenhancer.ai.AiService;
-import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
-import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeItem;
-import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSection;
-import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSectionType;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.CertificationItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.EducationItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.GenericItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.LanguageItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ProjectItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSectionType;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.SkillItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.SummaryItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.VolunteeringItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem;
+import com.tsvetanbondzhov.resumeenhancer.upload.dto.ParsedResumeDto;
 import com.tsvetanbondzhov.resumeenhancer.upload.dto.RawSection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,11 +43,19 @@ public class LlmSectionExtractor {
     }
 
     /**
-     * Extracts typed ResumeDocument from a list of raw sections.
+     * Extracts typed {@link ParsedResumeDto} from a list of raw sections.
      * Never throws — falls back to heuristic lines on per-section failure.
+     * UNKNOWN sections are skipped (not included in any typed list).
      */
-    public ResumeDocument extract(List<RawSection> rawSections, String fullRawText) {
-        List<ResumeSection> sections = new ArrayList<>();
+    public ParsedResumeDto extract(List<RawSection> rawSections, String fullRawText) {
+        List<WorkExperienceItem> workExperiences = new ArrayList<>();
+        List<EducationItem> education = new ArrayList<>();
+        List<SkillItem> skills = new ArrayList<>();
+        List<CertificationItem> certifications = new ArrayList<>();
+        List<LanguageItem> languages = new ArrayList<>();
+        List<ProjectItem> projects = new ArrayList<>();
+        List<VolunteeringItem> volunteering = new ArrayList<>();
+        SummaryItem summary = null;
 
         for (RawSection rawSection : rawSections) {
             ResumeSectionType sectionType = ResumeSectionType.fromHeader(
@@ -66,15 +73,63 @@ public class LlmSectionExtractor {
             List<ResumeItem> items = extractSectionItems(
                 rawSection, sectionType, sectionText, fullRawText);
 
-            sections.add(new ResumeSection(
-                sectionType,
-                rawSection.title(),
-                true,
-                items
-            ));
+            // Dispatch typed items to the appropriate list; skip UNKNOWN
+            switch (sectionType) {
+                case WORK_EXPERIENCE -> items.stream()
+                    .filter(i -> i instanceof WorkExperienceItem)
+                    .map(i -> (WorkExperienceItem) i)
+                    .forEach(workExperiences::add);
+                case EDUCATION -> items.stream()
+                    .filter(i -> i instanceof EducationItem)
+                    .map(i -> (EducationItem) i)
+                    .forEach(education::add);
+                case SKILLS -> items.stream()
+                    .filter(i -> i instanceof SkillItem)
+                    .map(i -> (SkillItem) i)
+                    .forEach(skills::add);
+                case CERTIFICATIONS -> items.stream()
+                    .filter(i -> i instanceof CertificationItem)
+                    .map(i -> (CertificationItem) i)
+                    .forEach(certifications::add);
+                case LANGUAGES -> items.stream()
+                    .filter(i -> i instanceof LanguageItem)
+                    .map(i -> (LanguageItem) i)
+                    .forEach(languages::add);
+                case PROJECTS -> items.stream()
+                    .filter(i -> i instanceof ProjectItem)
+                    .map(i -> (ProjectItem) i)
+                    .forEach(projects::add);
+                case VOLUNTEERING -> items.stream()
+                    .filter(i -> i instanceof VolunteeringItem)
+                    .map(i -> (VolunteeringItem) i)
+                    .forEach(volunteering::add);
+                case SUMMARY -> {
+                    // Take the first SummaryItem only; ignore subsequent ones
+                    if (summary == null) {
+                        summary = items.stream()
+                            .filter(i -> i instanceof SummaryItem)
+                            .map(i -> (SummaryItem) i)
+                            .findFirst()
+                            .orElse(null);
+                    }
+                }
+                case UNKNOWN -> {
+                    // UNKNOWN sections are intentionally excluded from the DTO
+                }
+            }
         }
 
-        return new ResumeDocument(sections);
+        return new ParsedResumeDto(
+            fullRawText,
+            workExperiences,
+            education,
+            skills,
+            certifications,
+            languages,
+            projects,
+            volunteering,
+            summary
+        );
     }
 
     private List<ResumeItem> extractSectionItems(
@@ -154,7 +209,7 @@ public class LlmSectionExtractor {
                     parseDate(raw, "startDate"),
                     parseDate(raw, "endDate")
             );
-            case SKILLS -> new SkillItem(id, str(raw, "name"), str(raw, "category"), str(raw, "proficiency"));
+            case SKILLS -> new SkillItem(id, str(raw, "name"));
             case CERTIFICATIONS -> new CertificationItem(
                     id,
                     str(raw, "name"),
@@ -182,7 +237,7 @@ public class LlmSectionExtractor {
                     parseDate(raw, "endDate"),
                     bool(raw, "isCurrent")
             );
-            case SUMMARY -> new SummaryItem(id, str(raw, "text"));
+            case SUMMARY -> new SummaryItem(id, str(raw, "text"), null, null, null, null, null, null);
             case UNKNOWN -> new GenericItem(id, toStringMap(raw));
         };
     }

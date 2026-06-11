@@ -1,5 +1,6 @@
 import { create } from "zustand"
-import type { ResumeDocumentDto, ResumeDto, ResumeSectionDto } from "@/types/api"
+import type { ResumeDocumentDto, ResumeDto, ResumeSectionDto, ResumeSectionType, ResumeItemDto } from "@/types/api"
+import { createEmptyItem } from "@/lib/resumeItemFactory"
 
 interface ResumeState {
   resumes: ResumeDto[]
@@ -24,6 +25,9 @@ interface ResumeState {
     field: string
     newValue: string
   }) => void
+  addItem: (sectionType: ResumeSectionType, position: number) => void
+  deleteItem: (sectionType: ResumeSectionType, itemId: string) => void
+  reorderItems: (sectionType: ResumeSectionType, newItems: ResumeItemDto[]) => void
 }
 
 export const useResumeStore = create<ResumeState>((set) => ({
@@ -127,4 +131,64 @@ export const useResumeStore = create<ResumeState>((set) => ({
   applyPatch: (_patch) => {
     // No-op stub — fully implemented in Story 4.2
   },
+  addItem: (sectionType, position) =>
+    set((state) => {
+      if (!state.currentResume) return state
+      const newItem = createEmptyItem(sectionType)
+      return {
+        ...state,
+        currentResume: {
+          ...state.currentResume,
+          content: {
+            ...state.currentResume.content,
+            sections: state.currentResume.content.sections.map((s) =>
+              s.sectionType !== sectionType
+                ? s
+                : {
+                    ...s,
+                    items: [
+                      ...s.items.slice(0, position),
+                      newItem,
+                      ...s.items.slice(position),
+                    ],
+                  }
+            ),
+          },
+        },
+      }
+    }),
+  deleteItem: (sectionType, itemId) =>
+    set((state) => {
+      if (!state.currentResume) return state
+      return {
+        ...state,
+        currentResume: {
+          ...state.currentResume,
+          content: {
+            ...state.currentResume.content,
+            sections: state.currentResume.content.sections.map((s) =>
+              s.sectionType !== sectionType
+                ? s
+                : { ...s, items: s.items.filter((item) => item.id !== itemId) }
+            ),
+          },
+        },
+      }
+    }),
+  reorderItems: (sectionType, newItems) =>
+    set((state) => {
+      if (!state.currentResume) return state
+      return {
+        ...state,
+        currentResume: {
+          ...state.currentResume,
+          content: {
+            ...state.currentResume.content,
+            sections: state.currentResume.content.sections.map((s) =>
+              s.sectionType !== sectionType ? s : { ...s, items: newItems }
+            ),
+          },
+        },
+      }
+    }),
 }))

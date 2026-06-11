@@ -99,6 +99,12 @@ export default function ProfilePage() {
     try {
       const current = profile ?? {
         summary: null,
+        contactEmail: null,
+        linkedInUrl: null,
+        personalPageUrl: null,
+        blogUrl: null,
+        locationCity: null,
+        locationCountry: null,
         workExperiences: [],
         education: [],
         skills: [],
@@ -109,6 +115,12 @@ export default function ProfilePage() {
       }
       const payload: ProfileUpdateRequest = {
         summary: partial.summary !== undefined ? partial.summary : current.summary,
+        contactEmail: partial.contactEmail !== undefined ? partial.contactEmail : current.contactEmail,
+        linkedInUrl: partial.linkedInUrl !== undefined ? partial.linkedInUrl : current.linkedInUrl,
+        personalPageUrl: partial.personalPageUrl !== undefined ? partial.personalPageUrl : current.personalPageUrl,
+        blogUrl: partial.blogUrl !== undefined ? partial.blogUrl : current.blogUrl,
+        locationCity: partial.locationCity !== undefined ? partial.locationCity : current.locationCity,
+        locationCountry: partial.locationCountry !== undefined ? partial.locationCountry : current.locationCountry,
         workExperiences:
           partial.workExperiences !== undefined
             ? partial.workExperiences
@@ -234,15 +246,29 @@ export default function ProfilePage() {
             className="mb-8 flex gap-4"
           >
             {STEPS.map((label, index) => {
-              let className = "text-zinc-400"
+              let className = "text-zinc-400 font-normal" // unvisited
               if (index < currentStep) {
-                className = "text-zinc-500 line-through"
+                className = "text-zinc-400 font-normal" // completed — muted, no strikethrough
               } else if (index === currentStep) {
-                className = "font-medium text-blue-600"
+                className = "font-semibold text-zinc-900" // current — highlighted
               }
               return (
-                <li key={label} className={className}>
-                  {index < currentStep ? `✓ ${label}` : label}
+                <li
+                  key={label}
+                  className={`${className} cursor-pointer select-none`}
+                  onClick={() => setStep(index)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      setStep(index)
+                    }
+                  }}
+                  aria-label={`Go to step ${label}`}
+                  aria-current={index === currentStep ? "step" : undefined}
+                >
+                  {label}
                 </li>
               )
             })}

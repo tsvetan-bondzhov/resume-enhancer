@@ -2,7 +2,6 @@ package com.tsvetanbondzhov.resumeenhancer.upload;
 
 import com.tsvetanbondzhov.resumeenhancer.ai.OllamaHealthGuard;
 import com.tsvetanbondzhov.resumeenhancer.common.FileValidationException;
-import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
 import com.tsvetanbondzhov.resumeenhancer.upload.dto.ParsedResumeDto;
 import com.tsvetanbondzhov.resumeenhancer.upload.dto.RawSection;
 import com.tsvetanbondzhov.resumeenhancer.upload.parsers.DocxParser;
@@ -71,16 +70,13 @@ public class ParsingService {
             String rawText = heuristicResult.rawText();
             List<RawSection> rawSections = SectionExtractor.segmentByHeaders(rawText);
 
-            // AC10: Enforce 30-second total timeout via CompletableFuture
-            CompletableFuture<ResumeDocument> future = CompletableFuture.supplyAsync(() ->
+            CompletableFuture<ParsedResumeDto> future = CompletableFuture.supplyAsync(() ->
                 llmSectionExtractor.extract(rawSections, rawText)
             );
 
-            ResumeDocument resumeDocument = future.get(LLM_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            log.info("LLM parsing complete: {} sections extracted", resumeDocument.sections().size());
-
-            // Return heuristic DTO (backward compat) — ResumeDocument is assembled for future use
-            return heuristicResult;
+            ParsedResumeDto llmDto = future.get(LLM_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            log.info("LLM parsing complete — returning LLM ParsedResumeDto");
+            return llmDto;
 
         } catch (TimeoutException e) {
             log.warn("LLM parsing timed out after {}s — returning heuristic fallback", LLM_TIMEOUT_SECONDS);

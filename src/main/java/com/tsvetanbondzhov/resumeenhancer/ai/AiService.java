@@ -72,7 +72,7 @@ public class AiService {
                     "\"description\": \"comma-separated achievements\"}]";
             case "EDUCATION" -> "[{\"institution\": \"\", \"degree\": \"\", \"fieldOfStudy\": \"\", " +
                     "\"startDate\": \"YYYY-MM-DD or null\", \"endDate\": \"YYYY-MM-DD or null\"}]";
-            case "SKILLS" -> "[{\"name\": \"\", \"category\": \"\", \"proficiency\": \"\"}]";
+            case "SKILLS" -> "[{\"name\": \"\"}]";
             case "CERTIFICATIONS" -> "[{\"name\": \"\", \"issuer\": \"\", " +
                     "\"issueDate\": \"YYYY-MM-DD\", \"expirationDate\": \"YYYY-MM-DD or null\"}]";
             case "PROJECTS" -> "[{\"name\": \"\", \"description\": \"\", " +

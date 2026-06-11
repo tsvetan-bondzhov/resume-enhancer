@@ -62,6 +62,12 @@ public class ProfileService {
         });
 
         profile.setSummary(request.summary());
+        profile.setLinkedInUrl(request.linkedInUrl());
+        profile.setPersonalPageUrl(request.personalPageUrl());
+        profile.setBlogUrl(request.blogUrl());
+        profile.setContactEmail(request.contactEmail());
+        profile.setLocationCountry(request.locationCountry());
+        profile.setLocationCity(request.locationCity());
 
         // PUT replace strategy: clear in-place and repopulate (orphanRemoval handles deletes)
         profile.getWorkExperiences().clear();
@@ -127,7 +133,15 @@ public class ProfileService {
         List<VolunteeringDto> volunteering = profile.getVolunteering().stream()
                 .map(this::toDto)
                 .toList();
-        return new ProfileDto(profile.getSummary(), workExperiences, education, skills,
+        return new ProfileDto(
+                profile.getSummary(),
+                profile.getLinkedInUrl(),
+                profile.getPersonalPageUrl(),
+                profile.getBlogUrl(),
+                profile.getContactEmail(),
+                profile.getLocationCountry(),
+                profile.getLocationCity(),
+                workExperiences, education, skills,
                 certifications, languages, projects, volunteering);
     }
 
@@ -254,7 +268,8 @@ public class ProfileService {
     }
 
     private ProfileDto emptyProfileDto() {
-        return new ProfileDto(null, Collections.emptyList(), Collections.emptyList(),
+        return new ProfileDto(null, null, null, null, null, null, null,
+                Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyList());
     }

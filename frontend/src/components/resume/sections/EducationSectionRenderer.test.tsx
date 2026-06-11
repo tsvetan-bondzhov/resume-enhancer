@@ -36,6 +36,15 @@ describe("EducationSectionRenderer", () => {
     expect(screen.getByText(/2020/)).toBeInTheDocument()
   })
 
+  it("renders year-only date range in read-only mode", () => {
+    render(
+      <EducationSectionRenderer
+        items={[buildItem({ startDate: "2018-09-01", endDate: "2022-06-01" })]}
+      />
+    )
+    expect(screen.getByText(/2018 — 2022/)).toBeInTheDocument()
+  })
+
   it("calls onFieldChange with (itemId, 'institution', value) on blur", () => {
     const onFieldChange = vi.fn()
     render(<EducationSectionRenderer items={[buildItem()]} onFieldChange={onFieldChange} />)
@@ -49,5 +58,17 @@ describe("EducationSectionRenderer", () => {
   it("does not render null degree", () => {
     render(<EducationSectionRenderer items={[buildItem({ degree: null, fieldOfStudy: null })]} />)
     expect(screen.queryByText(/B\.Sc\./)).not.toBeInTheDocument()
+  })
+
+  it("calls onDeleteItem with correct item.id when delete button is clicked", () => {
+    const onDeleteItem = vi.fn()
+    render(
+      <EducationSectionRenderer
+        items={[buildItem()]}
+        onDeleteItem={onDeleteItem}
+      />
+    )
+    fireEvent.click(screen.getByLabelText("Delete item"))
+    expect(onDeleteItem).toHaveBeenCalledWith("edu-1")
   })
 })

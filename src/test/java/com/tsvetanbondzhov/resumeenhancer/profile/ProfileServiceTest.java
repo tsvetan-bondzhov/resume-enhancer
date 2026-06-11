@@ -134,6 +134,7 @@ class ProfileServiceTest {
 
         ProfileUpdateRequest request = new ProfileUpdateRequest(
                 "Summary text",
+                null, null, null, null, null, null,  // contact fields
                 List.of(new WorkExperienceRequest("Dev", "Corp", LocalDate.of(2020, 1, 1), null, true, "Work")),
                 List.of(new EducationRequest("Uni", "MSc", "CS", LocalDate.of(2018, 9, 1), LocalDate.of(2020, 6, 1))),
                 List.of(new SkillRequest("Java")),
@@ -186,6 +187,7 @@ class ProfileServiceTest {
 
         ProfileUpdateRequest request = new ProfileUpdateRequest(
                 "New summary",
+                null, null, null, null, null, null,  // contact fields
                 List.of(new WorkExperienceRequest("NewJob", "NewCorp", null, null, false, null)),
                 List.of(),
                 List.of(new SkillRequest("NewSkill")),
@@ -220,6 +222,7 @@ class ProfileServiceTest {
 
         ProfileUpdateRequest request = new ProfileUpdateRequest(
                 "Summary",
+                null, null, null, null, null, null,  // contact fields
                 List.of(),
                 List.of(),
                 List.of(),
@@ -273,6 +276,7 @@ class ProfileServiceTest {
 
         ProfileUpdateRequest request = new ProfileUpdateRequest(
                 null,
+                null, null, null, null, null, null,  // contact fields
                 List.of(),
                 List.of(),
                 List.of(),

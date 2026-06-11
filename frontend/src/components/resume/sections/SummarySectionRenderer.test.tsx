@@ -8,6 +8,12 @@ function buildItem(overrides?: Partial<SummaryItemDto>): SummaryItemDto {
     type: "SUMMARY",
     id: "summary-1",
     text: "Experienced software engineer with 10 years of experience.",
+    linkedInUrl: null,
+    personalPageUrl: null,
+    blogUrl: null,
+    contactEmail: null,
+    locationCountry: null,
+    locationCity: null,
     ...overrides,
   }
 }
@@ -46,5 +52,43 @@ describe("SummarySectionRenderer", () => {
     fireEvent.blur(p, { target: { textContent: "Updated summary text." } })
 
     expect(onFieldChange).toHaveBeenCalledWith("summary-1", "text", "Updated summary text.")
+  })
+
+  it("renders contact row above text when linkedInUrl is non-null", () => {
+    const { container } = render(
+      <SummarySectionRenderer
+        items={[buildItem({ linkedInUrl: "https://linkedin.com/in/johndoe" })]}
+      />
+    )
+    const anchor = container.querySelector('a[href="https://linkedin.com/in/johndoe"]')
+    expect(anchor).not.toBeNull()
+    expect(anchor).toHaveAttribute("target", "_blank")
+    expect(anchor).toHaveAttribute("rel", "noopener noreferrer")
+  })
+
+  it("does not render contact row when all six contact fields are null", () => {
+    const { container } = render(
+      <SummarySectionRenderer items={[buildItem()]} />
+    )
+    const contactRow = container.querySelector(".flex.flex-wrap")
+    expect(contactRow).toBeNull()
+  })
+
+  it("renders location as 'City, Country' when both locationCity and locationCountry are set", () => {
+    render(
+      <SummarySectionRenderer
+        items={[buildItem({ locationCity: "Berlin", locationCountry: "Germany" })]}
+      />
+    )
+    expect(screen.getByText("Berlin, Germany")).toBeInTheDocument()
+  })
+
+  it("renders contact row with contactEmail as plain text", () => {
+    render(
+      <SummarySectionRenderer
+        items={[buildItem({ contactEmail: "jane@example.com" })]}
+      />
+    )
+    expect(screen.getByText("jane@example.com")).toBeInTheDocument()
   })
 })

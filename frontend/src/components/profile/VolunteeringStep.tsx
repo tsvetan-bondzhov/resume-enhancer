@@ -144,22 +144,29 @@ export default function VolunteeringStep({
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Volunteering</h2>
 
+      {entries.length === 0 && (
+        <div className="rounded-md border border-dashed p-6 text-center text-sm text-zinc-500">
+          No volunteering added yet.{" "}
+          <button type="button" onClick={addAnother} className="text-blue-600 underline">
+            Add volunteering
+          </button>
+        </div>
+      )}
+
       {entries.map((entry, index) => (
         <div key={entry.draft.id} className="rounded-md border p-4 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-zinc-600">
               Entry {index + 1}
             </span>
-            {entries.length > 1 && (
-              <button
-                type="button"
-                aria-label={`Remove entry ${index + 1}`}
-                onClick={() => removeEntry(index)}
-                className="text-sm text-red-500 hover:text-red-700"
-              >
-                ×
-              </button>
-            )}
+            <button
+              type="button"
+              aria-label={`Remove entry ${index + 1}`}
+              onClick={() => removeEntry(index)}
+              className="text-sm text-red-500 hover:text-red-700"
+            >
+              ×
+            </button>
           </div>
 
           <div className="space-y-2">
