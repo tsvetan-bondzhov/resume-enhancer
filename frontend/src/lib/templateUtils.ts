@@ -1,17 +1,19 @@
 import type { ResumeSectionDto, TemplateDto } from "@/types/api"
 
 /**
- * Returns visible sections ordered according to the template definition.
+ * Returns visible sections ordered according to the user's document order.
  *
  * Rules:
  * - Visibility filtering is applied first: sections with `visible === false` are always excluded.
- * - `single-column` / `modern-accent`: follows `layout.sectionOrder`.
- * - `two-column`: follows `columns.left` then `columns.right`.
- * - Sections absent from the template order arrays are appended last in document order.
+ * - `single-column` / `modern-accent`: returns visible sections in the user's stored array order
+ *   (the template `sectionOrder` is no longer used as a sort key).
+ * - `two-column`: sections are split into left/right groups using template `columns.left` /
+ *   `columns.right` for column assignment only; ordering within each group follows the user's
+ *   array order. Unassigned sections are appended to the right column.
+ * - No template / no layout: user array order returned unchanged.
  * - Sections are NEVER silently dropped.
  *
- * Note: `sectionOrder` strings now match `section.sectionType` values (e.g. "WORK_EXPERIENCE").
- * After Story 3.11, template definitions use enum names — full alignment is achieved.
+ * Note: `sectionOrder` strings match `section.sectionType` values (e.g. "WORK_EXPERIENCE").
  */
 export function getOrderedSections(
   sections: ResumeSectionDto[],
@@ -24,21 +26,16 @@ export function getOrderedSections(
   const layoutType = template?.templateDefinition?.layoutType
 
   if (layoutType === "two-column") {
-    const left = layout.columns?.left ?? []
-    const right = layout.columns?.right ?? []
-    const orderedIds = [...left, ...right]
-    const inOrder = orderedIds
-      .map((id) => visibleSections.find((s) => s.sectionType === id))
-      .filter((s): s is ResumeSectionDto => s !== undefined)
-    const remaining = visibleSections.filter((s) => !orderedIds.includes(s.sectionType))
-    return [...inOrder, ...remaining]
+    const leftIds = new Set(layout.columns?.left ?? [])
+    const rightIds = new Set(layout.columns?.right ?? [])
+    const leftSections = visibleSections.filter((s) => leftIds.has(s.sectionType))
+    const rightSections = visibleSections.filter((s) => rightIds.has(s.sectionType))
+    const unassigned = visibleSections.filter(
+      (s) => !leftIds.has(s.sectionType) && !rightIds.has(s.sectionType)
+    )
+    return [...leftSections, ...rightSections, ...unassigned]
   }
 
-  // single-column and modern-accent
-  const sectionOrder = layout.sectionOrder ?? []
-  const inOrder = sectionOrder
-    .map((id) => visibleSections.find((s) => s.sectionType === id))
-    .filter((s): s is ResumeSectionDto => s !== undefined)
-  const remaining = visibleSections.filter((s) => !sectionOrder.includes(s.sectionType))
-  return [...inOrder, ...remaining]
+  // single-column and modern-accent: user array order wins
+  return visibleSections
 }

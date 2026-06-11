@@ -63,8 +63,10 @@ describe("ResumeCanvas", () => {
     )
   })
 
-  // AC4: section render order follows template sectionOrder
-  it("renders sections in template sectionOrder (skills before experience)", async () => {
+  // AC1: section render order follows user document array order, not template sectionOrder
+  it("renders sections in user document order (experience before skills), ignoring template sectionOrder", async () => {
+    // mockDocument has WORK_EXPERIENCE first, then SKILLS — template sectionOrder has SKILLS first
+    // After the fix, user array order wins: Experience should appear before Skills
     mockGet.mockResolvedValue(buildTemplate())
     const { container } = render(
       <ResumeCanvas document={mockDocument} templateId="t1" />
@@ -73,7 +75,7 @@ describe("ResumeCanvas", () => {
     await waitFor(() => {
       const sectionHeadings = container.querySelectorAll("h2")
       const titles = Array.from(sectionHeadings).map((h) => h.textContent)
-      expect(titles.indexOf("Skills")).toBeLessThan(titles.indexOf("Experience"))
+      expect(titles.indexOf("Experience")).toBeLessThan(titles.indexOf("Skills"))
     })
   })
 

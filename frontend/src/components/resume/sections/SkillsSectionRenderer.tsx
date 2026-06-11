@@ -150,7 +150,7 @@ export default function SkillsSectionRenderer({
               {category}
             </p>
             <div className="flex flex-wrap gap-1">
-              {groupItems.map((item, index) =>
+              {groupItems.map((item) =>
                 item.name != null ? (
                   <React.Fragment key={item.id}>
                     <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
