@@ -230,13 +230,13 @@ export default function ResumeCanvas({
           </div>
 
           {/* Visible page stack */}
-          <div id="resume-canvas" className="flex flex-col items-center gap-4">
+          <div id="resume-canvas" className="flex flex-col items-center gap-4 w-full">
             {Array.from({ length: pageCount }, (_, i) => (
               <article
                 key={i}
                 aria-label={`Resume page ${i + 1}`}
                 style={{ ...rootStyle, height: PAGE_HEIGHT_PX, overflow: "hidden", position: "relative" }}
-                className="bg-white shadow-lg w-full max-w-[794px]"
+                className="bg-white shadow-lg w-[794px] max-w-full"
               >
                 {/* Inner content div offset per page to slice the correct page window */}
                 <div
