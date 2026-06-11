@@ -36,7 +36,7 @@ function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapper
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="relative group/item inline-flex">
+    <div ref={setNodeRef} style={style} className="relative group/item inline-flex break-inside-avoid">
       <div
         className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 transition-opacity cursor-grab touch-none"
         {...attributes}

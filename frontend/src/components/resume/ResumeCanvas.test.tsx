@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, waitFor, act } from "@testing-library/react"
 import { apiClient } from "@/lib/apiClient"
 import type { ResumeDocumentDto, TemplateDto } from "@/types/api"
-import ResumeCanvas from "./ResumeCanvas"
+import ResumeCanvas, { PAGE_HEIGHT_PX } from "./ResumeCanvas"
+import { resizeObserverTracker } from "@/test/setup"
 
 vi.mock("@/lib/apiClient", () => ({
   apiClient: { get: vi.fn() },
@@ -47,17 +48,30 @@ function buildTwoColumnTemplate(): TemplateDto {
   })
 }
 
+// Helper: fire the most recently constructed ResizeObserver callback with a given height.
+function fireResizeObserver(height: number) {
+  const instance = resizeObserverTracker.last
+  if (!instance) throw new Error("No ResizeObserver instance found — component not mounted?")
+  act(() => {
+    instance.callback(
+      [{ contentRect: { height } } as unknown as ResizeObserverEntry],
+      instance as unknown as ResizeObserver
+    )
+  })
+}
+
 describe("ResumeCanvas", () => {
   beforeEach(() => vi.clearAllMocks())
 
-  // AC4: cssVariables injected as inline style on root <article>
-  it("applies cssVariables as inline style on root article when template loaded", async () => {
+  // AC4: cssVariables injected as inline style on the first <article> page element
+  it("applies cssVariables as inline style on first page article when template loaded", async () => {
     mockGet.mockResolvedValue(buildTemplate())
     const { container } = render(
       <ResumeCanvas document={mockDocument} templateId="t1" />
     )
     await waitFor(() => expect(mockGet).toHaveBeenCalledWith("/api/v1/resume-templates/t1"))
-    const article = container.querySelector("#resume-canvas")!
+    // After this story, #resume-canvas is the wrapper <div>; CSS vars are on each <article>
+    const article = container.querySelector("article")!
     await waitFor(() =>
       expect(article.getAttribute("style")).toContain("--accent-color")
     )
@@ -94,12 +108,15 @@ describe("ResumeCanvas", () => {
       },
     })
     mockGet.mockResolvedValue(template)
-    render(<ResumeCanvas document={mockDocument} templateId="t1" />)
+    const { container } = render(<ResumeCanvas document={mockDocument} templateId="t1" />)
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
-    // education section has visible: false — must not appear
+    // education section has visible: false — must not appear in the visible pages
+    const canvas = container.querySelector("#resume-canvas")!
     await waitFor(() => {
-      expect(screen.queryByText("Education")).not.toBeInTheDocument()
-      expect(screen.getByText("Experience")).toBeInTheDocument()
+      // "Education" heading must not be in any visible page article
+      const headings = Array.from(canvas.querySelectorAll("h2")).map((h) => h.textContent)
+      expect(headings).not.toContain("Education")
+      expect(headings).toContain("Experience")
     })
   })
 
@@ -110,10 +127,11 @@ describe("ResumeCanvas", () => {
       <ResumeCanvas document={mockDocument} templateId="t1" />
     )
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
-    const article = container.querySelector("#resume-canvas")!
+    // #resume-canvas is now the outer <div> wrapping all pages
+    const canvas = container.querySelector("#resume-canvas")!
     await waitFor(() => {
-      // Outer flex wrapper containing both columns
-      const flexWrapper = article.querySelector(".flex.gap-6")
+      // Outer flex wrapper containing both columns — lives inside the page article
+      const flexWrapper = canvas.querySelector(".flex.gap-6")
       expect(flexWrapper).not.toBeNull()
       expect(flexWrapper).toBeInTheDocument()
       // Left column: basis-1/3
@@ -131,7 +149,7 @@ describe("ResumeCanvas", () => {
     )
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
     await waitFor(() => {
-      const article = container.querySelector("#resume-canvas")!
+      const article = container.querySelector("article")!
       expect(article.getAttribute("style") ?? "").not.toContain("grid-template-columns")
     })
   })
@@ -143,10 +161,12 @@ describe("ResumeCanvas", () => {
       <ResumeCanvas document={mockDocument} templateId="t1" />
     )
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
-    const article = container.querySelector("#resume-canvas")!
+    const canvas = container.querySelector("#resume-canvas")!
     await waitFor(() => {
-      expect(screen.getByText("Skills")).toBeInTheDocument()
-      expect(article.querySelector(".flex.gap-6")).not.toBeInTheDocument()
+      // Skills section must appear in a visible page article
+      const headings = Array.from(canvas.querySelectorAll("h2")).map((h) => h.textContent)
+      expect(headings).toContain("Skills")
+      expect(canvas.querySelector(".flex.gap-6")).not.toBeInTheDocument()
     })
   })
 
@@ -164,10 +184,11 @@ describe("ResumeCanvas", () => {
       <ResumeCanvas document={mockDocument} templateId="t1" />
     )
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
-    const article = container.querySelector("#resume-canvas")!
+    const canvas = container.querySelector("#resume-canvas")!
     await waitFor(() => {
-      expect(screen.getByText("Skills")).toBeInTheDocument()
-      expect(article.querySelector(".flex.gap-6")).not.toBeInTheDocument()
+      const headings = Array.from(canvas.querySelectorAll("h2")).map((h) => h.textContent)
+      expect(headings).toContain("Skills")
+      expect(canvas.querySelector(".flex.gap-6")).not.toBeInTheDocument()
     })
   })
 
@@ -187,10 +208,65 @@ describe("ResumeCanvas", () => {
       <ResumeCanvas document={mockDocument} templateId="t1" />
     )
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
-    const article = container.querySelector("#resume-canvas")!
+    const canvas = container.querySelector("#resume-canvas")!
     await waitFor(() => {
-      expect(screen.getByText("Skills")).toBeInTheDocument()
-      expect(article.querySelector(".flex.gap-6")).not.toBeInTheDocument()
+      const headings = Array.from(canvas.querySelectorAll("h2")).map((h) => h.textContent)
+      expect(headings).toContain("Skills")
+      expect(canvas.querySelector(".flex.gap-6")).not.toBeInTheDocument()
     })
+  })
+
+  // AC1, AC5: multiple pages rendered when content height > one page (multi-page test)
+  it("renders multiple page articles when content height exceeds one page", async () => {
+    mockGet.mockResolvedValue(buildTemplate())
+    const { container } = render(
+      <ResumeCanvas document={mockDocument} templateId="t1" />
+    )
+    await waitFor(() => expect(mockGet).toHaveBeenCalled())
+
+    // Simulate measured content height = 2.5 pages → should yield 3 page articles
+    fireResizeObserver(PAGE_HEIGHT_PX * 2.5)
+
+    await waitFor(() => {
+      // querySelectorAll("article") returns the visible page articles.
+      const articles = container.querySelectorAll("article")
+      expect(articles.length).toBe(3)
+    })
+
+    expect(container.querySelector("[aria-label='Resume page 1']")).toBeInTheDocument()
+    expect(container.querySelector("[aria-label='Resume page 2']")).toBeInTheDocument()
+    expect(container.querySelector("[aria-label='Resume page 3']")).toBeInTheDocument()
+  })
+
+  // AC5: exactly one page article for short content (single-page test)
+  it("renders exactly one page article when content fits within one page", async () => {
+    mockGet.mockResolvedValue(buildTemplate())
+    const { container } = render(
+      <ResumeCanvas document={mockDocument} templateId="t1" />
+    )
+    await waitFor(() => expect(mockGet).toHaveBeenCalled())
+
+    // Simulate short content — 0.8 of a page → should yield exactly 1 page article
+    fireResizeObserver(PAGE_HEIGHT_PX * 0.8)
+
+    await waitFor(() => {
+      const articles = container.querySelectorAll("article")
+      expect(articles.length).toBe(1)
+    })
+
+    expect(container.querySelector("[aria-label='Resume page 1']")).toBeInTheDocument()
+    expect(container.querySelector("[aria-label='Resume page 2']")).not.toBeInTheDocument()
+  })
+
+  // AC1: #resume-canvas is on the outer wrapper <div>, not an <article>
+  it("places id=resume-canvas on the outer wrapper div, not an article", async () => {
+    mockGet.mockResolvedValue(buildTemplate())
+    const { container } = render(
+      <ResumeCanvas document={mockDocument} templateId="t1" />
+    )
+    await waitFor(() => expect(mockGet).toHaveBeenCalled())
+
+    const canvas = container.querySelector("#resume-canvas")!
+    expect(canvas.tagName.toLowerCase()).toBe("div")
   })
 })
