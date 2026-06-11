@@ -314,7 +314,7 @@ describe("ResumeSection", () => {
     expect(jobTitleEl.closest("p")).toHaveClass("font-semibold")
   })
 
-  it("sectionType SUMMARY dispatches to SummarySectionRenderer (single <p>)", () => {
+  it("sectionType SUMMARY dispatches to SummarySectionRenderer (textbox div)", () => {
     const summaryItem: SummaryItemDto = {
       type: "SUMMARY",
       id: "summary-1",
@@ -333,11 +333,11 @@ describe("ResumeSection", () => {
         onFieldChange={vi.fn()}
       />
     )
-    // SummarySectionRenderer renders exactly one <p> for the text (excluding h2)
-    // The section has an h2 + a p from SummarySectionRenderer
-    const paragraphs = container.querySelectorAll("p")
-    expect(paragraphs).toHaveLength(1)
-    expect(paragraphs[0]).toHaveTextContent("A brief professional summary.")
+    // SummarySectionRenderer renders the text in a div[role="textbox"] (ARIA-compliant; <p> is not
+    // a valid host for role="textbox" per ARIA-in-HTML spec)
+    const textboxes = container.querySelectorAll("div[role='textbox']")
+    expect(textboxes).toHaveLength(1)
+    expect(textboxes[0]).toHaveTextContent("A brief professional summary.")
   })
 
   it("sectionType UNKNOWN dispatches to GenericSectionRenderer (ul/li list)", () => {

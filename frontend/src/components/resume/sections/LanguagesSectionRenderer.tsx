@@ -37,14 +37,15 @@ function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapper
 
   return (
     <div ref={setNodeRef} style={style} className="relative group/item break-inside-avoid">
-      <div
-        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 transition-opacity cursor-grab touch-none"
+      <button
+        type="button"
+        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab touch-none"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
+      </button>
       {onDeleteItem && (
         <button
           type="button"
@@ -102,11 +103,18 @@ export default function LanguagesSectionRenderer({
                 <>
                   {onFieldChange ? (
                     <span
+                      role="textbox"
+                      tabIndex={0}
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onFieldChange(item.id, "language", e.currentTarget.textContent ?? "")
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                        }
+                      }}
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                       aria-label="Edit language"
                     >
@@ -121,11 +129,18 @@ export default function LanguagesSectionRenderer({
                 <span className="inline-block bg-zinc-100 text-zinc-600 text-xs px-2 py-0.5 rounded-full">
                   {onFieldChange ? (
                     <span
+                      role="textbox"
+                      tabIndex={0}
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onFieldChange(item.id, "proficiency", e.currentTarget.textContent ?? "")
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                        }
+                      }}
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                       aria-label="Edit proficiency"
                     >

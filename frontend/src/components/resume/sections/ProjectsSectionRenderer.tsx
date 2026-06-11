@@ -38,14 +38,15 @@ function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapper
 
   return (
     <div ref={setNodeRef} style={style} className="relative group/item break-inside-avoid">
-      <div
-        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 transition-opacity cursor-grab touch-none"
+      <button
+        type="button"
+        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab touch-none"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
+      </button>
       {onDeleteItem && (
         <button
           type="button"
@@ -103,11 +104,18 @@ export default function ProjectsSectionRenderer({
                 <p className="font-semibold text-sm">
                   {onFieldChange ? (
                     <span
+                      role="textbox"
+                      tabIndex={0}
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onFieldChange(item.id, "name", e.currentTarget.textContent ?? "")
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                        }
+                      }}
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                       aria-label="Edit name"
                     >
@@ -123,11 +131,18 @@ export default function ProjectsSectionRenderer({
                   {onFieldChange ? (
                     <>
                       <span
+                        role="textbox"
+                        tabIndex={0}
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) =>
                           onFieldChange(item.id, "startDate", e.currentTarget.textContent ?? "")
                         }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault()
+                          }
+                        }}
                         className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                         aria-label="Edit startDate"
                       >
@@ -135,11 +150,18 @@ export default function ProjectsSectionRenderer({
                       </span>
                       {" — "}
                       <span
+                        role="textbox"
+                        tabIndex={0}
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) =>
                           onFieldChange(item.id, "endDate", e.currentTarget.textContent ?? "")
                         }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault()
+                          }
+                        }}
                         className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                         aria-label="Edit endDate"
                       >
@@ -159,11 +181,18 @@ export default function ProjectsSectionRenderer({
                 <div className="flex flex-wrap gap-1 mt-1">
                   {onFieldChange ? (
                     <span
+                      role="textbox"
+                      tabIndex={0}
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onFieldChange(item.id, "technologies", e.currentTarget.textContent ?? "")
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                        }
+                      }}
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block text-xs text-muted-foreground"
                       aria-label="Edit technologies"
                     >
@@ -185,11 +214,18 @@ export default function ProjectsSectionRenderer({
                 <p className="text-sm mt-1">
                   {onFieldChange ? (
                     <span
+                      role="textbox"
+                      tabIndex={0}
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onFieldChange(item.id, "description", e.currentTarget.textContent ?? "")
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                        }
+                      }}
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                       aria-label="Edit description"
                     >
@@ -204,11 +240,18 @@ export default function ProjectsSectionRenderer({
                 <div className="mt-1">
                   {onFieldChange ? (
                     <span
+                      role="textbox"
+                      tabIndex={0}
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onFieldChange(item.id, "link", e.currentTarget.textContent ?? "")
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                        }
+                      }}
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block text-xs text-primary"
                       aria-label="Edit link"
                     >

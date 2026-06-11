@@ -116,3 +116,17 @@
 ## Deferred from: code review of 4-10-parsing-service-and-parsedresumedto-refactor (2026-06-11)
 
 - `LlmSectionExtractor.java` switch on `ResumeSectionType` has no `default` clause — new enum values added in future stories would silently produce no typed items in `ParsedResumeDto`. Not a current bug; address if new section types are added.
+
+## Deferred from: code review of 9-3-accessibility-and-aria-compliance (2026-06-11)
+
+- `aria-multiline="true"` missing on multiline description/summary fields (`SummarySectionRenderer.tsx:141`, `WorkExperienceSectionRenderer.tsx` description span) — screen readers announce as single-line textbox; pre-existing omission from original contentEditable implementation.
+- camelCase `aria-label` values (`"Edit jobTitle"`, `"Edit fieldOfStudy"`, `"Edit startDate"`, etc.) are read verbatim by screen readers as single words — pre-existing label naming from original implementation; address in a future accessibility polish pass with human-readable labels.
+- `aria-label="Edit issueDate"` copy-paste bug on `expirationDate` span in `CertificationsSectionRenderer.tsx` — both issueDate and expirationDate spans carry the same label; pre-existing error not introduced by this story.
+- Non-unique `aria-label` values across multiple items of the same type (e.g., 3× "Edit company") — pre-existing pattern; requires item-identity context in labels (e.g., "Edit company for Senior Engineer at Acme").
+- `ProfilePage.tsx:253` `<li role="button">` — pre-existing S6819 violation; fully keyboard-accessible (has `onKeyDown`); out of story 9-3 scope; address in story 9-x or a dedicated accessibility pass.
+- `ResumeSidebarItem.tsx:32` `<div role="button">` — pre-existing S6819 violation; fully keyboard-accessible (has `onKeyDown`); out of story 9-3 scope; address in story 9-x or a dedicated accessibility pass.
+- `role="textbox"` on `<span contentEditable>` is redundant — browser already maps `contenteditable` to implicit textbox role; explicit `role="textbox"` may cause NVDA+Firefox to double-announce; cannot remove without re-introducing S6848; defer to a future ARIA audit when screen-reader compatibility can be tested end-to-end.
+- No `KeyboardSensor` registered in any `DndContext` — drag handle `<button>` is Tab-reachable but keyboard drag activation is silently non-functional; `{...listeners}` has no sensor to dispatch to; address when keyboard drag is formally specified.
+- `onBlur` uses `textContent` which concatenates descendant markup on paste of formatted content — `onPaste` sanitisation out of scope; address in a future content-editing quality pass.
+- Enter-blocking `onKeyDown` in single-line contentEditable fields does not prevent pasted newlines — `onPaste` sanitisation out of scope for this story.
+- `SummarySectionRenderer` edit-mode `<div>` tag change from `<p>` has no dedicated test asserting element type — address in a future test quality pass.

@@ -37,14 +37,15 @@ function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapper
 
   return (
     <div ref={setNodeRef} style={style} className="relative group/item break-inside-avoid">
-      <div
-        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 transition-opacity cursor-grab touch-none"
+      <button
+        type="button"
+        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab touch-none"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
+      </button>
       {onDeleteItem && (
         <button
           type="button"
@@ -135,7 +136,10 @@ export default function SummarySectionRenderer({
                       </div>
                     )}
                     {onFieldChange ? (
-                      <p
+                      <div
+                        role="textbox"
+                        aria-multiline="true"
+                        tabIndex={0}
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) =>
@@ -145,7 +149,7 @@ export default function SummarySectionRenderer({
                         aria-label="Edit text"
                       >
                         {item.text}
-                      </p>
+                      </div>
                     ) : (
                       <p className="text-sm">{item.text}</p>
                     )}
