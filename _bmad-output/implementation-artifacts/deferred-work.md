@@ -82,6 +82,12 @@
 
 - `SortableItemWrapper` and `AddItemButton` duplicated verbatim across all 9 renderer files — architectural decision documented in Dev Notes (inline approach reduces import overhead); extract to a shared `SortableItemWrapper.tsx` component in a future cleanup story.
 
+## Deferred from: code review of 4-7-settings-page-with-password-change (2026-06-11)
+
+- Generic toast on API error — backend 400 detail (e.g. "Current password is incorrect") not surfaced to user on failed password change; `SettingsPage` shows only "Failed to change password — please try again"; AC8 only specifies the 204 success path; address when richer error detail display is specified.
+- `UserRepository` injected directly into `UserController` to reload full user from DB — bypasses service-layer encapsulation; explicitly documented in dev notes as the correct pattern given JWT principal only contains email/role; consolidate DB access into `UserService` in a future service-layer cleanup pass.
+- `@NotBlank` vs `@Size(min=8)` validation ordering on `ChangePasswordRequest.newPassword` — Spring fires `@NotBlank` before `@Size` for blank input, showing "must not be blank" instead of the length message; no AC coverage for this edge; address when validation message UX is formally reviewed.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

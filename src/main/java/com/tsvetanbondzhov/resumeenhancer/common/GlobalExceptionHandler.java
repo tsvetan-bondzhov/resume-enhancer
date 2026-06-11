@@ -1,5 +1,6 @@
 package com.tsvetanbondzhov.resumeenhancer.common;
 
+import com.tsvetanbondzhov.resumeenhancer.auth.InvalidCurrentPasswordException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeAccessDeniedException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeNotFoundException;
 import com.tsvetanbondzhov.resumeenhancer.template.TemplateNotFoundException;
@@ -25,6 +26,13 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(InvalidCurrentPasswordException.class)
+    public ProblemDetail handleInvalidCurrentPassword(InvalidCurrentPasswordException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle("Bad Request");
+        return problem;
+    }
 
     @ExceptionHandler(DomainAuthException.class)
     public ProblemDetail handleDomainAuth(DomainAuthException ex) {
