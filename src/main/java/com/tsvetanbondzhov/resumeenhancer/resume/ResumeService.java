@@ -176,9 +176,7 @@ public class ResumeService {
                 ? profile.getSkills() : List.<Skill>of()).stream()
                 .<ResumeItem>map(s -> new SkillItem(
                         UUID.randomUUID().toString(),
-                        s.getName(),
-                        null,   // category — not in profile entity
-                        null    // proficiency — not in profile entity
+                        s.getName()
                 ))
                 .toList();
         sections.add(new ResumeSection(ResumeSectionType.SKILLS, "Skills", !skillItems.isEmpty(), skillItems));

@@ -77,9 +77,11 @@ class ResumeItemSerializationTest {
 
     @Test
     void skillItem_roundTrip() throws Exception {
-        SkillItem original = new SkillItem("id-3", "Java", null, null);
+        SkillItem original = new SkillItem("id-3", "Java");
         String json = mapper.writeValueAsString(original);
         assertThat(json).contains("\"type\":\"SKILLS\"");
+        assertThat(json).doesNotContain("\"category\"");
+        assertThat(json).doesNotContain("\"proficiency\"");
 
         ResumeItem deserialized = mapper.readValue(json, ResumeItem.class);
         assertThat(deserialized).isInstanceOf(SkillItem.class);

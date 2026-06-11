@@ -52,8 +52,6 @@ export interface SkillItemDto {
   type: "SKILLS"
   id: string
   name: string | null
-  category: string | null
-  proficiency: string | null
 }
 
 export interface CertificationItemDto {

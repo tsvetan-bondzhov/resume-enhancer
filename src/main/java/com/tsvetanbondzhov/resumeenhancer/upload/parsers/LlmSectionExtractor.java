@@ -154,7 +154,7 @@ public class LlmSectionExtractor {
                     parseDate(raw, "startDate"),
                     parseDate(raw, "endDate")
             );
-            case SKILLS -> new SkillItem(id, str(raw, "name"), str(raw, "category"), str(raw, "proficiency"));
+            case SKILLS -> new SkillItem(id, str(raw, "name"));
             case CERTIFICATIONS -> new CertificationItem(
                     id,
                     str(raw, "name"),

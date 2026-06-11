@@ -91,99 +91,37 @@ export default function SkillsSectionRenderer({
     onReorderItems(arrayMove(items, oldIndex, newIndex))
   }
 
-  const hasCategories = items.some((item) => item.category)
-
-  const renderItems = () => {
-    if (!hasCategories) {
-      // Flat chip list
-      return (
-        <div className="flex flex-wrap gap-1 group/section">
-          {onAddItem && <AddItemButton onClick={() => onAddItem(0)} />}
-          {items.map((item, index) =>
-            item.name != null ? (
-              <React.Fragment key={item.id}>
-                <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
-                  <span className="inline-block bg-zinc-100 text-zinc-700 text-xs px-2 py-0.5 rounded-sm">
-                    {onFieldChange ? (
-                      <span
-                        contentEditable
-                        suppressContentEditableWarning
-                        onBlur={(e) =>
-                          onFieldChange(item.id, "name", e.currentTarget.textContent ?? "")
-                        }
-                        className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
-                        aria-label="Edit name"
-                      >
-                        {item.name}
-                      </span>
-                    ) : (
-                      item.name
-                    )}
+  const content = (
+    <div className="flex flex-wrap gap-1 group/section">
+      {onAddItem && <AddItemButton onClick={() => onAddItem(0)} />}
+      {items.map((item, index) =>
+        item.name != null ? (
+          <React.Fragment key={item.id}>
+            <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
+              <span className="inline-block bg-zinc-100 text-zinc-700 text-xs px-2 py-0.5 rounded-sm">
+                {onFieldChange ? (
+                  <span
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={(e) =>
+                      onFieldChange(item.id, "name", e.currentTarget.textContent ?? "")
+                    }
+                    className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
+                    aria-label="Edit name"
+                  >
+                    {item.name}
                   </span>
-                </SortableItemWrapper>
-                {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} />}
-              </React.Fragment>
-            ) : null
-          )}
-        </div>
-      )
-    }
-
-    // Group by category
-    const groups = new Map<string, SkillItemDto[]>()
-    for (const item of items) {
-      const key = item.category ?? "Other"
-      const existing = groups.get(key)
-      if (existing) {
-        existing.push(item)
-      } else {
-        groups.set(key, [item])
-      }
-    }
-
-    return (
-      <div className="space-y-2 group/section">
-        {onAddItem && <AddItemButton onClick={() => onAddItem(0)} />}
-        {Array.from(groups.entries()).map(([category, groupItems]) => (
-          <div key={category}>
-            <p className="font-medium text-xs text-muted-foreground uppercase tracking-wide mb-1">
-              {category}
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {groupItems.map((item) =>
-                item.name != null ? (
-                  <React.Fragment key={item.id}>
-                    <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
-                      <span className="inline-block bg-zinc-100 text-zinc-700 text-xs px-2 py-0.5 rounded-sm">
-                        {onFieldChange ? (
-                          <span
-                            contentEditable
-                            suppressContentEditableWarning
-                            onBlur={(e) =>
-                              onFieldChange(item.id, "name", e.currentTarget.textContent ?? "")
-                            }
-                            className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
-                            aria-label="Edit name"
-                          >
-                            {item.name}
-                          </span>
-                        ) : (
-                          item.name
-                        )}
-                      </span>
-                    </SortableItemWrapper>
-                    {onAddItem && <AddItemButton onClick={() => onAddItem(items.indexOf(item) + 1)} />}
-                  </React.Fragment>
-                ) : null
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  const content = renderItems()
+                ) : (
+                  item.name
+                )}
+              </span>
+            </SortableItemWrapper>
+            {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} />}
+          </React.Fragment>
+        ) : null
+      )}
+    </div>
+  )
 
   if (onReorderItems) {
     return (

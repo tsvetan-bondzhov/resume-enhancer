@@ -24,7 +24,7 @@ export function createEmptyItem(sectionType: ResumeSectionType): ResumeItemDto {
       return item
     }
     case "SKILLS": {
-      const item: SkillItemDto = { type: "SKILLS", id, name: "", category: null, proficiency: null }
+      const item: SkillItemDto = { type: "SKILLS", id, name: "" }
       return item
     }
     case "CERTIFICATIONS": {
