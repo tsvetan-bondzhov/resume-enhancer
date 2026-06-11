@@ -104,3 +104,7 @@
 ## Deferred from: code review of 4-6-profile-page-navigation-and-first-entry-deletion (2026-06-11)
 
 - `SkillsStep.tsx` uses `aria-label="Remove skill X"` while all other step components (Experience, Education, Certifications, Languages, Projects, Volunteering) use `aria-label="Remove entry X"`. Inconsistent screen-reader labelling for the delete button. Pre-existing — not introduced by story 4-6. Normalise to a consistent pattern in a future accessibility pass.
+
+## Deferred from: code review of 4-10-parsing-service-and-parsedresumedto-refactor (2026-06-11)
+
+- `LlmSectionExtractor.java` switch on `ResumeSectionType` has no `default` clause — new enum values added in future stories would silently produce no typed items in `ParsedResumeDto`. Not a current bug; address if new section types are added.

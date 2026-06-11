@@ -9,41 +9,91 @@ import type {
   WorkExperienceRequest,
   EducationRequest,
   SkillRequest,
+  CertificationRequest,
+  LanguageRequest,
+  LanguageProficiencyLevel,
+  ProjectRequest,
+  VolunteeringRequest,
 } from "@/types/api"
 
 export function mapParsedToProfile(
   parsed: ParsedResumeDtoResponse,
-): Partial<{ workExperiences: WorkExperienceRequest[]; education: EducationRequest[]; skills: SkillRequest[] }> {
-  const workExperiences: WorkExperienceRequest[] = parsed.workExperienceLines
-    .filter((line) => line.trim().length > 0)
-    .map((line) => ({
-      jobTitle: line,
-      company: "",
-      startDate: null,
-      endDate: null,
-      isCurrent: false,
-      description: null,
-    }))
+): Partial<ProfileDto> {
+  const workExperiences: WorkExperienceRequest[] = (parsed.workExperiences ?? []).map((item) => ({
+    jobTitle: item.jobTitle ?? "",
+    company: item.company ?? "",
+    startDate: item.startDate ?? null,
+    endDate: item.endDate ?? null,
+    isCurrent: item.isCurrent ?? false,
+    description: item.description ?? null,
+  }))
 
-  const education: EducationRequest[] = parsed.educationLines
-    .filter((line) => line.trim().length > 0)
-    .map((line) => ({
-      institution: line,
-      degree: null,
-      fieldOfStudy: null,
-      startDate: null,
-      endDate: null,
-    }))
+  const education: EducationRequest[] = (parsed.education ?? []).map((item) => ({
+    institution: item.institution ?? "",
+    degree: item.degree ?? null,
+    fieldOfStudy: item.fieldOfStudy ?? null,
+    startDate: item.startDate ?? null,
+    endDate: item.endDate ?? null,
+  }))
 
-  const skills: SkillRequest[] = parsed.skillLines
-    .filter((line) => line.trim().length > 0)
-    .map((line) => ({ name: line }))
+  const skills: SkillRequest[] = (parsed.skills ?? []).map((item) => ({
+    name: item.name ?? "",
+  }))
 
-  if (workExperiences.length === 0 && education.length === 0 && skills.length === 0) {
+  const certifications: CertificationRequest[] = (parsed.certifications ?? []).map((item) => ({
+    name: item.name ?? "",
+    issuer: item.issuer ?? null,
+    issueDate: item.issueDate ?? null,
+    expirationDate: item.expirationDate ?? null,
+  }))
+
+  const languages: LanguageRequest[] = (parsed.languages ?? []).map((item) => ({
+    name: item.language ?? "",
+    proficiencyLevel: "INTERMEDIATE" as LanguageProficiencyLevel,
+  }))
+
+  const projects: ProjectRequest[] = (parsed.projects ?? []).map((item) => ({
+    name: item.name ?? "",
+    description: item.description ?? null,
+    technologies: item.technologies ?? null,
+    link: item.link ?? null,
+    startDate: item.startDate ?? null,
+    endDate: item.endDate ?? null,
+    isCurrent: item.isCurrent ?? false,
+  }))
+
+  const volunteering: VolunteeringRequest[] = (parsed.volunteering ?? []).map((item) => ({
+    role: item.role ?? "",
+    organization: item.organization ?? "",
+    description: item.description ?? null,
+    startDate: item.startDate ?? null,
+    endDate: item.endDate ?? null,
+    isCurrent: item.isCurrent ?? false,
+  }))
+
+  const isEmpty =
+    workExperiences.length === 0 &&
+    education.length === 0 &&
+    skills.length === 0 &&
+    certifications.length === 0 &&
+    languages.length === 0 &&
+    projects.length === 0 &&
+    volunteering.length === 0 &&
+    !parsed.summary?.text
+
+  if (isEmpty) {
     return {}
   }
 
-  return { workExperiences, education, skills }
+  return {
+    workExperiences,
+    education,
+    skills,
+    certifications,
+    languages,
+    projects,
+    volunteering,
+  }
 }
 
 export function useResumeUpload(): {
@@ -81,7 +131,7 @@ export function useResumeUpload(): {
         setStep(0)
       } else {
         const seeded: ProfileDto = {
-          summary: null,
+          summary: parsed.summary?.text ?? null,
           linkedInUrl: null,
           personalPageUrl: null,
           blogUrl: null,
@@ -91,10 +141,10 @@ export function useResumeUpload(): {
           workExperiences: mapped.workExperiences ?? [],
           education: mapped.education ?? [],
           skills: mapped.skills ?? [],
-          certifications: [],
-          languages: [],
-          projects: [],
-          volunteering: [],
+          certifications: mapped.certifications ?? [],
+          languages: mapped.languages ?? [],
+          projects: mapped.projects ?? [],
+          volunteering: mapped.volunteering ?? [],
         }
         setProfile(seeded)
         setHasStarted(true)
