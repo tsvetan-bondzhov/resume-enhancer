@@ -36,6 +36,10 @@ public class OllamaHealthGuard {
                     .build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             return response.statusCode() < 500;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Ollama health check interrupted: {}", e.getMessage());
+            return false;
         } catch (Exception e) {
             log.warn("Ollama health check failed: {}", e.getMessage());
             return false;

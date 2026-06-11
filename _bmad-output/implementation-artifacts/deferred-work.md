@@ -130,3 +130,7 @@
 - `onBlur` uses `textContent` which concatenates descendant markup on paste of formatted content — `onPaste` sanitisation out of scope; address in a future content-editing quality pass.
 - Enter-blocking `onKeyDown` in single-line contentEditable fields does not prevent pasted newlines — `onPaste` sanitisation out of scope for this story.
 - `SummarySectionRenderer` edit-mode `<div>` tag change from `<p>` has no dedicated test asserting element type — address in a future test quality pass.
+
+## Deferred from: code review of 9-4-java-backend-code-quality-llmsectionextractor (2026-06-11)
+
+- `catch (Exception e)` in `parseJsonItems` is over-broad (catches `Error` subclasses). Pre-existing pattern throughout `LlmSectionExtractor.java` — identical to the `catch (Exception e)` in `toStringMap` and item-level catch in `extractSectionItems`. Narrow to `catch (JsonProcessingException e)` in a future catch-narrowing quality pass.

@@ -78,39 +78,39 @@ public class LlmSectionExtractor {
             // Dispatch typed items to the appropriate list; skip UNKNOWN
             switch (sectionType) {
                 case WORK_EXPERIENCE -> items.stream()
-                    .filter(i -> i instanceof WorkExperienceItem)
-                    .map(i -> (WorkExperienceItem) i)
+                    .filter(WorkExperienceItem.class::isInstance)
+                    .map(WorkExperienceItem.class::cast)
                     .forEach(workExperiences::add);
                 case EDUCATION -> items.stream()
-                    .filter(i -> i instanceof EducationItem)
-                    .map(i -> (EducationItem) i)
+                    .filter(EducationItem.class::isInstance)
+                    .map(EducationItem.class::cast)
                     .forEach(education::add);
                 case SKILLS -> items.stream()
-                    .filter(i -> i instanceof SkillItem)
-                    .map(i -> (SkillItem) i)
+                    .filter(SkillItem.class::isInstance)
+                    .map(SkillItem.class::cast)
                     .forEach(skills::add);
                 case CERTIFICATIONS -> items.stream()
-                    .filter(i -> i instanceof CertificationItem)
-                    .map(i -> (CertificationItem) i)
+                    .filter(CertificationItem.class::isInstance)
+                    .map(CertificationItem.class::cast)
                     .forEach(certifications::add);
                 case LANGUAGES -> items.stream()
-                    .filter(i -> i instanceof LanguageItem)
-                    .map(i -> (LanguageItem) i)
+                    .filter(LanguageItem.class::isInstance)
+                    .map(LanguageItem.class::cast)
                     .forEach(languages::add);
                 case PROJECTS -> items.stream()
-                    .filter(i -> i instanceof ProjectItem)
-                    .map(i -> (ProjectItem) i)
+                    .filter(ProjectItem.class::isInstance)
+                    .map(ProjectItem.class::cast)
                     .forEach(projects::add);
                 case VOLUNTEERING -> items.stream()
-                    .filter(i -> i instanceof VolunteeringItem)
-                    .map(i -> (VolunteeringItem) i)
+                    .filter(VolunteeringItem.class::isInstance)
+                    .map(VolunteeringItem.class::cast)
                     .forEach(volunteering::add);
                 case SUMMARY -> {
                     // Take the first SummaryItem only; ignore subsequent ones
                     if (summary == null) {
                         summary = items.stream()
-                            .filter(i -> i instanceof SummaryItem)
-                            .map(i -> (SummaryItem) i)
+                            .filter(SummaryItem.class::isInstance)
+                            .map(SummaryItem.class::cast)
                             .findFirst()
                             .orElse(null);
                     }
@@ -148,13 +148,8 @@ public class LlmSectionExtractor {
                 return heuristicItems(rawSection);
             }
 
-            List<Map<String, Object>> rawItems;
-            try {
-                rawItems = objectMapper.readValue(jsonResponse,
-                    new TypeReference<List<Map<String, Object>>>() {});
-            } catch (Exception e) {
-                log.warn("Malformed JSON for section '{}', falling back to heuristic lines: {}",
-                    rawSection.title(), e.getMessage());
+            List<Map<String, Object>> rawItems = parseJsonItems(jsonResponse, rawSection);
+            if (rawItems == null) {
                 return heuristicItems(rawSection);
             }
 
@@ -178,6 +173,19 @@ public class LlmSectionExtractor {
         }
     }
 
+    /** Parses the LLM JSON response into a list of raw item maps.
+     *  Returns null (and logs a warning) if the JSON is malformed. */
+    private List<Map<String, Object>> parseJsonItems(String jsonResponse, RawSection rawSection) {
+        try {
+            return objectMapper.readValue(jsonResponse,
+                new TypeReference<List<Map<String, Object>>>() {});
+        } catch (Exception e) {
+            log.warn("Malformed JSON for section '{}', falling back to heuristic lines: {}",
+                rawSection.title(), e.getMessage());
+            return null;
+        }
+    }
+
     private ResumeItem buildTypedItem(ResumeSectionType type, Map<String, Object> raw, String fullRawText) {
         String id = UUID.randomUUID().toString();
 
@@ -185,8 +193,8 @@ public class LlmSectionExtractor {
         // Boolean and short numeric values are excluded to avoid false-positive matches
         // (e.g. "false".toString() matches almost any text fragment).
         boolean hasAnchor = raw.values().stream()
-            .filter(v -> v instanceof String)
-            .map(v -> (String) v)
+            .filter(String.class::isInstance)
+            .map(String.class::cast)
             .filter(v -> v.length() > 3)
             .anyMatch(v -> fullRawText.toLowerCase().contains(v.toLowerCase()));
         if (!hasAnchor && !raw.isEmpty()) {
