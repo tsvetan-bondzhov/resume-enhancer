@@ -33,6 +33,8 @@ public class LlmSectionExtractor {
 
     private static final Logger log = LoggerFactory.getLogger(LlmSectionExtractor.class);
     private static final int MAX_SECTION_LENGTH = 3000;
+    private static final String START_DATE = "startDate";
+    private static final String END_DATE = "endDate";
 
     private final AiService aiService;
     private final ObjectMapper objectMapper;
@@ -196,8 +198,8 @@ public class LlmSectionExtractor {
                     id,
                     str(raw, "jobTitle"),
                     str(raw, "company"),
-                    parseDate(raw, "startDate"),
-                    parseDate(raw, "endDate"),
+                    parseDate(raw, START_DATE),
+                    parseDate(raw, END_DATE),
                     bool(raw, "isCurrent"),
                     str(raw, "description")
             );
@@ -206,8 +208,8 @@ public class LlmSectionExtractor {
                     str(raw, "institution"),
                     str(raw, "degree"),
                     str(raw, "fieldOfStudy"),
-                    parseDate(raw, "startDate"),
-                    parseDate(raw, "endDate")
+                    parseDate(raw, START_DATE),
+                    parseDate(raw, END_DATE)
             );
             case SKILLS -> new SkillItem(id, str(raw, "name"));
             case CERTIFICATIONS -> new CertificationItem(
@@ -224,8 +226,8 @@ public class LlmSectionExtractor {
                     str(raw, "description"),
                     str(raw, "technologies"),
                     str(raw, "link"),
-                    parseDate(raw, "startDate"),
-                    parseDate(raw, "endDate"),
+                    parseDate(raw, START_DATE),
+                    parseDate(raw, END_DATE),
                     bool(raw, "isCurrent")
             );
             case VOLUNTEERING -> new VolunteeringItem(
@@ -233,8 +235,8 @@ public class LlmSectionExtractor {
                     str(raw, "role"),
                     str(raw, "organization"),
                     str(raw, "description"),
-                    parseDate(raw, "startDate"),
-                    parseDate(raw, "endDate"),
+                    parseDate(raw, START_DATE),
+                    parseDate(raw, END_DATE),
                     bool(raw, "isCurrent")
             );
             case SUMMARY -> new SummaryItem(id, str(raw, "text"), null, null, null, null, null, null);
