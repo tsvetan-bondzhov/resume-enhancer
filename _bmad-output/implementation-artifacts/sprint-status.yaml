@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-11 # Epic 4 created; Epics 4-7 shifted to 5-8; 4-1 → done; 4-2 → done; 4-3 → done; 4-4 → done; 4-5 → done; 4-6 → done; 4-7 → done; 4-8 → done; 4-9 → done; 4-10 → done; 4-11 → done
+last_updated: 2026-06-11 # Epic 4 created; Epics 4-7 shifted to 5-8; 4-1 → done; 4-2 → done; 4-3 → done; 4-4 → done; 4-5 → done; 4-6 → done; 4-7 → done; 4-8 → done; 4-9 → done; 4-10 → done; 4-11 → done; Epic 9 added (SonarQube remediation, 11 stories)
 project: resume-enhancer
 project_key: NOKEY
 tracking_system: file-system
@@ -79,7 +79,7 @@ development_status:
   epic-3-retrospective: optional
 
   # ─── Epic 4: Resume Experience Polish & Foundations ───
-epic-4: in-progress
+  epic-4: in-progress
   4-1-rendering-polish-sidebar-collapse-template-title-date-formatting-certification-display: done
   4-2-classic-template-two-column-layout-fix: done
   4-3-dashboard-resume-card-live-preview: done
@@ -123,3 +123,18 @@ epic-4: in-progress
   8-1-custom-template-data-model-and-crud-api: backlog
   8-2-custom-template-authoring-ui: backlog
   epic-8-retrospective: optional
+
+  # ─── Epic 9: Code Quality — SonarQube Remediation ───
+  epic-9: backlog
+  9-1-typescript-cognitive-complexity-and-void-operator: backlog
+  9-2-java-string-constants-and-empty-test-method: backlog
+  9-3-accessibility-and-aria-compliance: backlog
+  9-4-java-backend-code-quality-llmsectionextractor: backlog
+  9-5-duplicate-and-redundant-code: backlog
+  9-6-configuration-content-length-and-profileservice: backlog
+  9-7-type-safety-and-deprecated-apis: backlog
+  9-8-java-test-quality-time-constants-and-clock: backlog
+  9-9-code-style-simplified-conditionals-and-idioms: backlog
+  9-10-replace-window-global-with-globalthis: backlog
+  9-11-read-only-component-props: backlog
+  epic-9-retrospective: optional

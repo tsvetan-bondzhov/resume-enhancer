@@ -38,4 +38,7 @@ Admins can manage users (view, deactivate) and the prebuilt template library (CR
 Users can create, edit, and delete their own custom resume templates. Deferred from Epic 3 as it is not a prerequisite for AI features and represents the most complex UI work in the template domain (template definition format + editor). Implements FR22 and FR23 with a simplified template definition format as recommended in the architecture.
 **FRs covered:** FR22, FR23
 
+### Epic 9: Code Quality — SonarQube Remediation
+Addresses all 255 issues (18 CRITICAL · 49 MAJOR · 184 MINOR · 4 INFO) identified by SonarQube after Epic 4. Covers TypeScript cognitive complexity, Java string constants, accessibility/ARIA compliance, backend code quality, duplicate code, application configuration, type safety, test determinism, code-style modernisation, globalThis migration, and read-only props enforcement. Stories are ordered by severity — CRITICAL first, MAJOR next, MINOR last — so the highest-risk debt is retired first.
+
 ---
