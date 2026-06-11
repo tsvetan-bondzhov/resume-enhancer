@@ -88,6 +88,14 @@
 - `UserRepository` injected directly into `UserController` to reload full user from DB — bypasses service-layer encapsulation; explicitly documented in dev notes as the correct pattern given JWT principal only contains email/role; consolidate DB access into `UserService` in a future service-layer cleanup pass.
 - `@NotBlank` vs `@Size(min=8)` validation ordering on `ChangePasswordRequest.newPassword` — Spring fires `@NotBlank` before `@Size` for blank input, showing "must not be blank" instead of the length message; no AC coverage for this edge; address when validation message UX is formally reviewed.
 
+## Deferred from: code review of 9-1-typescript-cognitive-complexity-and-void-operator (2026-06-11)
+
+- `applyLoginError`/`applySignupError` — `toast.error(err.detail)` has no fallback when `err.detail` is null/undefined on 400 with no matching field errors. Pre-existing behavior from original inline code; address in a future error-handling hardening pass.
+- `executeDeleteResume` — `setSidebarResumes` may be called after `EditorPage` unmount if API call is in-flight at unmount time. Pre-existing race in the original `setTimeout` async callback; address when a global request cancellation strategy is introduced.
+- `updateSectionItems` parameter named `sectionId` compared against `section.sectionType` — naming mismatch carries forward from original action signature; address in a future naming/refactor pass.
+- `workExperiences` and `education` in `mergeProfilePayload` lack `?? []` fallback guard, unlike the four optional array fields — pre-existing asymmetry; `ProfileDto` declares both as non-nullable so risk is low; normalise in a future ProfileDto guard pass.
+- `applyLoginError`/`applySignupError` implicit caller contract (caller must clear field errors first) is undocumented; safe in current module-private usage; document or enforce if these patterns are extracted to shared utilities in future.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

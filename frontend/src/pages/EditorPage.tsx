@@ -13,6 +13,23 @@ import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
 import { useAutosave } from "@/hooks/useAutosave"
 import type { ResumeDto, ResumeSectionType } from "@/types/api"
 
+async function executeDeleteResume(
+  resume: ResumeDto,
+  pendingDeletes: Map<string, ReturnType<typeof setTimeout>>,
+  setSidebarResumes: React.Dispatch<React.SetStateAction<ResumeDto[]>>
+): Promise<void> {
+  pendingDeletes.delete(resume.id)
+  try {
+    await apiClient.delete(`/api/v1/resumes/${resume.id}`)
+  } catch {
+    setSidebarResumes((prev) => {
+      if (prev.find((r) => r.id === resume.id)) return prev
+      return [...prev, resume]
+    })
+    toast.error("Delete failed — resume restored")
+  }
+}
+
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -61,7 +78,8 @@ export default function EditorPage() {
       }
     }
 
-    void load()
+    // Fire-and-forget: effect does not need the promise result; errors handled inside load()
+    load()
   }, [id, setCurrentResume, setLastSavedDocument])
 
   // Cleanup: clear current resume from store on unmount
@@ -177,16 +195,7 @@ export default function EditorPage() {
 
     // 2. Schedule actual API delete after 5s
     const timeoutId = setTimeout(async () => {
-      pendingSidebarDeletes.current.delete(resume.id)
-      try {
-        await apiClient.delete(`/api/v1/resumes/${resume.id}`)
-      } catch {
-        setSidebarResumes((prev) => {
-          if (prev.find((r) => r.id === resume.id)) return prev
-          return [...prev, resume]
-        })
-        toast.error("Delete failed — resume restored")
-      }
+      await executeDeleteResume(resume, pendingSidebarDeletes.current, setSidebarResumes)
     }, 5000)
 
     pendingSidebarDeletes.current.set(resume.id, timeoutId)

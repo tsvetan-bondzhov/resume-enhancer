@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-11 # Epic 4 created; Epics 4-7 shifted to 5-8; 4-1 → done; 4-2 → done; 4-3 → done; 4-4 → done; 4-5 → done; 4-6 → done; 4-7 → done; 4-8 → done; 4-9 → done; 4-10 → done; 4-11 → done; Epic 9 added (SonarQube remediation, 11 stories)
+last_updated: 2026-06-11 # Epic 4 created; Epics 4-7 shifted to 5-8; 4-1 → done; 4-2 → done; 4-3 → done; 4-4 → done; 4-5 → done; 4-6 → done; 4-7 → done; 4-8 → done; 4-9 → done; 4-10 → done; 4-11 → done; Epic 9 added (SonarQube remediation, 11 stories); 9-1 → done
 project: resume-enhancer
 project_key: NOKEY
 tracking_system: file-system
@@ -125,8 +125,8 @@ development_status:
   epic-8-retrospective: optional
 
   # ─── Epic 9: Code Quality — SonarQube Remediation ───
-  epic-9: backlog
-  9-1-typescript-cognitive-complexity-and-void-operator: backlog
+  epic-9: in-progress
+  9-1-typescript-cognitive-complexity-and-void-operator: done
   9-2-java-string-constants-and-empty-test-method: backlog
   9-3-accessibility-and-aria-compliance: backlog
   9-4-java-backend-code-quality-llmsectionextractor: backlog

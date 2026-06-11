@@ -13,6 +13,28 @@ interface FieldErrors {
   password?: string
 }
 
+function applySignupError(err: unknown, setFieldErrors: (e: FieldErrors) => void): void {
+  if (!(err instanceof ApiError)) {
+    toast.error("Registration failed. Please try again.")
+    return
+  }
+  if (err.status === 409) {
+    toast.error("An account with this email already exists")
+    return
+  }
+  if (err.status === 400 && err.errors) {
+    const errors: FieldErrors = {}
+    if (err.errors["email"]?.[0]) errors.email = err.errors["email"][0]
+    if (err.errors["password"]?.[0]) errors.password = err.errors["password"][0]
+    setFieldErrors(errors)
+    if (!errors.email && !errors.password) {
+      toast.error(err.detail)
+    }
+    return
+  }
+  toast.error(err.detail || "Registration failed. Please try again.")
+}
+
 export default function SignupPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((state) => state.setAuth)
@@ -35,23 +57,7 @@ export default function SignupPage() {
       setAuth(response.token, response.user ?? null)
       navigate("/")
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 409) {
-          toast.error("An account with this email already exists")
-        } else if (err.status === 400 && err.errors) {
-          const errors: FieldErrors = {}
-          if (err.errors["email"]?.[0]) errors.email = err.errors["email"][0]
-          if (err.errors["password"]?.[0]) errors.password = err.errors["password"][0]
-          setFieldErrors(errors)
-          if (!errors.email && !errors.password) {
-            toast.error(err.detail)
-          }
-        } else {
-          toast.error(err.detail || "Registration failed. Please try again.")
-        }
-      } else {
-        toast.error("Registration failed. Please try again.")
-      }
+      applySignupError(err, setFieldErrors)
     } finally {
       setIsSubmitting(false)
     }

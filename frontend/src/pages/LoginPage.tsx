@@ -13,6 +13,28 @@ interface FieldErrors {
   password?: string
 }
 
+function applyLoginError(err: unknown, setFieldErrors: (e: FieldErrors) => void): void {
+  if (!(err instanceof ApiError)) {
+    toast.error("Sign in failed. Please try again.")
+    return
+  }
+  if (err.status === 401) {
+    toast.error("Invalid email or password")
+    return
+  }
+  if (err.status === 400 && err.errors) {
+    const errors: FieldErrors = {}
+    if (err.errors["email"]?.[0]) errors.email = err.errors["email"][0]
+    if (err.errors["password"]?.[0]) errors.password = err.errors["password"][0]
+    setFieldErrors(errors)
+    if (!errors.email && !errors.password) {
+      toast.error(err.detail)
+    }
+    return
+  }
+  toast.error(err.detail || "Sign in failed. Please try again.")
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((state) => state.setAuth)
@@ -37,23 +59,7 @@ export default function LoginPage() {
       setAuth(response.token, response.user ?? null)
       navigate("/")
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 401) {
-          toast.error("Invalid email or password")
-        } else if (err.status === 400 && err.errors) {
-          const errors: FieldErrors = {}
-          if (err.errors["email"]?.[0]) errors.email = err.errors["email"][0]
-          if (err.errors["password"]?.[0]) errors.password = err.errors["password"][0]
-          setFieldErrors(errors)
-          if (!errors.email && !errors.password) {
-            toast.error(err.detail)
-          }
-        } else {
-          toast.error(err.detail || "Sign in failed. Please try again.")
-        }
-      } else {
-        toast.error("Sign in failed. Please try again.")
-      }
+      applyLoginError(err, setFieldErrors)
     } finally {
       setIsSubmitting(false)
     }

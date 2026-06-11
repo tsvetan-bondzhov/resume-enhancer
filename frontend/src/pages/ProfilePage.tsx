@@ -18,6 +18,45 @@ import { useResumeUpload } from "@/hooks/useResumeUpload"
 const STEPS = ["Experience", "Education", "Skills", "Certifications", "Languages", "Projects", "Volunteering", "Summary"]
 const LAST_STEP = STEPS.length - 1 // 7 — SummaryStep handles its own navigation
 
+const EMPTY_PROFILE: ProfileDto = {
+  summary: null,
+  contactEmail: null,
+  linkedInUrl: null,
+  personalPageUrl: null,
+  blogUrl: null,
+  locationCity: null,
+  locationCountry: null,
+  workExperiences: [],
+  education: [],
+  skills: [],
+  certifications: [],
+  languages: [],
+  projects: [],
+  volunteering: [],
+}
+
+function mergeProfilePayload(
+  partial: Partial<ProfileUpdateRequest>,
+  current: ProfileDto
+): ProfileUpdateRequest {
+  return {
+    summary: partial.summary !== undefined ? partial.summary : current.summary,
+    contactEmail: partial.contactEmail !== undefined ? partial.contactEmail : current.contactEmail,
+    linkedInUrl: partial.linkedInUrl !== undefined ? partial.linkedInUrl : current.linkedInUrl,
+    personalPageUrl: partial.personalPageUrl !== undefined ? partial.personalPageUrl : current.personalPageUrl,
+    blogUrl: partial.blogUrl !== undefined ? partial.blogUrl : current.blogUrl,
+    locationCity: partial.locationCity !== undefined ? partial.locationCity : current.locationCity,
+    locationCountry: partial.locationCountry !== undefined ? partial.locationCountry : current.locationCountry,
+    workExperiences: partial.workExperiences !== undefined ? partial.workExperiences : current.workExperiences,
+    education: partial.education !== undefined ? partial.education : current.education,
+    skills: partial.skills !== undefined ? partial.skills : current.skills,
+    certifications: partial.certifications !== undefined ? partial.certifications : (current.certifications ?? []),
+    languages: partial.languages !== undefined ? partial.languages : (current.languages ?? []),
+    projects: partial.projects !== undefined ? partial.projects : (current.projects ?? []),
+    volunteering: partial.volunteering !== undefined ? partial.volunteering : (current.volunteering ?? []),
+  }
+}
+
 function isEmptyProfile(profile: ProfileDto): boolean {
   return (
     // Use !profile.summary to catch both null and empty string ""
@@ -97,54 +136,8 @@ export default function ProfilePage() {
     // Always cleared in finally.
     setSaving(true)
     try {
-      const current = profile ?? {
-        summary: null,
-        contactEmail: null,
-        linkedInUrl: null,
-        personalPageUrl: null,
-        blogUrl: null,
-        locationCity: null,
-        locationCountry: null,
-        workExperiences: [],
-        education: [],
-        skills: [],
-        certifications: [],
-        languages: [],
-        projects: [],
-        volunteering: [],
-      }
-      const payload: ProfileUpdateRequest = {
-        summary: partial.summary !== undefined ? partial.summary : current.summary,
-        contactEmail: partial.contactEmail !== undefined ? partial.contactEmail : current.contactEmail,
-        linkedInUrl: partial.linkedInUrl !== undefined ? partial.linkedInUrl : current.linkedInUrl,
-        personalPageUrl: partial.personalPageUrl !== undefined ? partial.personalPageUrl : current.personalPageUrl,
-        blogUrl: partial.blogUrl !== undefined ? partial.blogUrl : current.blogUrl,
-        locationCity: partial.locationCity !== undefined ? partial.locationCity : current.locationCity,
-        locationCountry: partial.locationCountry !== undefined ? partial.locationCountry : current.locationCountry,
-        workExperiences:
-          partial.workExperiences !== undefined
-            ? partial.workExperiences
-            : current.workExperiences,
-        education:
-          partial.education !== undefined ? partial.education : current.education,
-        skills: partial.skills !== undefined ? partial.skills : current.skills,
-        certifications:
-          partial.certifications !== undefined
-            ? partial.certifications
-            : (current.certifications ?? []),
-        languages:
-          partial.languages !== undefined
-            ? partial.languages
-            : (current.languages ?? []),
-        projects:
-          partial.projects !== undefined
-            ? partial.projects
-            : (current.projects ?? []),
-        volunteering:
-          partial.volunteering !== undefined
-            ? partial.volunteering
-            : (current.volunteering ?? []),
-      }
+      const current = profile ?? EMPTY_PROFILE
+      const payload = mergeProfilePayload(partial, current)
       const updated = await apiClient.put<ProfileDto>("/api/v1/profile", payload)
       setProfile(updated)
       // Fix 1: suppress generic "Profile saved" toast on the last step —
