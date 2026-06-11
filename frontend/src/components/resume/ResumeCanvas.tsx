@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { apiClient } from "@/lib/apiClient"
 import { getOrderedSections } from "@/lib/templateUtils"
 import ResumeSection from "@/components/resume/ResumeSection"
-import type { ResumeDocumentDto, TemplateDto } from "@/types/api"
+import type { ResumeDocumentDto, ResumeItemDto, TemplateDto } from "@/types/api"
 
 interface ResumeCanvasProps {
   document: ResumeDocumentDto | null
@@ -12,6 +12,9 @@ interface ResumeCanvasProps {
   state?: "idle" | "streaming" | "diff" | "print-preview"
   onTitleChange?: (sectionId: string, title: string) => void
   onFieldChange?: (sectionId: string, itemId: string, field: string, value: string) => void
+  onAddItem?: (sectionType: string, position: number) => void
+  onDeleteItem?: (sectionType: string, itemId: string) => void
+  onReorderItems?: (sectionType: string, newItems: ResumeItemDto[]) => void
 }
 
 export default function ResumeCanvas({
@@ -21,6 +24,9 @@ export default function ResumeCanvas({
   state = "idle",
   onTitleChange,
   onFieldChange,
+  onAddItem,
+  onDeleteItem,
+  onReorderItems,
 }: ResumeCanvasProps) {
   const [template, setTemplate] = useState<TemplateDto | null>(null)
 
@@ -96,6 +102,9 @@ export default function ResumeCanvas({
                     ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
                     : undefined
                 }
+                onAddItem={onAddItem ? (position) => onAddItem(section.sectionType, position) : undefined}
+                onDeleteItem={onDeleteItem ? (itemId) => onDeleteItem(section.sectionType, itemId) : undefined}
+                onReorderItems={onReorderItems ? (newItems) => onReorderItems(section.sectionType, newItems) : undefined}
               />
             ))}
           </div>
@@ -110,6 +119,9 @@ export default function ResumeCanvas({
                     ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
                     : undefined
                 }
+                onAddItem={onAddItem ? (position) => onAddItem(section.sectionType, position) : undefined}
+                onDeleteItem={onDeleteItem ? (itemId) => onDeleteItem(section.sectionType, itemId) : undefined}
+                onReorderItems={onReorderItems ? (newItems) => onReorderItems(section.sectionType, newItems) : undefined}
               />
             ))}
           </div>
@@ -127,6 +139,9 @@ export default function ResumeCanvas({
               ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
               : undefined
           }
+          onAddItem={onAddItem ? (position) => onAddItem(section.sectionType, position) : undefined}
+          onDeleteItem={onDeleteItem ? (itemId) => onDeleteItem(section.sectionType, itemId) : undefined}
+          onReorderItems={onReorderItems ? (newItems) => onReorderItems(section.sectionType, newItems) : undefined}
         />
       ))
     }

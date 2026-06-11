@@ -1,4 +1,4 @@
-import type { ResumeSectionDto } from "@/types/api"
+import type { ResumeSectionDto, ResumeItemDto } from "@/types/api"
 import WorkExperienceSectionRenderer from "@/components/resume/sections/WorkExperienceSectionRenderer"
 import EducationSectionRenderer from "@/components/resume/sections/EducationSectionRenderer"
 import SkillsSectionRenderer from "@/components/resume/sections/SkillsSectionRenderer"
@@ -13,11 +13,17 @@ interface ResumeSectionProps {
   section: ResumeSectionDto
   onTitleChange: (title: string) => void
   onFieldChange?: (itemId: string, field: string, value: string) => void
+  onAddItem?: (position: number) => void
+  onDeleteItem?: (itemId: string) => void
+  onReorderItems?: (newItems: ResumeItemDto[]) => void
 }
 
 function renderSectionContent(
   section: ResumeSectionDto,
-  onFieldChange: ((itemId: string, field: string, value: string) => void) | undefined
+  onFieldChange: ((itemId: string, field: string, value: string) => void) | undefined,
+  onAddItem: ((position: number) => void) | undefined,
+  onDeleteItem: ((itemId: string) => void) | undefined,
+  onReorderItems: ((newItems: ResumeItemDto[]) => void) | undefined,
 ) {
   switch (section.sectionType) {
     case "WORK_EXPERIENCE":
@@ -28,6 +34,9 @@ function renderSectionContent(
             throw new Error("unexpected item type")
           })}
           onFieldChange={onFieldChange}
+          onAddItem={onAddItem}
+          onDeleteItem={onDeleteItem}
+          onReorderItems={onReorderItems as ((newItems: import("@/types/api").WorkExperienceItemDto[]) => void) | undefined}
         />
       )
     case "EDUCATION":
@@ -38,6 +47,9 @@ function renderSectionContent(
             throw new Error("unexpected item type")
           })}
           onFieldChange={onFieldChange}
+          onAddItem={onAddItem}
+          onDeleteItem={onDeleteItem}
+          onReorderItems={onReorderItems as ((newItems: import("@/types/api").EducationItemDto[]) => void) | undefined}
         />
       )
     case "SKILLS":
@@ -48,6 +60,9 @@ function renderSectionContent(
             throw new Error("unexpected item type")
           })}
           onFieldChange={onFieldChange}
+          onAddItem={onAddItem}
+          onDeleteItem={onDeleteItem}
+          onReorderItems={onReorderItems as ((newItems: import("@/types/api").SkillItemDto[]) => void) | undefined}
         />
       )
     case "CERTIFICATIONS":
@@ -58,6 +73,9 @@ function renderSectionContent(
             throw new Error("unexpected item type")
           })}
           onFieldChange={onFieldChange}
+          onAddItem={onAddItem}
+          onDeleteItem={onDeleteItem}
+          onReorderItems={onReorderItems as ((newItems: import("@/types/api").CertificationItemDto[]) => void) | undefined}
         />
       )
     case "LANGUAGES":
@@ -68,6 +86,9 @@ function renderSectionContent(
             throw new Error("unexpected item type")
           })}
           onFieldChange={onFieldChange}
+          onAddItem={onAddItem}
+          onDeleteItem={onDeleteItem}
+          onReorderItems={onReorderItems as ((newItems: import("@/types/api").LanguageItemDto[]) => void) | undefined}
         />
       )
     case "PROJECTS":
@@ -78,6 +99,9 @@ function renderSectionContent(
             throw new Error("unexpected item type")
           })}
           onFieldChange={onFieldChange}
+          onAddItem={onAddItem}
+          onDeleteItem={onDeleteItem}
+          onReorderItems={onReorderItems as ((newItems: import("@/types/api").ProjectItemDto[]) => void) | undefined}
         />
       )
     case "VOLUNTEERING":
@@ -88,6 +112,9 @@ function renderSectionContent(
             throw new Error("unexpected item type")
           })}
           onFieldChange={onFieldChange}
+          onAddItem={onAddItem}
+          onDeleteItem={onDeleteItem}
+          onReorderItems={onReorderItems as ((newItems: import("@/types/api").VolunteeringItemDto[]) => void) | undefined}
         />
       )
     case "SUMMARY":
@@ -98,6 +125,9 @@ function renderSectionContent(
             throw new Error("unexpected item type")
           })}
           onFieldChange={onFieldChange}
+          onAddItem={onAddItem}
+          onDeleteItem={onDeleteItem}
+          onReorderItems={onReorderItems as ((newItems: import("@/types/api").SummaryItemDto[]) => void) | undefined}
         />
       )
     case "UNKNOWN":
@@ -108,6 +138,9 @@ function renderSectionContent(
             throw new Error("unexpected item type")
           })}
           onFieldChange={onFieldChange}
+          onAddItem={onAddItem}
+          onDeleteItem={onDeleteItem}
+          onReorderItems={onReorderItems as ((newItems: import("@/types/api").GenericItemDto[]) => void) | undefined}
         />
       )
     default: {
@@ -122,6 +155,9 @@ export default function ResumeSection({
   section,
   onTitleChange,
   onFieldChange,
+  onAddItem,
+  onDeleteItem,
+  onReorderItems,
 }: ResumeSectionProps) {
   return (
     <section aria-labelledby={`section-title-${section.sectionType}`} className="mb-6">
@@ -144,7 +180,7 @@ export default function ResumeSection({
           {section.title}
         </h2>
       )}
-      {renderSectionContent(section, onFieldChange)}
+      {renderSectionContent(section, onFieldChange, onAddItem, onDeleteItem, onReorderItems)}
     </section>
   )
 }

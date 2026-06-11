@@ -59,4 +59,16 @@ describe("EducationSectionRenderer", () => {
     render(<EducationSectionRenderer items={[buildItem({ degree: null, fieldOfStudy: null })]} />)
     expect(screen.queryByText(/B\.Sc\./)).not.toBeInTheDocument()
   })
+
+  it("calls onDeleteItem with correct item.id when delete button is clicked", () => {
+    const onDeleteItem = vi.fn()
+    render(
+      <EducationSectionRenderer
+        items={[buildItem()]}
+        onDeleteItem={onDeleteItem}
+      />
+    )
+    fireEvent.click(screen.getByLabelText("Delete item"))
+    expect(onDeleteItem).toHaveBeenCalledWith("edu-1")
+  })
 })

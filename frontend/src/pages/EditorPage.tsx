@@ -11,7 +11,7 @@ import SaveAsDialog from "@/components/resume/SaveAsDialog"
 import TemplateGallery from "@/components/resume/TemplateGallery"
 import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
 import { useAutosave } from "@/hooks/useAutosave"
-import type { ResumeDto } from "@/types/api"
+import type { ResumeDto, ResumeSectionType } from "@/types/api"
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>()
@@ -32,6 +32,9 @@ export default function EditorPage() {
   const setCurrentResumeTemplateId = useResumeStore(
     (state) => state.setCurrentResumeTemplateId
   )
+  const addItem = useResumeStore((state) => state.addItem)
+  const deleteItem = useResumeStore((state) => state.deleteItem)
+  const reorderItems = useResumeStore((state) => state.reorderItems)
   const resumes = useResumeStore((state) => state.resumes)
 
   const [sidebarResumes, setSidebarResumes] = useState<ResumeDto[]>(() => resumes)
@@ -270,6 +273,9 @@ export default function EditorPage() {
                   isLoading={isLoading}
                   onTitleChange={handleTitleChange}
                   onFieldChange={handleFieldChange}
+                  onAddItem={(sectionType, position) => addItem(sectionType as ResumeSectionType, position)}
+                  onDeleteItem={(sectionType, itemId) => deleteItem(sectionType as ResumeSectionType, itemId)}
+                  onReorderItems={(sectionType, newItems) => reorderItems(sectionType as ResumeSectionType, newItems)}
                 />
               </>
             )}

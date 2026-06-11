@@ -78,6 +78,10 @@
 
 - V13 migration `DO` block raises `RAISE EXCEPTION` when the Classic template row is absent — makes the migration fail-fast on a missing seed row rather than silently no-op. Pre-existing fail-fast pattern; acceptable for seeded environments; if a zero-row-count scenario is ever possible in CI, convert to a plain `UPDATE` (no DO block) or add a conditional guard.
 
+## Deferred from: code review of 4-4-section-item-add-delete-and-drag-to-reorder (2026-06-11)
+
+- `SortableItemWrapper` and `AddItemButton` duplicated verbatim across all 9 renderer files — architectural decision documented in Dev Notes (inline approach reduces import overhead); extract to a shared `SortableItemWrapper.tsx` component in a future cleanup story.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

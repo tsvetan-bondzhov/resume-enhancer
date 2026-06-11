@@ -76,4 +76,44 @@ describe("WorkExperienceSectionRenderer", () => {
     // In read-only mode, formatDateRange is used
     expect(screen.getByText(/Present/)).toBeInTheDocument()
   })
+
+  it("renders delete button with aria-label when onDeleteItem is provided", () => {
+    const onDeleteItem = vi.fn()
+    render(
+      <WorkExperienceSectionRenderer
+        items={[buildItem()]}
+        onDeleteItem={onDeleteItem}
+      />
+    )
+    expect(screen.getByLabelText("Delete item")).toBeInTheDocument()
+  })
+
+  it("calls onDeleteItem with item.id when delete button is clicked", () => {
+    const onDeleteItem = vi.fn()
+    render(
+      <WorkExperienceSectionRenderer
+        items={[buildItem()]}
+        onDeleteItem={onDeleteItem}
+      />
+    )
+    fireEvent.click(screen.getByLabelText("Delete item"))
+    expect(onDeleteItem).toHaveBeenCalledWith("item-1")
+  })
+
+  it("renders add buttons when onAddItem is provided — at least 2 for a 1-item section", () => {
+    const onAddItem = vi.fn()
+    render(
+      <WorkExperienceSectionRenderer
+        items={[buildItem()]}
+        onAddItem={onAddItem}
+      />
+    )
+    const addButtons = screen.getAllByLabelText("Add item here")
+    expect(addButtons.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it("does not render add buttons when onAddItem is not provided", () => {
+    render(<WorkExperienceSectionRenderer items={[buildItem()]} />)
+    expect(screen.queryByLabelText("Add item here")).not.toBeInTheDocument()
+  })
 })
