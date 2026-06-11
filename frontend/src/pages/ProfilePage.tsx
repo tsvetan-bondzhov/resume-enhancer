@@ -234,15 +234,29 @@ export default function ProfilePage() {
             className="mb-8 flex gap-4"
           >
             {STEPS.map((label, index) => {
-              let className = "text-zinc-400"
+              let className = "text-zinc-400 font-normal" // unvisited
               if (index < currentStep) {
-                className = "text-zinc-500 line-through"
+                className = "text-zinc-400 font-normal" // completed — muted, no strikethrough
               } else if (index === currentStep) {
-                className = "font-medium text-blue-600"
+                className = "font-semibold text-zinc-900" // current — highlighted
               }
               return (
-                <li key={label} className={className}>
-                  {index < currentStep ? `✓ ${label}` : label}
+                <li
+                  key={label}
+                  className={`${className} cursor-pointer select-none`}
+                  onClick={() => setStep(index)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      setStep(index)
+                    }
+                  }}
+                  aria-label={`Go to step ${label}`}
+                  aria-current={index === currentStep ? "step" : undefined}
+                >
+                  {label}
                 </li>
               )
             })}

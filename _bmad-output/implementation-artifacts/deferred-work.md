@@ -94,3 +94,7 @@
 ## Deferred from: code review of 3-6-resume-save-save-as-and-name-management (2026-06-05)
 
 - JSX indentation misalignment in `EditorPage.tsx` centerSlot close tags (lines 206-209) — cosmetic; close tags for the inner canvas `div` and fragment are slightly misaligned relative to their open tags. Address in a future formatting/refactor pass.
+
+## Deferred from: code review of 4-6-profile-page-navigation-and-first-entry-deletion (2026-06-11)
+
+- `SkillsStep.tsx` uses `aria-label="Remove skill X"` while all other step components (Experience, Education, Certifications, Languages, Projects, Volunteering) use `aria-label="Remove entry X"`. Inconsistent screen-reader labelling for the delete button. Pre-existing — not introduced by story 4-6. Normalise to a consistent pattern in a future accessibility pass.

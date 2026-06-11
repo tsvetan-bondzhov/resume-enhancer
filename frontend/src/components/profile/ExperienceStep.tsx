@@ -144,6 +144,15 @@ export default function ExperienceStep({
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Work Experience</h2>
 
+      {entries.length === 0 && (
+        <div className="rounded-md border border-dashed p-6 text-center text-sm text-zinc-500">
+          No experience added yet.{" "}
+          <button type="button" onClick={addAnother} className="text-blue-600 underline">
+            Add experience
+          </button>
+        </div>
+      )}
+
       {entries.map((entry, index) => (
         // Use stable id as key — avoids React reconciliation bugs when entries
         // are removed from the middle of the list.
@@ -152,18 +161,14 @@ export default function ExperienceStep({
             <span className="text-sm font-medium text-zinc-600">
               Entry {index + 1}
             </span>
-            {/* Show remove button only when more than one entry exists —
-                consistent with EducationStep and SkillsStep. */}
-            {entries.length > 1 && (
-              <button
-                type="button"
-                aria-label={`Remove entry ${index + 1}`}
-                onClick={() => removeEntry(index)}
-                className="text-sm text-red-500 hover:text-red-700"
-              >
-                ×
-              </button>
-            )}
+            <button
+              type="button"
+              aria-label={`Remove entry ${index + 1}`}
+              onClick={() => removeEntry(index)}
+              className="text-sm text-red-500 hover:text-red-700"
+            >
+              ×
+            </button>
           </div>
 
           <div className="space-y-2">

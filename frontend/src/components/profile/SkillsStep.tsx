@@ -78,6 +78,15 @@ export default function SkillsStep({ onSaveAndContinue }: SkillsStepProps) {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Skills</h2>
 
+      {skills.length === 0 && (
+        <div className="rounded-md border border-dashed p-6 text-center text-sm text-zinc-500">
+          No skills added yet.{" "}
+          <button type="button" onClick={addAnother} className="text-blue-600 underline">
+            Add skill
+          </button>
+        </div>
+      )}
+
       <div className="space-y-3">
         {skills.map((skill, index) => (
           // Use stable id as key — avoids React reconciliation bugs when skills
@@ -92,18 +101,14 @@ export default function SkillsStep({ onSaveAndContinue }: SkillsStepProps) {
                 onBlur={() => handleBlur(index)}
                 placeholder="e.g. TypeScript"
               />
-              {/* Show remove button only when more than one skill exists —
-                  consistent with ExperienceStep and EducationStep. */}
-              {skills.length > 1 && (
-                <button
-                  type="button"
-                  aria-label={`Remove skill ${index + 1}`}
-                  onClick={() => removeSkill(index)}
-                  className="text-sm text-red-500 hover:text-red-700"
-                >
-                  ×
-                </button>
-              )}
+              <button
+                type="button"
+                aria-label={`Remove skill ${index + 1}`}
+                onClick={() => removeSkill(index)}
+                className="text-sm text-red-500 hover:text-red-700"
+              >
+                ×
+              </button>
             </div>
             {skill.error && (
               <p className="text-sm text-red-600">{skill.error}</p>

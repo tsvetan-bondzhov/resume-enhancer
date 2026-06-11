@@ -1,6 +1,6 @@
 # Story 4.6: Profile Page Free Navigation and First-Entry Deletion
 
-**Status:** backlog
+**Status:** done
 **Epic:** 4 — Resume Experience Polish & Foundations
 **Story Key:** 4-6-profile-page-navigation-and-first-entry-deletion
 **Dependencies:** Story 2.2 (done), Story 3.12 (done)
@@ -57,8 +57,8 @@ So that I can edit my profile non-linearly and keep only the information that is
 
 ### Task 1: Make progress steps clickable (AC: 1)
 
-- [ ] Open `frontend/src/pages/ProfilePage.tsx`
-- [ ] In the `<ol>` / `{STEPS.map(...)}` block (around line 236), convert `<li>` to include an `onClick` handler:
+- [x] Open `frontend/src/pages/ProfilePage.tsx`
+- [x] In the `<ol>` / `{STEPS.map(...)}` block (around line 236), convert `<li>` to include an `onClick` handler:
   ```tsx
   // BEFORE:
   <li key={label} className={className}>
@@ -79,11 +79,11 @@ So that I can edit my profile non-linearly and keep only the information that is
     {label}
   </li>
   ```
-- [ ] Remove the `✓ ${label}` prefix from completed steps (AC2 is handled in the same block)
+- [x] Remove the `✓ ${label}` prefix from completed steps (AC2 is handled in the same block)
 
 ### Task 2: Update completed step styling (AC: 2, 3)
 
-- [ ] In the same `STEPS.map(...)` block, update the `className` assignment:
+- [x] In the same `STEPS.map(...)` block, update the `className` assignment:
   ```tsx
   // BEFORE:
   let className = "text-zinc-400"
@@ -105,79 +105,49 @@ So that I can edit my profile non-linearly and keep only the information that is
 
 ### Task 3: Remove first-item delete guard from all step components (AC: 4, 5)
 
-- [ ] **`ExperienceStep.tsx`** (`frontend/src/components/profile/ExperienceStep.tsx`):
+- [x] **`ExperienceStep.tsx`** (`frontend/src/components/profile/ExperienceStep.tsx`):
   - Remove the `entries.length > 1 &&` guard on the remove button (around line 157)
   - The remove button should always render for every entry
   - After removal, if `entries` becomes empty (`entries.length === 0`), render an empty-state message and an "Add experience" button that calls `addAnother()`
-  ```tsx
-  // Empty state when all entries deleted:
-  {entries.length === 0 && (
-    <div className="rounded-md border border-dashed p-6 text-center text-sm text-zinc-500">
-      No experience added yet.{" "}
-      <button type="button" onClick={addAnother} className="text-blue-600 underline">
-        Add experience
-      </button>
-    </div>
-  )}
-  ```
 
-- [ ] **`EducationStep.tsx`** (`frontend/src/components/profile/EducationStep.tsx`):
+- [x] **`EducationStep.tsx`** (`frontend/src/components/profile/EducationStep.tsx`):
   - Remove the equivalent `entries.length > 1 &&` guard
   - Add empty-state with "Add education" button
 
-- [ ] **`SkillsStep.tsx`** (`frontend/src/components/profile/SkillsStep.tsx`):
+- [x] **`SkillsStep.tsx`** (`frontend/src/components/profile/SkillsStep.tsx`):
   - Remove the `skills.length > 1 &&` guard on the remove button (around line 97)
   - Add empty-state with "Add skill" button
 
-- [ ] **`CertificationsStep.tsx`** (`frontend/src/components/profile/CertificationsStep.tsx`):
+- [x] **`CertificationsStep.tsx`** (`frontend/src/components/profile/CertificationsStep.tsx`):
   - Remove the equivalent guard
   - Add empty-state with "Add certification" button
 
-- [ ] **`LanguagesStep.tsx`** (`frontend/src/components/profile/LanguagesStep.tsx`):
+- [x] **`LanguagesStep.tsx`** (`frontend/src/components/profile/LanguagesStep.tsx`):
   - Remove the equivalent guard
   - Add empty-state with "Add language" button
 
-- [ ] **`ProjectsStep.tsx`** (`frontend/src/components/profile/ProjectsStep.tsx`):
+- [x] **`ProjectsStep.tsx`** (`frontend/src/components/profile/ProjectsStep.tsx`):
   - Remove the equivalent guard
   - Add empty-state with "Add project" button
 
-- [ ] **`VolunteeringStep.tsx`** (`frontend/src/components/profile/VolunteeringStep.tsx`):
+- [x] **`VolunteeringStep.tsx`** (`frontend/src/components/profile/VolunteeringStep.tsx`):
   - Remove the equivalent guard
   - Add empty-state with "Add volunteering" button
 
-- [ ] **`SummaryStep.tsx`** (`frontend/src/components/profile/SummaryStep.tsx`): no items list — no change needed
+- [x] **`SummaryStep.tsx`** (`frontend/src/components/profile/SummaryStep.tsx`): no items list — no change needed
 
 ### Task 4: Update `handleSubmit` to allow empty arrays (AC: 5)
 
-- [ ] In each step component, confirm `handleSubmit` (or equivalent save handler) does not have a validation that requires `entries.length > 0`. Review each:
+- [x] In each step component, confirm `handleSubmit` (or equivalent save handler) does not have a validation that requires `entries.length > 0`. Review each:
   - `ExperienceStep.handleSubmit`: currently calls `validateAll()` which only validates field values within entries; if `entries` is empty, `validated` is `[]`, `hasErrors` is `false`, and `workExperiences: []` is sent — this already works without changes
-  - Same pattern applies to other step components — verify and document, no code change expected
+  - Same pattern applies to other step components — verified, no code change needed
 
 ### Task 5: Write tests (AC: 6)
 
-- [ ] Check if `frontend/src/pages/ProfilePage.test.tsx` exists; create it if not (it may not exist since ProfilePage is page-level)
-- [ ] Write test: **clicking step 3 sets currentStep to 3**
-  ```tsx
-  it("clicking step label navigates directly to that step", async () => {
-    // Render ProfilePage with a non-empty profile (so stepper is visible)
-    // Find the step label at index 3 ("Certifications")
-    const step = screen.getByRole("button", { name: /Go to step Certifications/i })
-    await userEvent.click(step)
-    // Assert currentStep is now 3 (CertificationsStep renders)
-    expect(screen.getByText(/Certifications/i)).toBeInTheDocument()
-  })
-  ```
-- [ ] Write test: **completed step has no `line-through` class**
-  ```tsx
-  it("completed steps have no line-through class and no check prefix", () => {
-    // Set currentStep to 2 so steps 0 and 1 are completed
-    // Check that step 0 li element does not have line-through in className
-    const step0 = screen.getByRole("button", { name: /Go to step Experience/i })
-    expect(step0.className).not.toContain("line-through")
-    expect(step0.textContent).not.toMatch(/^✓/)
-  })
-  ```
-- [ ] Write test: **first item has delete button**
+- [x] Check if `frontend/src/pages/ProfilePage.test.tsx` exists; create it if not (it may not exist since ProfilePage is page-level)
+- [x] Write test: **clicking step 3 sets currentStep to 3**
+- [x] Write test: **completed step has no `line-through` class**
+- [x] Write test: **first item has delete button**
   - Render `ExperienceStep` directly with one entry pre-populated
   - Assert a button with `aria-label="Remove entry 1"` is present in the DOM
 
@@ -294,10 +264,10 @@ The styling change for completed steps (remove `line-through`) brings the UX in 
 
 ## File List
 
-### To Create
-- `frontend/src/pages/ProfilePage.test.tsx` (if absent)
+### Created
+- `frontend/src/pages/ProfilePage.test.tsx`
 
-### To Modify
+### Modified
 - `frontend/src/pages/ProfilePage.tsx`
 - `frontend/src/components/profile/ExperienceStep.tsx`
 - `frontend/src/components/profile/EducationStep.tsx`
@@ -309,5 +279,32 @@ The styling change for completed steps (remove `line-through`) brings the UX in 
 
 ---
 
+## Dev Agent Record
+
+### Implementation Notes
+
+- `ProfilePage.tsx`: Replaced static `<li>` elements in the progress stepper with interactive `role="button"` elements. Added `onClick={() => setStep(index)}`, keyboard support (`Enter`/`Space`), `aria-label`, and `aria-current`. Removed `line-through` class and `✓` prefix from completed steps. Current step now uses `font-semibold text-zinc-900`; completed and unvisited both use `text-zinc-400 font-normal`.
+- All 7 step components (Experience, Education, Skills, Certifications, Languages, Projects, Volunteering): Removed `entries.length > 1 &&` / `skills.length > 1 &&` guard on the delete button. Every item at every index now always shows a delete button. Added an empty-state block rendered when `entries.length === 0` (or `skills.length === 0`) containing a message and an inline "Add [type]" button wired to `addAnother()`.
+- Task 4 (AC5): Verified all `handleSubmit` functions pass through empty arrays cleanly — `validateAll()` on an empty array returns `[]`, `hasErrors` is `false`, and the empty array is forwarded to `onSaveAndContinue`. No code change needed.
+- `ProfilePage.test.tsx` (new): 5 tests covering AC1 (click Certifications → `currentStep === 3`), AC2 (no `line-through` class on completed step), AC2 (no `✓` prefix), AC4 (Remove entry 1 button present on ExperienceStep), and an integration smoke test confirming profile loads and stepper renders.
+
+### Test Results
+- 177 tests total, 177 passed, 0 failed — no regressions
+- ESLint: 0 errors, 2 pre-existing warnings (unrelated to this story)
+
+### Completion Notes
+All 5 ACs satisfied. Story ready for code review.
+
+---
+
+### Review Findings
+
+- [x] [Review][Patch] Space key `onKeyDown` missing `e.preventDefault()` — page scrolls on Space press [`frontend/src/pages/ProfilePage.tsx:251`] — **fixed**
+- [x] [Review][Defer] `SkillsStep` uses `aria-label="Remove skill X"` while all other step components use `aria-label="Remove entry X"` — pre-existing inconsistency, not introduced by this story [`frontend/src/components/profile/SkillsStep.tsx:106`] — deferred, pre-existing
+
+---
+
 ## Change Log
 - 2026-06-10: Story created
+- 2026-06-11: Implemented all ACs — clickable step navigation, no line-through styling, delete guard removed from all 7 step components, empty-state added, tests written. 177/177 tests pass. Status → review.
+- 2026-06-11: Code review passed. Patch applied: added `e.preventDefault()` to Space key handler. Deferred: aria-label inconsistency in SkillsStep (pre-existing). Status → done.
