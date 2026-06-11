@@ -99,6 +99,12 @@ export default function ProfilePage() {
     try {
       const current = profile ?? {
         summary: null,
+        contactEmail: null,
+        linkedInUrl: null,
+        personalPageUrl: null,
+        blogUrl: null,
+        locationCity: null,
+        locationCountry: null,
         workExperiences: [],
         education: [],
         skills: [],
@@ -109,6 +115,12 @@ export default function ProfilePage() {
       }
       const payload: ProfileUpdateRequest = {
         summary: partial.summary !== undefined ? partial.summary : current.summary,
+        contactEmail: partial.contactEmail !== undefined ? partial.contactEmail : current.contactEmail,
+        linkedInUrl: partial.linkedInUrl !== undefined ? partial.linkedInUrl : current.linkedInUrl,
+        personalPageUrl: partial.personalPageUrl !== undefined ? partial.personalPageUrl : current.personalPageUrl,
+        blogUrl: partial.blogUrl !== undefined ? partial.blogUrl : current.blogUrl,
+        locationCity: partial.locationCity !== undefined ? partial.locationCity : current.locationCity,
+        locationCountry: partial.locationCountry !== undefined ? partial.locationCountry : current.locationCountry,
         workExperiences:
           partial.workExperiences !== undefined
             ? partial.workExperiences
