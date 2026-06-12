@@ -101,6 +101,13 @@
 - Two-column `ResumeCanvas` sections not assigned to either column definition (`leftColumnIds` / `rightColumnIds`) are silently dropped — no fallback rendering, no warning. Pre-existing gap; address when two-column layout edge cases are formally specified.
 - `null` `issueDate`/`expirationDate` in `CertificationsSectionRenderer` rendered as empty editable span; blur event writes empty string to store, converting `null → ""` silently and triggering autosave diff. Pre-existing pattern; address when null/optional date field UX is formally specified.
 
+## Deferred from: code review of 9-8-java-test-quality-time-constants-and-clock (2026-06-12)
+
+- `Clock` bean registered in `JacksonConfig` — semantically unrelated to Jackson serialization; if a `@WebMvcTest` slice loads `JacksonConfig` without `TokenService`, the bean is harmless, but the placement makes the dependency implicit. Move to a dedicated `ClockConfig.java` or `AppConfig.java` in a future infrastructure cleanup pass.
+- `AuthControllerIntegrationTest` expired-token test uses `Clock.systemUTC()` — the token is forced-expired via `expirationMs=-1000L` (real-clock-independent), so this is not a flakiness risk in practice. Note for a future test cleanup pass: a `Clock.fixed(pastInstant)` would be cleaner and fully explicit.
+- `TokenService` has no validation guard on `expirationMs ≤ 0` — a misconfigured zero or negative value silently produces immediately-expired tokens in production. Pre-existing; add a constructor `Preconditions.checkArgument(expirationMs > 0)` in a future hardening pass.
+- `user.getEmail()` and `user.getRole()` passed to JWT builder without null checks — pre-existing; a null role produces `ROLE_null` authority silently denying all role-gated endpoints. Address in a future service-layer hardening pass.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

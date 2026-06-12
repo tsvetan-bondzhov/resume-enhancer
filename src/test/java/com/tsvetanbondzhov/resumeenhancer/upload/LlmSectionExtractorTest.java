@@ -18,6 +18,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -146,8 +147,8 @@ class LlmSectionExtractorTest {
         WorkExperienceItem item = result.workExperiences().get(0);
         assertThat(item.jobTitle()).isEqualTo("Software Engineer");
         assertThat(item.company()).isEqualTo("Acme Corp");
-        assertThat(item.startDate()).isEqualTo(LocalDate.of(2020, 1, 1));
-        assertThat(item.endDate()).isEqualTo(LocalDate.of(2023, 6, 1));
+        assertThat(item.startDate()).isEqualTo(LocalDate.of(2020, Month.JANUARY, 1));
+        assertThat(item.endDate()).isEqualTo(LocalDate.of(2023, Month.JUNE, 1));
         assertThat(item.isCurrent()).isFalse();
     }
 

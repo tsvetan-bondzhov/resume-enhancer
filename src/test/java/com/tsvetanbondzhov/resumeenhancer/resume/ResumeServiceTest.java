@@ -36,6 +36,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -200,7 +201,7 @@ class ResumeServiceTest {
         cert.setProfile(profile);
         cert.setName("AWS Solutions Architect");
         cert.setIssuer("Amazon");
-        cert.setIssueDate(LocalDate.of(2023, 6, 1));
+        cert.setIssueDate(LocalDate.of(2023, Month.JUNE, 1));
         profile.getCertifications().add(cert);
 
         Project proj = new Project();

@@ -33,6 +33,7 @@ class TemplateServiceTest {
     private TemplateService templateService;
 
     private static final UUID TEMPLATE_ID = UUID.fromString("11111111-0000-0000-0000-000000000001");
+    private static final Instant FIXED_NOW = Instant.parse("2024-01-15T10:00:00Z");
 
     private ResumeTemplate buildTemplate(String name, boolean isPublished) {
         ResumeTemplate t = new ResumeTemplate();
@@ -44,8 +45,8 @@ class TemplateServiceTest {
         t.setTemplateDefinition(Map.of());
         // Populate BaseEntity fields so toDto() does not map null id/timestamps
         ReflectionTestUtils.setField(t, "id", TEMPLATE_ID);
-        ReflectionTestUtils.setField(t, "createdAt", Instant.now());
-        ReflectionTestUtils.setField(t, "updatedAt", Instant.now());
+        ReflectionTestUtils.setField(t, "createdAt", FIXED_NOW);
+        ReflectionTestUtils.setField(t, "updatedAt", FIXED_NOW);
         return t;
     }
 

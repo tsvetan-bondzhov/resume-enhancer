@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Date;
 
 @Service
@@ -17,20 +19,25 @@ public class TokenService {
 
     private final String secret;
     private final long expirationMs;
+    private final Clock clock;
 
     public TokenService(
             @Value("${app.jwt.secret}") String secret,
-            @Value("${app.jwt.expiration-ms}") long expirationMs) {
+            @Value("${app.jwt.expiration-ms}") long expirationMs,
+            Clock clock) {
         this.secret = secret;
         this.expirationMs = expirationMs;
+        this.clock = clock;
     }
 
     public String generateToken(User user) {
+        Instant issuedAt = Instant.now(clock);
+        Instant expiresAt = issuedAt.plusMillis(expirationMs);
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim("role", user.getRole())
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expirationMs))
+                .issuedAt(Date.from(issuedAt))
+                .expiration(Date.from(expiresAt))
                 .signWith(getSigningKey())
                 .compact();
     }

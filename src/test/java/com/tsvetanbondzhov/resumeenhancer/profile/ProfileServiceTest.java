@@ -29,6 +29,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.List;
 import java.util.Optional;
 
@@ -93,7 +94,7 @@ class ProfileServiceTest {
         we.setProfile(profile);
         we.setJobTitle("Engineer");
         we.setCompany("Acme");
-        we.setStartDate(LocalDate.of(2020, 1, 1));
+        we.setStartDate(LocalDate.of(2020, Month.JANUARY, 1));
         we.setEndDate(null);
         we.setCurrent(true);
         we.setDescription("Built things");
@@ -104,8 +105,8 @@ class ProfileServiceTest {
         edu.setInstitution("MIT");
         edu.setDegree("BSc");
         edu.setFieldOfStudy("CS");
-        edu.setStartDate(LocalDate.of(2015, 9, 1));
-        edu.setEndDate(LocalDate.of(2019, 6, 1));
+        edu.setStartDate(LocalDate.of(2015, Month.SEPTEMBER, 1));
+        edu.setEndDate(LocalDate.of(2019, Month.JUNE, 1));
         profile.getEducation().add(edu);
 
         Skill skill = new Skill();
@@ -139,8 +140,8 @@ class ProfileServiceTest {
         ProfileUpdateRequest request = new ProfileUpdateRequest(
                 "Summary text",
                 null, null, null, null, null, null,  // contact fields
-                List.of(new WorkExperienceRequest("Dev", "Corp", LocalDate.of(2020, 1, 1), null, true, "Work")),
-                List.of(new EducationRequest("Uni", "MSc", "CS", LocalDate.of(2018, 9, 1), LocalDate.of(2020, 6, 1))),
+                List.of(new WorkExperienceRequest("Dev", "Corp", LocalDate.of(2020, Month.JANUARY, 1), null, true, "Work")),
+                List.of(new EducationRequest("Uni", "MSc", "CS", LocalDate.of(2018, Month.SEPTEMBER, 1), LocalDate.of(2020, Month.JUNE, 1))),
                 List.of(new SkillRequest("Java")),
                 List.of(),    // certifications
                 List.of(),    // languages
@@ -230,7 +231,7 @@ class ProfileServiceTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(new CertificationRequest("AWS Cloud", "Amazon", LocalDate.of(2023, 1, 1), null)),
+                List.of(new CertificationRequest("AWS Cloud", "Amazon", LocalDate.of(2023, Month.JANUARY, 1), null)),
                 List.of(new LanguageRequest("English", LanguageProficiencyLevel.NATIVE)),
                 List.of(new ProjectRequest("MyApp", "A cool app", "Java, React", "https://github.com/test", null, null, false)),
                 List.of(new VolunteeringRequest("Mentor", "Code.org", "Teaching kids", null, null, false))
@@ -314,7 +315,7 @@ class ProfileServiceTest {
         cert.setProfile(profile);
         cert.setName("AWS");
         cert.setIssuer("Amazon");
-        cert.setIssueDate(LocalDate.of(2023, 5, 1));
+        cert.setIssueDate(LocalDate.of(2023, Month.MAY, 1));
         profile.getCertifications().add(cert);
 
         Language lang = new Language();
