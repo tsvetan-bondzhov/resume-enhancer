@@ -29,8 +29,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (res.status === 401) {
     useAuthStore.getState().clearAuth()
-    if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/signup')) {
-      window.location.href = '/login'
+    if (!globalThis.location.pathname.startsWith('/login') && !globalThis.location.pathname.startsWith('/signup')) {
+      globalThis.location.href = '/login'
     }
     throw new ApiError(401, "Unauthorized")
   }
