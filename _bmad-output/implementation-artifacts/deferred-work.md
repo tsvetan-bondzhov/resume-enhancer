@@ -134,3 +134,12 @@
 ## Deferred from: code review of 9-4-java-backend-code-quality-llmsectionextractor (2026-06-11)
 
 - `catch (Exception e)` in `parseJsonItems` is over-broad (catches `Error` subclasses). Pre-existing pattern throughout `LlmSectionExtractor.java` — identical to the `catch (Exception e)` in `toStringMap` and item-level catch in `extractSectionItems`. Narrow to `catch (JsonProcessingException e)` in a future catch-narrowing quality pass.
+
+## Deferred from: code review of 9-6-configuration-content-length-and-profileservice (2026-06-12)
+
+- `application.yml` `max-request-size` equals `max-file-size` (both 8MB) — leaves no headroom for multipart framing overhead. Pre-existing pattern (was 10MB/10MB). Consider setting `max-request-size: 10MB` in a future hardening pass.
+- `FileValidator.java` `>` (strict) vs Spring's `>=` (inclusive) on the 8MB boundary — a file of exactly 8MB passes `FileValidator` but Spring rejects it before the validator is reached. Pre-existing operator; unchanged from 10MB behavior. Add exact-boundary test in a future validator hardening pass.
+- `FileValidatorTest.java` — no test for exactly-8MB boundary case. Pre-existing gap; AC3 only specified 9MB test.
+- `ProfileMapper.toDto(Profile)` — no null-guard on collection getters. Pre-existing pattern; `Profile` initializes all collections as `ArrayList`. Add null guard if `Profile` is ever constructed without initialization.
+- `ProfileMapper` helper methods — no null-guard on method arguments. Pre-existing pattern. Null elements in input collections would NPE without context. Add null checks if input validation is ever relaxed.
+- `FileValidator.validate()` — does not reject zero-byte files. Pre-existing gap. A 0-byte file with valid MIME passes both checks. Add empty-file guard in a future validator hardening pass.

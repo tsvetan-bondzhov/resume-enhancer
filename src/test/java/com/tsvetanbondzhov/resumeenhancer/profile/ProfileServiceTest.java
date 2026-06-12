@@ -21,10 +21,10 @@ import com.tsvetanbondzhov.resumeenhancer.profile.dto.SkillRequest;
 import com.tsvetanbondzhov.resumeenhancer.profile.dto.VolunteeringRequest;
 import com.tsvetanbondzhov.resumeenhancer.profile.dto.WorkExperienceRequest;
 import com.tsvetanbondzhov.resumeenhancer.profile.repository.ProfileRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -47,8 +47,12 @@ class ProfileServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    @InjectMocks
     private ProfileService profileService;
+
+    @BeforeEach
+    void setUp() {
+        profileService = new ProfileService(profileRepository, userRepository, new ProfileMapper());
+    }
 
     private static final String EMAIL = "user@example.com";
 

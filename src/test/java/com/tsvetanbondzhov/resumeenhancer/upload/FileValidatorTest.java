@@ -45,13 +45,13 @@ class FileValidatorTest {
 
     @Test
     void validate_fileTooLarge_throwsFileValidationException() {
-        byte[] largeContent = new byte[11 * 1024 * 1024]; // 11MB
+        byte[] largeContent = new byte[9 * 1024 * 1024]; // 9MB — exceeds the 8MB limit
         MockMultipartFile file = new MockMultipartFile(
                 "file", "resume.pdf", "application/pdf", largeContent);
 
         assertThatThrownBy(() -> fileValidator.validate(file))
                 .isInstanceOf(FileValidationException.class)
-                .hasMessageContaining("10MB");
+                .hasMessageContaining("8MB");
     }
 
     @Test
