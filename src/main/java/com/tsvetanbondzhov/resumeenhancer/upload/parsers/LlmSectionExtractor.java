@@ -35,6 +35,8 @@ public class LlmSectionExtractor {
     private static final int MAX_SECTION_LENGTH = 3000;
     private static final String START_DATE = "startDate";
     private static final String END_DATE = "endDate";
+    private static final String IS_CURRENT = "isCurrent";
+    private static final String DESCRIPTION = "description";
 
     private final AiService aiService;
     private final ObjectMapper objectMapper;
@@ -208,8 +210,8 @@ public class LlmSectionExtractor {
                     str(raw, "company"),
                     parseDate(raw, START_DATE),
                     parseDate(raw, END_DATE),
-                    bool(raw, "isCurrent"),
-                    str(raw, "description")
+                    bool(raw, IS_CURRENT),
+                    str(raw, DESCRIPTION)
             );
             case EDUCATION -> new EducationItem(
                     id,
@@ -231,21 +233,21 @@ public class LlmSectionExtractor {
             case PROJECTS -> new ProjectItem(
                     id,
                     str(raw, "name"),
-                    str(raw, "description"),
+                    str(raw, DESCRIPTION),
                     str(raw, "technologies"),
                     str(raw, "link"),
                     parseDate(raw, START_DATE),
                     parseDate(raw, END_DATE),
-                    bool(raw, "isCurrent")
+                    bool(raw, IS_CURRENT)
             );
             case VOLUNTEERING -> new VolunteeringItem(
                     id,
                     str(raw, "role"),
                     str(raw, "organization"),
-                    str(raw, "description"),
+                    str(raw, DESCRIPTION),
                     parseDate(raw, START_DATE),
                     parseDate(raw, END_DATE),
-                    bool(raw, "isCurrent")
+                    bool(raw, IS_CURRENT)
             );
             case SUMMARY -> new SummaryItem(id, str(raw, "text"), null, null, null, null, null, null);
             case UNKNOWN -> new GenericItem(id, toStringMap(raw));

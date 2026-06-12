@@ -13,6 +13,11 @@ import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
 import { useAutosave } from "@/hooks/useAutosave"
 import type { ResumeDto } from "@/types/api"
 
+function restoreResume(prev: ResumeDto[], resume: ResumeDto): ResumeDto[] {
+  if (prev.some((r) => r.id === resume.id)) return prev
+  return [...prev, resume]
+}
+
 async function executeDeleteResume(
   resume: ResumeDto,
   pendingDeletes: Map<string, ReturnType<typeof setTimeout>>,
@@ -208,10 +213,7 @@ export default function EditorPage() {
           const tid = pendingSidebarDeletes.current.get(resume.id)
           if (tid !== undefined) clearTimeout(tid)
           pendingSidebarDeletes.current.delete(resume.id)
-          setSidebarResumes((prev) => {
-            if (prev.some((r) => r.id === resume.id)) return prev
-            return [...prev, resume]
-          })
+          setSidebarResumes((prev) => restoreResume(prev, resume))
         },
       },
       duration: 5000,

@@ -145,8 +145,7 @@ function renderSectionContent(
       )
     default: {
       const _exhaustive: never = section.sectionType
-      void _exhaustive
-      return null
+      return _exhaustive
     }
   }
 }
