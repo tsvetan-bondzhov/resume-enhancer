@@ -23,7 +23,7 @@ async function executeDeleteResume(
     await apiClient.delete(`/api/v1/resumes/${resume.id}`)
   } catch {
     setSidebarResumes((prev) => {
-      if (prev.find((r) => r.id === resume.id)) return prev
+      if (prev.some((r) => r.id === resume.id)) return prev
       return [...prev, resume]
     })
     toast.error("Delete failed — resume restored")
@@ -209,7 +209,7 @@ export default function EditorPage() {
           if (tid !== undefined) clearTimeout(tid)
           pendingSidebarDeletes.current.delete(resume.id)
           setSidebarResumes((prev) => {
-            if (prev.find((r) => r.id === resume.id)) return prev
+            if (prev.some((r) => r.id === resume.id)) return prev
             return [...prev, resume]
           })
         },

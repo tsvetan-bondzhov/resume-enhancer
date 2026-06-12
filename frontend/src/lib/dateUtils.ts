@@ -15,7 +15,7 @@ export function formatDateRange(
   const fmt = (d: string) =>
     new Intl.DateTimeFormat(undefined, { month: "short", year: "numeric" }).format(new Date(d))
   const start = startDate ? fmt(startDate) : ""
-  const end = isCurrent || !endDate ? "Present" : fmt(endDate)
+  const end = !isCurrent && endDate ? fmt(endDate) : "Present"
   return start ? `${start} — ${end}` : end
 }
 

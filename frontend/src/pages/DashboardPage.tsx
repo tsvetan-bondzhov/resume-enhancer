@@ -88,7 +88,7 @@ export default function DashboardPage() {
       } catch {
         // Restore on failure
         setDisplayedResumes((prev) => {
-          if (prev.find((r) => r.id === resume.id)) return prev
+          if (prev.some((r) => r.id === resume.id)) return prev
           return [...prev, resume]
         })
         toast.error("Delete failed — resume restored")
@@ -106,7 +106,7 @@ export default function DashboardPage() {
           if (id !== undefined) clearTimeout(id)
           pendingDeletes.current.delete(resume.id)
           setDisplayedResumes((prev) => {
-            if (prev.find((r) => r.id === resume.id)) return prev
+            if (prev.some((r) => r.id === resume.id)) return prev
             return [...prev, resume]
           })
         },

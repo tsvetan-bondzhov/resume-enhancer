@@ -194,7 +194,7 @@ export default function WorkExperienceSectionRenderer({
                   ) : (
                     <span>{(() => {
                       const start = formatMonthYear(item.startDate)
-                      const end = item.isCurrent || !item.endDate ? "Present" : formatMonthYear(item.endDate)
+                      const end = !item.isCurrent && item.endDate ? formatMonthYear(item.endDate) : "Present"
                       return start ? `${start} — ${end}` : end
                     })()}</span>
                   )}

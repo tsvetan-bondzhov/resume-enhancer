@@ -217,7 +217,7 @@ export default function EducationSectionRenderer({
                   ) : (
                     <span>{(() => {
                       const start = formatYear(item.startDate)
-                      const end = !item.endDate ? "Present" : formatYear(item.endDate)
+                      const end = item.endDate ? formatYear(item.endDate) : "Present"
                       return start ? `${start} — ${end}` : end
                     })()}</span>
                   )}

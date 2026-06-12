@@ -40,20 +40,20 @@ function mergeProfilePayload(
   current: ProfileDto
 ): ProfileUpdateRequest {
   return {
-    summary: partial.summary !== undefined ? partial.summary : current.summary,
-    contactEmail: partial.contactEmail !== undefined ? partial.contactEmail : current.contactEmail,
-    linkedInUrl: partial.linkedInUrl !== undefined ? partial.linkedInUrl : current.linkedInUrl,
-    personalPageUrl: partial.personalPageUrl !== undefined ? partial.personalPageUrl : current.personalPageUrl,
-    blogUrl: partial.blogUrl !== undefined ? partial.blogUrl : current.blogUrl,
-    locationCity: partial.locationCity !== undefined ? partial.locationCity : current.locationCity,
-    locationCountry: partial.locationCountry !== undefined ? partial.locationCountry : current.locationCountry,
-    workExperiences: partial.workExperiences !== undefined ? partial.workExperiences : current.workExperiences,
-    education: partial.education !== undefined ? partial.education : current.education,
-    skills: partial.skills !== undefined ? partial.skills : current.skills,
-    certifications: partial.certifications !== undefined ? partial.certifications : (current.certifications ?? []),
-    languages: partial.languages !== undefined ? partial.languages : (current.languages ?? []),
-    projects: partial.projects !== undefined ? partial.projects : (current.projects ?? []),
-    volunteering: partial.volunteering !== undefined ? partial.volunteering : (current.volunteering ?? []),
+    summary: partial.summary ?? current.summary,
+    contactEmail: partial.contactEmail ?? current.contactEmail,
+    linkedInUrl: partial.linkedInUrl ?? current.linkedInUrl,
+    personalPageUrl: partial.personalPageUrl ?? current.personalPageUrl,
+    blogUrl: partial.blogUrl ?? current.blogUrl,
+    locationCity: partial.locationCity ?? current.locationCity,
+    locationCountry: partial.locationCountry ?? current.locationCountry,
+    workExperiences: partial.workExperiences ?? current.workExperiences,
+    education: partial.education ?? current.education,
+    skills: partial.skills ?? current.skills,
+    certifications: partial.certifications ?? current.certifications ?? [],
+    languages: partial.languages ?? current.languages ?? [],
+    projects: partial.projects ?? current.projects ?? [],
+    volunteering: partial.volunteering ?? current.volunteering ?? [],
   }
 }
 
