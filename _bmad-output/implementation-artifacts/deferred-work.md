@@ -108,6 +108,10 @@
 - `TokenService` has no validation guard on `expirationMs ≤ 0` — a misconfigured zero or negative value silently produces immediately-expired tokens in production. Pre-existing; add a constructor `Preconditions.checkArgument(expirationMs > 0)` in a future hardening pass.
 - `user.getEmail()` and `user.getRole()` passed to JWT builder without null checks — pre-existing; a null role produces `ROLE_null` authority silently denying all role-gated endpoints. Address in a future service-layer hardening pass.
 
+## Deferred from: code review of 9-9-code-style-simplified-conditionals-and-idioms (2026-06-12)
+
+- Latent dedup gap in restore guards (`DashboardPage.tsx`, `EditorPage.tsx`) — rapid delete-then-undo-then-delete cycle can reorder the resume list because the restore appends at the end rather than restoring original position. Not introduced by this story (pre-existing with `.find()`); the `.some()` refactor preserves identical behavior.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

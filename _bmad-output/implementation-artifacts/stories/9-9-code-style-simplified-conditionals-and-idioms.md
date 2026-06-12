@@ -1,6 +1,6 @@
 # Story 9.9: Frontend Code Style — Simplified Conditionals & Modern Idioms
 
-**Status:** review
+**Status:** done
 **Epic:** 9 — Code Quality — SonarQube Remediation
 **Story Key:** 9-9-code-style-simplified-conditionals-and-idioms
 **Dependencies:** None (9.8 done; all affected files are frontend TypeScript/TSX)
@@ -390,6 +390,11 @@ None — all tasks executed cleanly on first pass.
 - frontend/src/components/resume/sections/ProjectsSectionRenderer.tsx
 - frontend/src/lib/dateUtils.ts
 - frontend/src/components/theme-provider.tsx
+
+### Review Findings
+
+- [x] [Review][Patch] `??` drops intentional `null` clears for 7 SummaryStep fields in `mergeProfilePayload` [frontend/src/pages/ProfilePage.tsx:43-49] — Fixed: reverted string fields to `!== undefined` guards; array fields retain `??`. Verified SummaryStep passes `field || null` to clear fields. 189 tests pass, 0 lint errors.
+- [x] [Review][Defer] Latent dedup gap in restore guards (`DashboardPage.tsx`, `EditorPage.tsx`) — deferred, pre-existing — rapid delete-then-undo-then-delete cycle can reorder the resume list; not introduced by this story.
 
 ### Change Log
 
