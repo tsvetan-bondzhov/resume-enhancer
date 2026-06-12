@@ -239,12 +239,9 @@ export default function ProfilePage() {
             className="mb-8 flex gap-4"
           >
             {STEPS.map((label, index) => {
-              let className = "text-zinc-400 font-normal" // unvisited
-              if (index < currentStep) {
-                className = "text-zinc-400 font-normal" // completed — muted, no strikethrough
-              } else if (index === currentStep) {
-                className = "font-semibold text-zinc-900" // current — highlighted
-              }
+              const className = index === currentStep
+                ? "font-semibold text-zinc-900" // current — highlighted
+                : "text-zinc-400 font-normal" // unvisited or completed — muted
               return (
                 <li
                   key={label}
