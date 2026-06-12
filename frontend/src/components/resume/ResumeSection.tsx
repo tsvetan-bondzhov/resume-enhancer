@@ -10,12 +10,12 @@ import SummarySectionRenderer from "@/components/resume/sections/SummarySectionR
 import GenericSectionRenderer from "@/components/resume/sections/GenericSectionRenderer"
 
 interface ResumeSectionProps {
-  section: ResumeSectionDto
-  onTitleChange: (title: string) => void
-  onFieldChange?: (itemId: string, field: string, value: string) => void
-  onAddItem?: (position: number) => void
-  onDeleteItem?: (itemId: string) => void
-  onReorderItems?: (newItems: ResumeItemDto[]) => void
+  readonly section: ResumeSectionDto
+  readonly onTitleChange: (title: string) => void
+  readonly onFieldChange?: (itemId: string, field: string, value: string) => void
+  readonly onAddItem?: (position: number) => void
+  readonly onDeleteItem?: (itemId: string) => void
+  readonly onReorderItems?: (newItems: ResumeItemDto[]) => void
 }
 
 function renderSectionContent(

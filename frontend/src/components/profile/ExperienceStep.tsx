@@ -39,7 +39,7 @@ function emptyDraft(): ExperienceDraft {
 }
 
 interface ExperienceStepProps {
-  onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
+  readonly onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
 }
 
 export default function ExperienceStep({

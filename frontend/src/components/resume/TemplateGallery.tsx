@@ -5,11 +5,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import type { TemplateDto } from "@/types/api"
 
 interface TemplateGalleryProps {
-  activeTemplateId: string | null
-  onApply: (templateId: string) => void
+  readonly activeTemplateId: string | null
+  readonly onApply: (templateId: string) => void
 }
 
-function TemplateThumbnail({ template }: { template: TemplateDto }) {
+function TemplateThumbnail({ template }: { readonly template: TemplateDto }) {
   const layoutType = template.templateDefinition?.layoutType
   const accentColor = template.templateDefinition?.cssVariables?.["--accent-color"] ?? "#3b82f6"
 

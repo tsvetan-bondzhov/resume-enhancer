@@ -7,17 +7,17 @@ import { formatDateRange } from "@/lib/dateUtils"
 import type { VolunteeringItemDto, ResumeItemDto } from "@/types/api"
 
 interface VolunteeringSectionRendererProps {
-  items: VolunteeringItemDto[]
-  onFieldChange?: (itemId: string, field: string, value: string) => void
-  onAddItem?: (position: number) => void
-  onDeleteItem?: (itemId: string) => void
-  onReorderItems?: (newItems: ResumeItemDto[]) => void
+  readonly items: readonly VolunteeringItemDto[]
+  readonly onFieldChange?: (itemId: string, field: string, value: string) => void
+  readonly onAddItem?: (position: number) => void
+  readonly onDeleteItem?: (itemId: string) => void
+  readonly onReorderItems?: (newItems: ResumeItemDto[]) => void
 }
 
 interface SortableItemWrapperProps {
-  id: string
-  children: React.ReactNode
-  onDeleteItem?: (itemId: string) => void
+  readonly id: string
+  readonly children: React.ReactNode
+  readonly onDeleteItem?: (itemId: string) => void
 }
 
 function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapperProps) {
@@ -90,7 +90,7 @@ export default function VolunteeringSectionRenderer({
     const oldIndex = items.findIndex((i) => i.id === active.id)
     const newIndex = items.findIndex((i) => i.id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
-    onReorderItems(arrayMove(items, oldIndex, newIndex))
+    onReorderItems(arrayMove([...items], oldIndex, newIndex))
   }
 
   const content = (

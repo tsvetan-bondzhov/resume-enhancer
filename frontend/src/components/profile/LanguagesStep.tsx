@@ -47,7 +47,7 @@ function emptyDraft(): LanguageDraft {
 }
 
 interface LanguagesStepProps {
-  onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
+  readonly onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
 }
 
 export default function LanguagesStep({

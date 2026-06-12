@@ -4,12 +4,12 @@ import { Badge } from "@/components/ui/badge"
 import type { ResumeDto } from "@/types/api"
 
 interface ResumeSidebarItemProps {
-  resume: ResumeDto
-  isActive: boolean
-  onOpen: () => void
-  onDuplicate: () => void
-  onDelete: () => void
-  isDuplicating?: boolean
+  readonly resume: ResumeDto
+  readonly isActive: boolean
+  readonly onOpen: () => void
+  readonly onDuplicate: () => void
+  readonly onDelete: () => void
+  readonly isDuplicating?: boolean
 }
 
 export default function ResumeSidebarItem({

@@ -5,10 +5,10 @@ type Theme = "dark" | "light" | "system"
 type ResolvedTheme = "dark" | "light"
 
 type ThemeProviderProps = {
-  children: React.ReactNode
-  defaultTheme?: Theme
-  storageKey?: string
-  disableTransitionOnChange?: boolean
+  readonly children: React.ReactNode
+  readonly defaultTheme?: Theme
+  readonly storageKey?: string
+  readonly disableTransitionOnChange?: boolean
 }
 
 type ThemeProviderState = {

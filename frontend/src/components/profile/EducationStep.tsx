@@ -34,7 +34,7 @@ function emptyDraft(): EducationDraft {
 }
 
 interface EducationStepProps {
-  onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
+  readonly onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
 }
 
 export default function EducationStep({

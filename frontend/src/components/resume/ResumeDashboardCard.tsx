@@ -8,11 +8,11 @@ import ResumeCanvas from "@/components/resume/ResumeCanvas"
 const PREVIEW_SCALE = 0.3
 
 interface ResumeDashboardCardProps {
-  resume: ResumeDto
-  onOpen: () => void
-  onDuplicate: () => void
-  onDelete: () => void
-  isDuplicating?: boolean
+  readonly resume: ResumeDto
+  readonly onOpen: () => void
+  readonly onDuplicate: () => void
+  readonly onDelete: () => void
+  readonly isDuplicating?: boolean
 }
 
 export default function ResumeDashboardCard({

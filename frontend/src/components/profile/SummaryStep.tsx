@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import type { ProfileUpdateRequest } from "@/types/api"
 
 interface SummaryStepProps {
-  onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
+  readonly onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
 }
 
 export default function SummaryStep({ onSaveAndContinue }: SummaryStepProps) {

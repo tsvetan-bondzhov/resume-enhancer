@@ -11,15 +11,15 @@ import type { ResumeDocumentDto, ResumeItemDto, ResumeSectionType, TemplateCssVa
 export const PAGE_HEIGHT_PX = Math.round(794 * (297 / 210)) // 1123
 
 interface ResumeCanvasProps {
-  document: ResumeDocumentDto | null
-  templateId: string | null
-  isLoading?: boolean
-  state?: "idle" | "streaming" | "diff" | "print-preview"
-  onTitleChange?: (sectionId: string, title: string) => void
-  onFieldChange?: (sectionId: string, itemId: string, field: string, value: string) => void
-  onAddItem?: (sectionType: ResumeSectionType, position: number) => void
-  onDeleteItem?: (sectionType: ResumeSectionType, itemId: string) => void
-  onReorderItems?: (sectionType: ResumeSectionType, newItems: ResumeItemDto[]) => void
+  readonly document: ResumeDocumentDto | null
+  readonly templateId: string | null
+  readonly isLoading?: boolean
+  readonly state?: "idle" | "streaming" | "diff" | "print-preview"
+  readonly onTitleChange?: (sectionId: string, title: string) => void
+  readonly onFieldChange?: (sectionId: string, itemId: string, field: string, value: string) => void
+  readonly onAddItem?: (sectionType: ResumeSectionType, position: number) => void
+  readonly onDeleteItem?: (sectionType: ResumeSectionType, itemId: string) => void
+  readonly onReorderItems?: (sectionType: ResumeSectionType, newItems: ResumeItemDto[]) => void
 }
 
 export default function ResumeCanvas({

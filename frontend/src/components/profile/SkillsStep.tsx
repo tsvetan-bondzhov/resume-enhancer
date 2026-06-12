@@ -11,7 +11,7 @@ interface SkillEntryState {
 }
 
 interface SkillsStepProps {
-  onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
+  readonly onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
 }
 
 export default function SkillsStep({ onSaveAndContinue }: SkillsStepProps) {

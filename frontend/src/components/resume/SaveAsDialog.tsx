@@ -11,18 +11,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 interface SaveAsDialogProps {
-  open: boolean
-  defaultName: string
-  isSaving: boolean
-  onConfirm: (name: string) => void
-  onClose: () => void
+  readonly open: boolean
+  readonly defaultName: string
+  readonly isSaving: boolean
+  readonly onConfirm: (name: string) => void
+  readonly onClose: () => void
 }
 
 interface SaveAsFormProps {
-  defaultName: string
-  isSaving: boolean
-  onConfirm: (name: string) => void
-  onClose: () => void
+  readonly defaultName: string
+  readonly isSaving: boolean
+  readonly onConfirm: (name: string) => void
+  readonly onClose: () => void
 }
 
 function SaveAsForm({ defaultName, isSaving, onConfirm, onClose }: SaveAsFormProps) {

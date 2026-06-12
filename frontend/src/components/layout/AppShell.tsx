@@ -4,7 +4,7 @@ import { useAuthStore } from "@/stores/useAuthStore"
 import { useSignOut } from "@/hooks/useSignOut"
 
 interface AppShellProps {
-  children: React.ReactNode
+  readonly children: React.ReactNode
 }
 
 export default function AppShell({ children }: AppShellProps) {
