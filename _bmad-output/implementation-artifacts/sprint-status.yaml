@@ -127,7 +127,7 @@ development_status:
   # ─── Epic 9: Code Quality — SonarQube Remediation ───
   epic-9: in-progress
   9-1-typescript-cognitive-complexity-and-void-operator: done
-  9-2-java-string-constants-and-empty-test-method: review
+  9-2-java-string-constants-and-empty-test-method: done
   9-3-accessibility-and-aria-compliance: done
   9-4-java-backend-code-quality-llmsectionextractor: done
   9-5-duplicate-and-redundant-code: done
