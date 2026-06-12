@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { apiClient } from "@/lib/apiClient"
 import { getOrderedSections } from "@/lib/templateUtils"
 import ResumeSection from "@/components/resume/ResumeSection"
-import type { ResumeDocumentDto, ResumeItemDto, TemplateDto } from "@/types/api"
+import type { ResumeDocumentDto, ResumeItemDto, ResumeSectionType, TemplateCssVariables, TemplateDto } from "@/types/api"
 
 // A4: 210mm × 297mm. max-w-[794px] ≈ 210mm at 96dpi.
 // Page height in px = 794 * (297 / 210) ≈ 1123
@@ -17,9 +17,9 @@ interface ResumeCanvasProps {
   state?: "idle" | "streaming" | "diff" | "print-preview"
   onTitleChange?: (sectionId: string, title: string) => void
   onFieldChange?: (sectionId: string, itemId: string, field: string, value: string) => void
-  onAddItem?: (sectionType: string, position: number) => void
-  onDeleteItem?: (sectionType: string, itemId: string) => void
-  onReorderItems?: (sectionType: string, newItems: ResumeItemDto[]) => void
+  onAddItem?: (sectionType: ResumeSectionType, position: number) => void
+  onDeleteItem?: (sectionType: ResumeSectionType, itemId: string) => void
+  onReorderItems?: (sectionType: ResumeSectionType, newItems: ResumeItemDto[]) => void
 }
 
 export default function ResumeCanvas({
@@ -62,12 +62,12 @@ export default function ResumeCanvas({
   }, [templateId])
 
   // CSS variable injection — empty object when no template (AC5/AC6: defaults apply via Tailwind)
-  const cssVars = template?.templateDefinition?.cssVariables ?? {}
+  const cssVars: TemplateCssVariables = template?.templateDefinition?.cssVariables ?? {}
   const layoutType = template?.templateDefinition?.layoutType
 
-  const baseStyle = Object.fromEntries(
-    Object.entries(cssVars as Record<string, string>).filter(([, v]) => v !== undefined)
-  ) as React.CSSProperties
+  const baseStyle: React.CSSProperties = Object.fromEntries(
+    Object.entries(cssVars).filter(([, v]) => v !== undefined)
+  )
 
   const rootStyle: React.CSSProperties = {
     ...baseStyle,

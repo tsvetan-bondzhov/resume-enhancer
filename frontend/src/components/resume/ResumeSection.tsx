@@ -36,7 +36,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").WorkExperienceItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "EDUCATION":
@@ -49,7 +49,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").EducationItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "SKILLS":
@@ -62,7 +62,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").SkillItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "CERTIFICATIONS":
@@ -75,7 +75,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").CertificationItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "LANGUAGES":
@@ -88,7 +88,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").LanguageItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "PROJECTS":
@@ -101,7 +101,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").ProjectItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "VOLUNTEERING":
@@ -114,7 +114,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").VolunteeringItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "SUMMARY":
@@ -127,7 +127,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").SummaryItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "UNKNOWN":
@@ -140,7 +140,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").GenericItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     default: {

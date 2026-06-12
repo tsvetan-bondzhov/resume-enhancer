@@ -3,14 +3,14 @@ import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { Trash2, GripVertical, Plus } from "lucide-react"
-import type { SkillItemDto } from "@/types/api"
+import type { SkillItemDto, ResumeItemDto } from "@/types/api"
 
 interface SkillsSectionRendererProps {
   items: SkillItemDto[]
   onFieldChange?: (itemId: string, field: string, value: string) => void
   onAddItem?: (position: number) => void
   onDeleteItem?: (itemId: string) => void
-  onReorderItems?: (newItems: SkillItemDto[]) => void
+  onReorderItems?: (newItems: ResumeItemDto[]) => void
 }
 
 interface SortableItemWrapperProps {

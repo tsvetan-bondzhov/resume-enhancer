@@ -3,14 +3,14 @@ import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { Trash2, GripVertical, Plus } from "lucide-react"
-import type { LanguageItemDto } from "@/types/api"
+import type { LanguageItemDto, ResumeItemDto } from "@/types/api"
 
 interface LanguagesSectionRendererProps {
   items: LanguageItemDto[]
   onFieldChange?: (itemId: string, field: string, value: string) => void
   onAddItem?: (position: number) => void
   onDeleteItem?: (itemId: string) => void
-  onReorderItems?: (newItems: LanguageItemDto[]) => void
+  onReorderItems?: (newItems: ResumeItemDto[]) => void
 }
 
 interface SortableItemWrapperProps {

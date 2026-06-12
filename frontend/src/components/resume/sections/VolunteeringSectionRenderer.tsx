@@ -4,14 +4,14 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from "@dnd-kit/utilities"
 import { Trash2, GripVertical, Plus } from "lucide-react"
 import { formatDateRange } from "@/lib/dateUtils"
-import type { VolunteeringItemDto } from "@/types/api"
+import type { VolunteeringItemDto, ResumeItemDto } from "@/types/api"
 
 interface VolunteeringSectionRendererProps {
   items: VolunteeringItemDto[]
   onFieldChange?: (itemId: string, field: string, value: string) => void
   onAddItem?: (position: number) => void
   onDeleteItem?: (itemId: string) => void
-  onReorderItems?: (newItems: VolunteeringItemDto[]) => void
+  onReorderItems?: (newItems: ResumeItemDto[]) => void
 }
 
 interface SortableItemWrapperProps {

@@ -96,6 +96,11 @@
 - `workExperiences` and `education` in `mergeProfilePayload` lack `?? []` fallback guard, unlike the four optional array fields — pre-existing asymmetry; `ProfileDto` declares both as non-nullable so risk is low; normalise in a future ProfileDto guard pass.
 - `applyLoginError`/`applySignupError` implicit caller contract (caller must clear field errors first) is undocumented; safe in current module-private usage; document or enforce if these patterns are extracted to shared utilities in future.
 
+## Deferred from: code review of 9-7-type-safety-and-deprecated-apis (2026-06-12)
+
+- Two-column `ResumeCanvas` sections not assigned to either column definition (`leftColumnIds` / `rightColumnIds`) are silently dropped — no fallback rendering, no warning. Pre-existing gap; address when two-column layout edge cases are formally specified.
+- `null` `issueDate`/`expirationDate` in `CertificationsSectionRenderer` rendered as empty editable span; blur event writes empty string to store, converting `null → ""` silently and triggering autosave diff. Pre-existing pattern; address when null/optional date field UX is formally specified.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

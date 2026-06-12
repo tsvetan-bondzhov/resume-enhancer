@@ -4,14 +4,14 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from "@dnd-kit/utilities"
 import { Trash2, GripVertical, Plus } from "lucide-react"
 import { formatYear } from "@/lib/dateUtils"
-import type { EducationItemDto } from "@/types/api"
+import type { EducationItemDto, ResumeItemDto } from "@/types/api"
 
 interface EducationSectionRendererProps {
   items: EducationItemDto[]
   onFieldChange?: (itemId: string, field: string, value: string) => void
   onAddItem?: (position: number) => void
   onDeleteItem?: (itemId: string) => void
-  onReorderItems?: (newItems: EducationItemDto[]) => void
+  onReorderItems?: (newItems: ResumeItemDto[]) => void
 }
 
 interface SortableItemWrapperProps {

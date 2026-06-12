@@ -35,7 +35,7 @@ function SaveAsForm({ defaultName, isSaving, onConfirm, onClose }: SaveAsFormPro
     inputRef.current?.select()
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (name.trim() === "") {
       setError("Name is required")

@@ -11,7 +11,7 @@ import SaveAsDialog from "@/components/resume/SaveAsDialog"
 import TemplateGallery from "@/components/resume/TemplateGallery"
 import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
 import { useAutosave } from "@/hooks/useAutosave"
-import type { ResumeDto, ResumeSectionType } from "@/types/api"
+import type { ResumeDto } from "@/types/api"
 
 async function executeDeleteResume(
   resume: ResumeDto,
@@ -282,9 +282,9 @@ export default function EditorPage() {
                   isLoading={isLoading}
                   onTitleChange={handleTitleChange}
                   onFieldChange={handleFieldChange}
-                  onAddItem={(sectionType, position) => addItem(sectionType as ResumeSectionType, position)}
-                  onDeleteItem={(sectionType, itemId) => deleteItem(sectionType as ResumeSectionType, itemId)}
-                  onReorderItems={(sectionType, newItems) => reorderItems(sectionType as ResumeSectionType, newItems)}
+                  onAddItem={(sectionType, position) => addItem(sectionType, position)}
+                  onDeleteItem={(sectionType, itemId) => deleteItem(sectionType, itemId)}
+                  onReorderItems={(sectionType, newItems) => reorderItems(sectionType, newItems)}
                 />
               </>
             )}
