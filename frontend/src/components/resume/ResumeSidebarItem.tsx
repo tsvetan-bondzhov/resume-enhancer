@@ -1,4 +1,4 @@
-import { ExternalLink, Download, Copy, Trash2, Loader2 } from "lucide-react"
+import { Download, Copy, Trash2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import type { ResumeDto } from "@/types/api"
@@ -28,14 +28,14 @@ export default function ResumeSidebarItem({
           ? "bg-blue-50 text-blue-900"
           : "hover:bg-muted",
       ].join(" ")}
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      aria-label={`${resume.name}${isActive ? " (active)" : ""}`}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen() }}
     >
       {/* Resume info */}
-      <div className="flex-1 min-w-0">
+      <button
+          className="flex-1 min-w-0"
+          onClick={onOpen}
+          tabIndex={0}
+          aria-label={`${resume.name}${isActive ? " (active)" : ""}`}
+      >
         <p className={[
           "text-xs font-medium truncate",
           isActive ? "text-blue-900" : "",
@@ -52,19 +52,10 @@ export default function ResumeSidebarItem({
             {new Date(resume.createdAt).toLocaleDateString()}
           </span>
         </div>
-      </div>
+      </button>
 
       {/* Hover action icons — visible on hover/focus-within (UX-DR9) */}
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onOpen() }}
-          aria-label={`Open ${resume.name}`}
-          className="p-1 rounded hover:bg-muted"
-        >
-          <ExternalLink className="size-3.5" />
-        </button>
-
         <button
           type="button"
           onClick={(e) => {
