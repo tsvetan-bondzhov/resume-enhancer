@@ -226,7 +226,8 @@ class AuthControllerIntegrationTest {
     void protectedEndpoint_withExpiredToken_returns401ProblemDetail() {
         // Build a short-lived TokenService using the same secret as the application context,
         // but with a negative expiration so the token is immediately expired.
-        TokenService expiredTokenService = new TokenService(jwtSecret, -1000L, java.time.Clock.systemUTC());
+        TokenService expiredTokenService = new TokenService(jwtSecret, -1000L,
+                java.time.Clock.fixed(java.time.Instant.parse("2025-01-01T00:00:00Z"), java.time.ZoneOffset.UTC));
         com.tsvetanbondzhov.resumeenhancer.auth.domain.User dummyUser =
                 new com.tsvetanbondzhov.resumeenhancer.auth.domain.User();
         dummyUser.setEmail("expired@example.com");
