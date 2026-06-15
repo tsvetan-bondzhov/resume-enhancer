@@ -16,6 +16,8 @@ Parse from the skill invocation arguments (the text after `/fix-sonar-issues`):
 - `{severity_filter}` — optional. One of: `BLOCKER`, `CRITICAL`, `MAJOR`, `MINOR`, `INFO`.
   - If provided, process **only** issues at that exact severity level.
   - If not provided, process all issues **except INFO** (default behavior).
+- `--no-duplications` — optional flag. If present, skip the duplicated code phase entirely.
+- `--duplications-only` — optional flag. If present, skip severity-based issues and process only duplicated code.
 
 ## Severity Processing Order
 
@@ -76,6 +78,11 @@ Track these variables across steps:
 - `{all_batches}` — ordered list of { severity, batch_num, files, issues }
 - `{completed_batches}` — results per batch: { fixed, ignored, false_positive, new_issues, test_failures }
 - `{build_tool}`, `{scan_command}`, `{build_command}`, `{test_command_template}`
+- `{process_duplications}` — true unless `--no-duplications` or `{severity_filter}` is set
+- `{duplications_only}` — true if `--duplications-only` was passed
+- `{duplication_clusters}` — list of { cluster_id, files, blocks } grouped by shared duplication
+- `{duplication_batches}` — ordered list of { batch_num, cluster_id, files, blocks }
+- `{completed_duplication_batches}` — results per duplication batch: { refactored, skipped, test_status }
 
 ## FIRST STEP
 
