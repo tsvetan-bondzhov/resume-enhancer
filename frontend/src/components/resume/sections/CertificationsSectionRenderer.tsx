@@ -3,20 +3,20 @@ import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { Trash2, GripVertical, Plus } from "lucide-react"
-import type { CertificationItemDto } from "@/types/api"
+import type { CertificationItemDto, ResumeItemDto } from "@/types/api"
 
 interface CertificationsSectionRendererProps {
-  items: CertificationItemDto[]
-  onFieldChange?: (itemId: string, field: string, value: string) => void
-  onAddItem?: (position: number) => void
-  onDeleteItem?: (itemId: string) => void
-  onReorderItems?: (newItems: CertificationItemDto[]) => void
+  readonly items: readonly CertificationItemDto[]
+  readonly onFieldChange?: (itemId: string, field: string, value: string) => void
+  readonly onAddItem?: (position: number) => void
+  readonly onDeleteItem?: (itemId: string) => void
+  readonly onReorderItems?: (newItems: ResumeItemDto[]) => void
 }
 
 interface SortableItemWrapperProps {
-  id: string
-  children: React.ReactNode
-  onDeleteItem?: (itemId: string) => void
+  readonly id: string
+  readonly children: React.ReactNode
+  readonly onDeleteItem?: (itemId: string) => void
 }
 
 function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapperProps) {
@@ -37,14 +37,15 @@ function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapper
 
   return (
     <div ref={setNodeRef} style={style} className="relative group/item break-inside-avoid">
-      <div
-        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 transition-opacity cursor-grab touch-none"
+      <button
+        type="button"
+        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab touch-none"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
+      </button>
       {onDeleteItem && (
         <button
           type="button"
@@ -88,7 +89,7 @@ export default function CertificationsSectionRenderer({
     const oldIndex = items.findIndex((i) => i.id === active.id)
     const newIndex = items.findIndex((i) => i.id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
-    onReorderItems(arrayMove(items, oldIndex, newIndex))
+    onReorderItems(arrayMove([...items], oldIndex, newIndex))
   }
 
   const content = (
@@ -102,11 +103,18 @@ export default function CertificationsSectionRenderer({
                 <p className="font-medium">
                   {onFieldChange ? (
                     <span
+                      role="textbox"
+                      tabIndex={0}
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onFieldChange(item.id, "name", e.currentTarget.textContent ?? "")
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                        }
+                      }}
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                       aria-label="Edit name"
                     >
@@ -122,11 +130,18 @@ export default function CertificationsSectionRenderer({
                   <>
                     {onFieldChange ? (
                       <span
+                        role="textbox"
+                        tabIndex={0}
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) =>
                           onFieldChange(item.id, "issuer", e.currentTarget.textContent ?? "")
                         }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault()
+                          }
+                        }}
                         className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                         aria-label="Edit issuer"
                       >
@@ -140,11 +155,18 @@ export default function CertificationsSectionRenderer({
                 )}
                 {onFieldChange ? (
                   <span
+                    role="textbox"
+                    tabIndex={0}
                     contentEditable
                     suppressContentEditableWarning
                     onBlur={(e) =>
                       onFieldChange(item.id, "issueDate", e.currentTarget.textContent ?? "")
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                        e.preventDefault()
+                      }
+                    }}
                     className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                     aria-label="Edit issueDate"
                   >
@@ -156,11 +178,18 @@ export default function CertificationsSectionRenderer({
                 {(item.expirationDate != null || onFieldChange) && " — "}
                 {onFieldChange ? (
                   <span
+                    role="textbox"
+                    tabIndex={0}
                     contentEditable
                     suppressContentEditableWarning
                     onBlur={(e) =>
                       onFieldChange(item.id, "expirationDate", e.currentTarget.textContent ?? "")
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                        e.preventDefault()
+                      }
+                    }}
                     className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                     aria-label="Edit expirationDate"
                   >

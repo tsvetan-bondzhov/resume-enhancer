@@ -9,7 +9,7 @@ public class FileValidator {
 
     private static final String MIME_PDF = "application/pdf";
     private static final String MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    private static final long MAX_FILE_SIZE = 10L * 1024 * 1024; // 10MB
+    private static final long MAX_FILE_SIZE = 8L * 1024 * 1024; // 8MB
 
     public void validate(MultipartFile file) {
         String contentType = file.getContentType();
@@ -19,7 +19,7 @@ public class FileValidator {
         }
 
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new FileValidationException("File exceeds the 10MB size limit.");
+            throw new FileValidationException("File exceeds the 8MB size limit.");
         }
     }
 }

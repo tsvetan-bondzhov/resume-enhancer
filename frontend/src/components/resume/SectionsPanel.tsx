@@ -18,14 +18,14 @@ import { useResumeStore } from "@/stores/useResumeStore"
 import type { ResumeSectionDto } from "@/types/api"
 
 interface SectionsPanelProps {
-  sections: ResumeSectionDto[]
+  readonly sections: readonly ResumeSectionDto[]
 }
 
 interface SortableSectionRowProps {
-  section: ResumeSectionDto
-  onToggle: (id: string) => void
-  onMoveUp: (id: string) => void
-  onMoveDown: (id: string) => void
+  readonly section: ResumeSectionDto
+  readonly onToggle: (id: string) => void
+  readonly onMoveUp: (id: string) => void
+  readonly onMoveDown: (id: string) => void
 }
 
 function SortableSectionRow({
@@ -131,7 +131,7 @@ export default function SectionsPanel({ sections }: SectionsPanelProps) {
       const oldIndex = sections.findIndex((s) => s.sectionType === active.id)
       const newIndex = sections.findIndex((s) => s.sectionType === over.id)
       if (oldIndex === -1 || newIndex === -1) return
-      reorderSections(arrayMove(sections, oldIndex, newIndex))
+      reorderSections(arrayMove([...sections], oldIndex, newIndex))
     },
     [sections, reorderSections]
   )
@@ -140,7 +140,7 @@ export default function SectionsPanel({ sections }: SectionsPanelProps) {
     (id: string) => {
       const idx = sections.findIndex((s) => s.sectionType === id)
       if (idx <= 0) return
-      reorderSections(arrayMove(sections, idx, idx - 1))
+      reorderSections(arrayMove([...sections], idx, idx - 1))
     },
     [sections, reorderSections]
   )
@@ -149,7 +149,7 @@ export default function SectionsPanel({ sections }: SectionsPanelProps) {
     (id: string) => {
       const idx = sections.findIndex((s) => s.sectionType === id)
       if (idx === -1 || idx >= sections.length - 1) return
-      reorderSections(arrayMove(sections, idx, idx + 1))
+      reorderSections(arrayMove([...sections], idx, idx + 1))
     },
     [sections, reorderSections]
   )

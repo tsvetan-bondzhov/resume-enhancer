@@ -3,20 +3,20 @@ import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { Trash2, GripVertical, Plus, ExternalLink } from "lucide-react"
-import type { SummaryItemDto } from "@/types/api"
+import type { SummaryItemDto, ResumeItemDto } from "@/types/api"
 
 interface SummarySectionRendererProps {
-  items: SummaryItemDto[]
-  onFieldChange?: (itemId: string, field: string, value: string) => void
-  onAddItem?: (position: number) => void
-  onDeleteItem?: (itemId: string) => void
-  onReorderItems?: (newItems: SummaryItemDto[]) => void
+  readonly items: readonly SummaryItemDto[]
+  readonly onFieldChange?: (itemId: string, field: string, value: string) => void
+  readonly onAddItem?: (position: number) => void
+  readonly onDeleteItem?: (itemId: string) => void
+  readonly onReorderItems?: (newItems: ResumeItemDto[]) => void
 }
 
 interface SortableItemWrapperProps {
-  id: string
-  children: React.ReactNode
-  onDeleteItem?: (itemId: string) => void
+  readonly id: string
+  readonly children: React.ReactNode
+  readonly onDeleteItem?: (itemId: string) => void
 }
 
 function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapperProps) {
@@ -37,14 +37,15 @@ function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapper
 
   return (
     <div ref={setNodeRef} style={style} className="relative group/item break-inside-avoid">
-      <div
-        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 transition-opacity cursor-grab touch-none"
+      <button
+        type="button"
+        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab touch-none"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
+      </button>
       {onDeleteItem && (
         <button
           type="button"
@@ -88,7 +89,7 @@ export default function SummarySectionRenderer({
     const oldIndex = items.findIndex((i) => i.id === active.id)
     const newIndex = items.findIndex((i) => i.id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
-    onReorderItems(arrayMove(items, oldIndex, newIndex))
+    onReorderItems(arrayMove([...items], oldIndex, newIndex))
   }
 
   const content = (
@@ -135,7 +136,10 @@ export default function SummarySectionRenderer({
                       </div>
                     )}
                     {onFieldChange ? (
-                      <p
+                      <div
+                        role="textbox"
+                        aria-multiline="true"
+                        tabIndex={0}
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) =>
@@ -145,7 +149,7 @@ export default function SummarySectionRenderer({
                         aria-label="Edit text"
                       >
                         {item.text}
-                      </p>
+                      </div>
                     ) : (
                       <p className="text-sm">{item.text}</p>
                     )}

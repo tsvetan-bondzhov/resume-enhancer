@@ -3,15 +3,15 @@ import { ChevronLeft, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface EditorToolbarProps {
-  resumeName: string
-  autosaveStatus: "idle" | "saving" | "saved" | "error"
-  isDirty: boolean
-  lastSavedAt: Date | null
-  isSavingAs: boolean
-  onNameChange: (name: string) => void
-  onSave: () => void
-  onSaveAs: () => void
-  onBack: () => void
+  readonly resumeName: string
+  readonly autosaveStatus: "idle" | "saving" | "saved" | "error"
+  readonly isDirty: boolean
+  readonly lastSavedAt: Date | null
+  readonly isSavingAs: boolean
+  readonly onNameChange: (name: string) => void
+  readonly onSave: () => void
+  readonly onSaveAs: () => void
+  readonly onBack: () => void
 }
 
 function formatSavedAgo(date: Date): string {
@@ -78,11 +78,8 @@ export default function EditorToolbar({
     }
   }
 
-  const saveButtonLabel = isDirty
-    ? "Save"
-    : lastSavedAt
-    ? `Saved ${savedAgoText}`
-    : "Saved"
+  const savedLabel = lastSavedAt ? `Saved ${savedAgoText}` : "Saved"
+  const saveButtonLabel = isDirty ? "Save" : savedLabel
 
   return (
     <div className="h-12 border-b border-border bg-card flex items-center gap-2 px-4 shrink-0">

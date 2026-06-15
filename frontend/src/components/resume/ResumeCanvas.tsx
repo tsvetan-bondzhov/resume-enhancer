@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { apiClient } from "@/lib/apiClient"
 import { getOrderedSections } from "@/lib/templateUtils"
 import ResumeSection from "@/components/resume/ResumeSection"
-import type { ResumeDocumentDto, ResumeItemDto, TemplateDto } from "@/types/api"
+import type { ResumeDocumentDto, ResumeItemDto, ResumeSectionType, TemplateCssVariables, TemplateDto } from "@/types/api"
 
 // A4: 210mm × 297mm. max-w-[794px] ≈ 210mm at 96dpi.
 // Page height in px = 794 * (297 / 210) ≈ 1123
@@ -11,15 +11,15 @@ import type { ResumeDocumentDto, ResumeItemDto, TemplateDto } from "@/types/api"
 export const PAGE_HEIGHT_PX = Math.round(794 * (297 / 210)) // 1123
 
 interface ResumeCanvasProps {
-  document: ResumeDocumentDto | null
-  templateId: string | null
-  isLoading?: boolean
-  state?: "idle" | "streaming" | "diff" | "print-preview"
-  onTitleChange?: (sectionId: string, title: string) => void
-  onFieldChange?: (sectionId: string, itemId: string, field: string, value: string) => void
-  onAddItem?: (sectionType: string, position: number) => void
-  onDeleteItem?: (sectionType: string, itemId: string) => void
-  onReorderItems?: (sectionType: string, newItems: ResumeItemDto[]) => void
+  readonly document: ResumeDocumentDto | null
+  readonly templateId: string | null
+  readonly isLoading?: boolean
+  readonly state?: "idle" | "streaming" | "diff" | "print-preview"
+  readonly onTitleChange?: (sectionId: string, title: string) => void
+  readonly onFieldChange?: (sectionId: string, itemId: string, field: string, value: string) => void
+  readonly onAddItem?: (sectionType: ResumeSectionType, position: number) => void
+  readonly onDeleteItem?: (sectionType: ResumeSectionType, itemId: string) => void
+  readonly onReorderItems?: (sectionType: ResumeSectionType, newItems: ResumeItemDto[]) => void
 }
 
 export default function ResumeCanvas({
@@ -62,12 +62,12 @@ export default function ResumeCanvas({
   }, [templateId])
 
   // CSS variable injection — empty object when no template (AC5/AC6: defaults apply via Tailwind)
-  const cssVars = template?.templateDefinition?.cssVariables ?? {}
+  const cssVars: TemplateCssVariables = template?.templateDefinition?.cssVariables ?? {}
   const layoutType = template?.templateDefinition?.layoutType
 
-  const baseStyle = Object.fromEntries(
-    Object.entries(cssVars as Record<string, string>).filter(([, v]) => v !== undefined)
-  ) as React.CSSProperties
+  const baseStyle: React.CSSProperties = Object.fromEntries(
+    Object.entries(cssVars).filter(([, v]) => v !== undefined)
+  )
 
   const rootStyle: React.CSSProperties = {
     ...baseStyle,
@@ -169,104 +169,114 @@ export default function ResumeCanvas({
     return () => observer.disconnect()
   }, [document, template])
 
+  let canvasContent: React.ReactNode
+
+  if (isLoading) {
+    canvasContent = (
+      <div
+        id="resume-canvas"
+        aria-label="Resume preview loading"
+        className="bg-white shadow-lg w-full max-w-[794px] p-8 space-y-6"
+      >
+        <Skeleton className="h-6 w-48" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-4 w-4/6" />
+        </div>
+        <div className="space-y-2 pt-4">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+        <div className="space-y-2 pt-4">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+        </div>
+      </div>
+    )
+  } else if (document === null) {
+    canvasContent = (
+      <article
+        id="resume-canvas"
+        aria-label="Resume preview"
+        style={rootStyle}
+        className="bg-white shadow-lg w-full max-w-[794px] p-8 min-h-[200px]"
+      />
+    )
+  } else {
+    canvasContent = (
+      <>
+        {/* Hidden measurement container — off-screen, aria-hidden, full A4 width */}
+        <div
+          ref={contentRef}
+          style={{ position: "absolute", left: "-9999px", visibility: "hidden", width: "794px", ...rootStyle }}
+          aria-hidden="true"
+          className="p-8"
+        >
+          {/* ARIA live region stub for streaming — used in Story 4.3 */}
+          <div
+            role="status"
+            aria-live="polite"
+            aria-label="AI is updating your resume"
+            className="sr-only"
+          >
+            {state === "streaming" ? "AI is updating your resume" : ""}
+          </div>
+
+          {/* modern-accent: accent header band — decorative only */}
+          {layoutType === "modern-accent" && (
+            <div aria-hidden="true" className="bg-[var(--accent-color)] p-4 mb-6" />
+          )}
+
+          {renderSections()}
+        </div>
+
+        {/* Visible page stack */}
+        <div id="resume-canvas" className="flex flex-col items-center gap-4 w-full">
+          {Array.from({ length: pageCount }, (_, i) => (
+            <article
+              key={i}
+              aria-label={`Resume page ${i + 1}`}
+              style={{ ...rootStyle, height: PAGE_HEIGHT_PX, overflow: "hidden", position: "relative" }}
+              className="bg-white shadow-lg w-[794px] max-w-full"
+            >
+              {/* Inner content div offset per page to slice the correct page window */}
+              <div
+                style={{ position: "absolute", top: -(i * PAGE_HEIGHT_PX), left: 0, right: 0 }}
+                className="p-8"
+              >
+                {/* ARIA live region stub — only on page 1 to avoid duplication */}
+                {i === 0 && (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    aria-label="AI is updating your resume"
+                    className="sr-only"
+                  >
+                    {state === "streaming" ? "AI is updating your resume" : ""}
+                  </div>
+                )}
+
+                {/* modern-accent: accent header band — only on page 1 */}
+                {i === 0 && layoutType === "modern-accent" && (
+                  <div aria-hidden="true" className="bg-[var(--accent-color)] p-4 mb-6" />
+                )}
+
+                {renderSections()}
+              </div>
+            </article>
+          ))}
+        </div>
+      </>
+    )
+  }
+
   return (
     <div className="h-full overflow-y-auto bg-zinc-200 py-8 px-4 flex flex-col items-center">
-      {isLoading ? (
-        <div
-          id="resume-canvas"
-          aria-label="Resume preview loading"
-          className="bg-white shadow-lg w-full max-w-[794px] p-8 space-y-6"
-        >
-          <Skeleton className="h-6 w-48" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="h-4 w-4/6" />
-          </div>
-          <div className="space-y-2 pt-4">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-          </div>
-          <div className="space-y-2 pt-4">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-          </div>
-        </div>
-      ) : document === null ? (
-        <article
-          id="resume-canvas"
-          aria-label="Resume preview"
-          style={rootStyle}
-          className="bg-white shadow-lg w-full max-w-[794px] p-8 min-h-[200px]"
-        />
-      ) : (
-        <>
-          {/* Hidden measurement container — off-screen, aria-hidden, full A4 width */}
-          <div
-            ref={contentRef}
-            style={{ position: "absolute", left: "-9999px", visibility: "hidden", width: "794px", ...rootStyle }}
-            aria-hidden="true"
-            className="p-8"
-          >
-            {/* ARIA live region stub for streaming — used in Story 4.3 */}
-            <div
-              role="status"
-              aria-live="polite"
-              aria-label="AI is updating your resume"
-              className="sr-only"
-            >
-              {state === "streaming" ? "AI is updating your resume" : ""}
-            </div>
-
-            {/* modern-accent: accent header band — decorative only */}
-            {layoutType === "modern-accent" && (
-              <div aria-hidden="true" className="bg-[var(--accent-color)] p-4 mb-6" />
-            )}
-
-            {renderSections()}
-          </div>
-
-          {/* Visible page stack */}
-          <div id="resume-canvas" className="flex flex-col items-center gap-4 w-full">
-            {Array.from({ length: pageCount }, (_, i) => (
-              <article
-                key={i}
-                aria-label={`Resume page ${i + 1}`}
-                style={{ ...rootStyle, height: PAGE_HEIGHT_PX, overflow: "hidden", position: "relative" }}
-                className="bg-white shadow-lg w-[794px] max-w-full"
-              >
-                {/* Inner content div offset per page to slice the correct page window */}
-                <div
-                  style={{ position: "absolute", top: -(i * PAGE_HEIGHT_PX), left: 0, right: 0 }}
-                  className="p-8"
-                >
-                  {/* ARIA live region stub — only on page 1 to avoid duplication */}
-                  {i === 0 && (
-                    <div
-                      role="status"
-                      aria-live="polite"
-                      aria-label="AI is updating your resume"
-                      className="sr-only"
-                    >
-                      {state === "streaming" ? "AI is updating your resume" : ""}
-                    </div>
-                  )}
-
-                  {/* modern-accent: accent header band — only on page 1 */}
-                  {i === 0 && layoutType === "modern-accent" && (
-                    <div aria-hidden="true" className="bg-[var(--accent-color)] p-4 mb-6" />
-                  )}
-
-                  {renderSections()}
-                </div>
-              </article>
-            ))}
-          </div>
-        </>
-      )}
+      {canvasContent}
     </div>
   )
 }

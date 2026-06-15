@@ -33,6 +33,10 @@ public class LlmSectionExtractor {
 
     private static final Logger log = LoggerFactory.getLogger(LlmSectionExtractor.class);
     private static final int MAX_SECTION_LENGTH = 3000;
+    private static final String START_DATE = "startDate";
+    private static final String END_DATE = "endDate";
+    private static final String IS_CURRENT = "isCurrent";
+    private static final String DESCRIPTION = "description";
 
     private final AiService aiService;
     private final ObjectMapper objectMapper;
@@ -76,39 +80,39 @@ public class LlmSectionExtractor {
             // Dispatch typed items to the appropriate list; skip UNKNOWN
             switch (sectionType) {
                 case WORK_EXPERIENCE -> items.stream()
-                    .filter(i -> i instanceof WorkExperienceItem)
-                    .map(i -> (WorkExperienceItem) i)
+                    .filter(WorkExperienceItem.class::isInstance)
+                    .map(WorkExperienceItem.class::cast)
                     .forEach(workExperiences::add);
                 case EDUCATION -> items.stream()
-                    .filter(i -> i instanceof EducationItem)
-                    .map(i -> (EducationItem) i)
+                    .filter(EducationItem.class::isInstance)
+                    .map(EducationItem.class::cast)
                     .forEach(education::add);
                 case SKILLS -> items.stream()
-                    .filter(i -> i instanceof SkillItem)
-                    .map(i -> (SkillItem) i)
+                    .filter(SkillItem.class::isInstance)
+                    .map(SkillItem.class::cast)
                     .forEach(skills::add);
                 case CERTIFICATIONS -> items.stream()
-                    .filter(i -> i instanceof CertificationItem)
-                    .map(i -> (CertificationItem) i)
+                    .filter(CertificationItem.class::isInstance)
+                    .map(CertificationItem.class::cast)
                     .forEach(certifications::add);
                 case LANGUAGES -> items.stream()
-                    .filter(i -> i instanceof LanguageItem)
-                    .map(i -> (LanguageItem) i)
+                    .filter(LanguageItem.class::isInstance)
+                    .map(LanguageItem.class::cast)
                     .forEach(languages::add);
                 case PROJECTS -> items.stream()
-                    .filter(i -> i instanceof ProjectItem)
-                    .map(i -> (ProjectItem) i)
+                    .filter(ProjectItem.class::isInstance)
+                    .map(ProjectItem.class::cast)
                     .forEach(projects::add);
                 case VOLUNTEERING -> items.stream()
-                    .filter(i -> i instanceof VolunteeringItem)
-                    .map(i -> (VolunteeringItem) i)
+                    .filter(VolunteeringItem.class::isInstance)
+                    .map(VolunteeringItem.class::cast)
                     .forEach(volunteering::add);
                 case SUMMARY -> {
                     // Take the first SummaryItem only; ignore subsequent ones
                     if (summary == null) {
                         summary = items.stream()
-                            .filter(i -> i instanceof SummaryItem)
-                            .map(i -> (SummaryItem) i)
+                            .filter(SummaryItem.class::isInstance)
+                            .map(SummaryItem.class::cast)
                             .findFirst()
                             .orElse(null);
                     }
@@ -146,26 +150,14 @@ public class LlmSectionExtractor {
                 return heuristicItems(rawSection);
             }
 
-            List<Map<String, Object>> rawItems;
-            try {
-                rawItems = objectMapper.readValue(jsonResponse,
-                    new TypeReference<List<Map<String, Object>>>() {});
-            } catch (Exception e) {
-                log.warn("Malformed JSON for section '{}', falling back to heuristic lines: {}",
-                    rawSection.title(), e.getMessage());
+            List<Map<String, Object>> rawItems = parseJsonItems(jsonResponse, rawSection);
+            if (rawItems == null) {
                 return heuristicItems(rawSection);
             }
 
             List<ResumeItem> result = new ArrayList<>();
             for (Map<String, Object> rawItem : rawItems) {
-                try {
-                    ResumeItem item = buildTypedItem(sectionType, rawItem, fullRawText);
-                    result.add(item);
-                } catch (Exception e) {
-                    log.warn("Failed to build typed item for section '{}', using GenericItem fallback: {}",
-                        rawSection.title(), e.getMessage());
-                    result.add(new GenericItem(UUID.randomUUID().toString(), toStringMap(rawItem)));
-                }
+                result.add(buildItemWithFallback(sectionType, rawItem, fullRawText, rawSection.title()));
             }
             return result;
 
@@ -176,6 +168,33 @@ public class LlmSectionExtractor {
         }
     }
 
+    private ResumeItem buildItemWithFallback(
+            ResumeSectionType sectionType,
+            Map<String, Object> rawItem,
+            String fullRawText,
+            String sectionTitle) {
+        try {
+            return buildTypedItem(sectionType, rawItem, fullRawText);
+        } catch (Exception e) {
+            log.warn("Failed to build typed item for section '{}', using GenericItem fallback: {}",
+                sectionTitle, e.getMessage());
+            return new GenericItem(UUID.randomUUID().toString(), toStringMap(rawItem));
+        }
+    }
+
+    /** Parses the LLM JSON response into a list of raw item maps.
+     *  Returns null (and logs a warning) if the JSON is malformed. */
+    private List<Map<String, Object>> parseJsonItems(String jsonResponse, RawSection rawSection) {
+        try {
+            return objectMapper.readValue(jsonResponse,
+                new TypeReference<List<Map<String, Object>>>() {});
+        } catch (Exception e) {
+            log.warn("Malformed JSON for section '{}', falling back to heuristic lines: {}",
+                rawSection.title(), e.getMessage());
+            return null;
+        }
+    }
+
     private ResumeItem buildTypedItem(ResumeSectionType type, Map<String, Object> raw, String fullRawText) {
         String id = UUID.randomUUID().toString();
 
@@ -183,8 +202,8 @@ public class LlmSectionExtractor {
         // Boolean and short numeric values are excluded to avoid false-positive matches
         // (e.g. "false".toString() matches almost any text fragment).
         boolean hasAnchor = raw.values().stream()
-            .filter(v -> v instanceof String)
-            .map(v -> (String) v)
+            .filter(String.class::isInstance)
+            .map(String.class::cast)
             .filter(v -> v.length() > 3)
             .anyMatch(v -> fullRawText.toLowerCase().contains(v.toLowerCase()));
         if (!hasAnchor && !raw.isEmpty()) {
@@ -196,18 +215,18 @@ public class LlmSectionExtractor {
                     id,
                     str(raw, "jobTitle"),
                     str(raw, "company"),
-                    parseDate(raw, "startDate"),
-                    parseDate(raw, "endDate"),
-                    bool(raw, "isCurrent"),
-                    str(raw, "description")
+                    parseDate(raw, START_DATE),
+                    parseDate(raw, END_DATE),
+                    bool(raw, IS_CURRENT),
+                    str(raw, DESCRIPTION)
             );
             case EDUCATION -> new EducationItem(
                     id,
                     str(raw, "institution"),
                     str(raw, "degree"),
                     str(raw, "fieldOfStudy"),
-                    parseDate(raw, "startDate"),
-                    parseDate(raw, "endDate")
+                    parseDate(raw, START_DATE),
+                    parseDate(raw, END_DATE)
             );
             case SKILLS -> new SkillItem(id, str(raw, "name"));
             case CERTIFICATIONS -> new CertificationItem(
@@ -221,21 +240,21 @@ public class LlmSectionExtractor {
             case PROJECTS -> new ProjectItem(
                     id,
                     str(raw, "name"),
-                    str(raw, "description"),
+                    str(raw, DESCRIPTION),
                     str(raw, "technologies"),
                     str(raw, "link"),
-                    parseDate(raw, "startDate"),
-                    parseDate(raw, "endDate"),
-                    bool(raw, "isCurrent")
+                    parseDate(raw, START_DATE),
+                    parseDate(raw, END_DATE),
+                    bool(raw, IS_CURRENT)
             );
             case VOLUNTEERING -> new VolunteeringItem(
                     id,
                     str(raw, "role"),
                     str(raw, "organization"),
-                    str(raw, "description"),
-                    parseDate(raw, "startDate"),
-                    parseDate(raw, "endDate"),
-                    bool(raw, "isCurrent")
+                    str(raw, DESCRIPTION),
+                    parseDate(raw, START_DATE),
+                    parseDate(raw, END_DATE),
+                    bool(raw, IS_CURRENT)
             );
             case SUMMARY -> new SummaryItem(id, str(raw, "text"), null, null, null, null, null, null);
             case UNKNOWN -> new GenericItem(id, toStringMap(raw));

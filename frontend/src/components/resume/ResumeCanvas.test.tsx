@@ -135,7 +135,7 @@ describe("ResumeCanvas", () => {
       expect(flexWrapper).not.toBeNull()
       expect(flexWrapper).toBeInTheDocument()
       // Left column: basis-1/3
-      expect(flexWrapper!.querySelector(".basis-1\\/3")).toBeInTheDocument()
+      expect(flexWrapper!.querySelector(String.raw`.basis-1\/3`)).toBeInTheDocument()
       // Right column: flex-1
       expect(flexWrapper!.querySelector(".flex-1")).toBeInTheDocument()
     })

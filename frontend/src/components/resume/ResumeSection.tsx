@@ -10,12 +10,12 @@ import SummarySectionRenderer from "@/components/resume/sections/SummarySectionR
 import GenericSectionRenderer from "@/components/resume/sections/GenericSectionRenderer"
 
 interface ResumeSectionProps {
-  section: ResumeSectionDto
-  onTitleChange: (title: string) => void
-  onFieldChange?: (itemId: string, field: string, value: string) => void
-  onAddItem?: (position: number) => void
-  onDeleteItem?: (itemId: string) => void
-  onReorderItems?: (newItems: ResumeItemDto[]) => void
+  readonly section: ResumeSectionDto
+  readonly onTitleChange: (title: string) => void
+  readonly onFieldChange?: (itemId: string, field: string, value: string) => void
+  readonly onAddItem?: (position: number) => void
+  readonly onDeleteItem?: (itemId: string) => void
+  readonly onReorderItems?: (newItems: ResumeItemDto[]) => void
 }
 
 function renderSectionContent(
@@ -36,7 +36,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").WorkExperienceItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "EDUCATION":
@@ -49,7 +49,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").EducationItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "SKILLS":
@@ -62,7 +62,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").SkillItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "CERTIFICATIONS":
@@ -75,7 +75,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").CertificationItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "LANGUAGES":
@@ -88,7 +88,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").LanguageItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "PROJECTS":
@@ -101,7 +101,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").ProjectItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "VOLUNTEERING":
@@ -114,7 +114,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").VolunteeringItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "SUMMARY":
@@ -127,7 +127,7 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").SummaryItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     case "UNKNOWN":
@@ -140,13 +140,12 @@ function renderSectionContent(
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onDeleteItem={onDeleteItem}
-          onReorderItems={onReorderItems as ((newItems: import("@/types/api").GenericItemDto[]) => void) | undefined}
+          onReorderItems={onReorderItems}
         />
       )
     default: {
       const _exhaustive: never = section.sectionType
-      void _exhaustive
-      return null
+      return _exhaustive
     }
   }
 }

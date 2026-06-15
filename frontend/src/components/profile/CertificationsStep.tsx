@@ -32,7 +32,7 @@ function emptyDraft(): CertificationDraft {
 }
 
 interface CertificationsStepProps {
-  onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
+  readonly onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
 }
 
 export default function CertificationsStep({

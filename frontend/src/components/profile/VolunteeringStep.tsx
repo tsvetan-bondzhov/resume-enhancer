@@ -39,7 +39,7 @@ function emptyDraft(): VolunteeringDraft {
 }
 
 interface VolunteeringStepProps {
-  onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
+  readonly onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
 }
 
 export default function VolunteeringStep({

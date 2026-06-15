@@ -21,6 +21,8 @@ public record TemplateDefinition(
         TemplateLayout layout,
         Map<String, Object> metadata
 ) {
+    private static final String DEFAULT_MARGIN = "0.75in";
+
     public static final TemplateDefinition DEFAULT = new TemplateDefinition(
             "single-column",
             Map.ofEntries(
@@ -30,10 +32,10 @@ public record TemplateDefinition(
                     Map.entry("--font-size-base", "11px"),
                     Map.entry("--line-height-base", "1.5"),
                     Map.entry("--section-spacing", "12px"),
-                    Map.entry("--page-margin-top", "0.75in"),
-                    Map.entry("--page-margin-right", "0.75in"),
-                    Map.entry("--page-margin-bottom", "0.75in"),
-                    Map.entry("--page-margin-left", "0.75in"),
+                    Map.entry("--page-margin-top", DEFAULT_MARGIN),
+                    Map.entry("--page-margin-right", DEFAULT_MARGIN),
+                    Map.entry("--page-margin-bottom", DEFAULT_MARGIN),
+                    Map.entry("--page-margin-left", DEFAULT_MARGIN),
                     Map.entry("--text-color", "#111827")
             ),
             new TemplateLayout(

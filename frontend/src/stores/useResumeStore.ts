@@ -30,6 +30,38 @@ interface ResumeState {
   reorderItems: (sectionType: ResumeSectionType, newItems: ResumeItemDto[]) => void
 }
 
+function updateItem(
+  item: ResumeItemDto,
+  itemId: string,
+  field: string,
+  value: string
+): ResumeItemDto {
+  return item.id !== itemId ? item : { ...item, [field]: value }
+}
+
+function updateSectionItems(
+  section: ResumeSectionDto,
+  sectionId: string,
+  itemId: string,
+  field: string,
+  value: string
+): ResumeSectionDto {
+  if (section.sectionType !== sectionId) return section
+  return {
+    ...section,
+    items: section.items.map((item) => updateItem(item, itemId, field, value)),
+  }
+}
+
+function filterSectionItems(
+  section: ResumeSectionDto,
+  sectionType: ResumeSectionType,
+  itemId: string
+): ResumeSectionDto {
+  if (section.sectionType !== sectionType) return section
+  return { ...section, items: section.items.filter((item) => item.id !== itemId) }
+}
+
 export const useResumeStore = create<ResumeState>((set) => ({
   resumes: [],
   currentResume: null,
@@ -70,16 +102,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
           content: {
             ...state.currentResume.content,
             sections: state.currentResume.content.sections.map((s) =>
-              s.sectionType !== sectionId
-                ? s
-                : {
-                    ...s,
-                    items: s.items.map((item) =>
-                      item.id !== itemId
-                        ? item
-                        : { ...item, [field]: value }
-                    ),
-                  }
+              updateSectionItems(s, sectionId, itemId, field, value)
             ),
           },
         },
@@ -167,9 +190,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
           content: {
             ...state.currentResume.content,
             sections: state.currentResume.content.sections.map((s) =>
-              s.sectionType !== sectionType
-                ? s
-                : { ...s, items: s.items.filter((item) => item.id !== itemId) }
+              filterSectionItems(s, sectionType, itemId)
             ),
           },
         },

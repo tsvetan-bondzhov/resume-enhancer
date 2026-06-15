@@ -40,7 +40,7 @@ function emptyDraft(): ProjectDraft {
 }
 
 interface ProjectsStepProps {
-  onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
+  readonly onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void>
 }
 
 export default function ProjectsStep({ onSaveAndContinue }: ProjectsStepProps) {

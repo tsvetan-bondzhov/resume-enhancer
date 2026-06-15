@@ -4,20 +4,20 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from "@dnd-kit/utilities"
 import { Trash2, GripVertical, Plus } from "lucide-react"
 import { formatYear } from "@/lib/dateUtils"
-import type { EducationItemDto } from "@/types/api"
+import type { EducationItemDto, ResumeItemDto } from "@/types/api"
 
 interface EducationSectionRendererProps {
-  items: EducationItemDto[]
-  onFieldChange?: (itemId: string, field: string, value: string) => void
-  onAddItem?: (position: number) => void
-  onDeleteItem?: (itemId: string) => void
-  onReorderItems?: (newItems: EducationItemDto[]) => void
+  readonly items: readonly EducationItemDto[]
+  readonly onFieldChange?: (itemId: string, field: string, value: string) => void
+  readonly onAddItem?: (position: number) => void
+  readonly onDeleteItem?: (itemId: string) => void
+  readonly onReorderItems?: (newItems: ResumeItemDto[]) => void
 }
 
 interface SortableItemWrapperProps {
-  id: string
-  children: React.ReactNode
-  onDeleteItem?: (itemId: string) => void
+  readonly id: string
+  readonly children: React.ReactNode
+  readonly onDeleteItem?: (itemId: string) => void
 }
 
 function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapperProps) {
@@ -38,14 +38,15 @@ function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapper
 
   return (
     <div ref={setNodeRef} style={style} className="relative group/item break-inside-avoid">
-      <div
-        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 transition-opacity cursor-grab touch-none"
+      <button
+        type="button"
+        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab touch-none"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
+      </button>
       {onDeleteItem && (
         <button
           type="button"
@@ -89,7 +90,7 @@ export default function EducationSectionRenderer({
     const oldIndex = items.findIndex((i) => i.id === active.id)
     const newIndex = items.findIndex((i) => i.id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
-    onReorderItems(arrayMove(items, oldIndex, newIndex))
+    onReorderItems(arrayMove([...items], oldIndex, newIndex))
   }
 
   const content = (
@@ -104,11 +105,18 @@ export default function EducationSectionRenderer({
                   {onFieldChange ? (
                     <>
                       <span
+                        role="textbox"
+                        tabIndex={0}
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) =>
                           onFieldChange(item.id, "degree", e.currentTarget.textContent ?? "")
                         }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault()
+                          }
+                        }}
                         className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                         aria-label="Edit degree"
                       >
@@ -116,11 +124,18 @@ export default function EducationSectionRenderer({
                       </span>
                       {item.degree && item.fieldOfStudy && " — "}
                       <span
+                        role="textbox"
+                        tabIndex={0}
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) =>
                           onFieldChange(item.id, "fieldOfStudy", e.currentTarget.textContent ?? "")
                         }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault()
+                          }
+                        }}
                         className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                         aria-label="Edit fieldOfStudy"
                       >
@@ -138,11 +153,18 @@ export default function EducationSectionRenderer({
                 <p className="text-muted-foreground italic text-sm">
                   {onFieldChange ? (
                     <span
+                      role="textbox"
+                      tabIndex={0}
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onFieldChange(item.id, "institution", e.currentTarget.textContent ?? "")
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                        }
+                      }}
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                       aria-label="Edit institution"
                     >
@@ -155,11 +177,18 @@ export default function EducationSectionRenderer({
                   {onFieldChange ? (
                     <>
                       <span
+                        role="textbox"
+                        tabIndex={0}
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) =>
                           onFieldChange(item.id, "startDate", e.currentTarget.textContent ?? "")
                         }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault()
+                          }
+                        }}
                         className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                         aria-label="Edit startDate"
                       >
@@ -167,11 +196,18 @@ export default function EducationSectionRenderer({
                       </span>
                       {" — "}
                       <span
+                        role="textbox"
+                        tabIndex={0}
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) =>
                           onFieldChange(item.id, "endDate", e.currentTarget.textContent ?? "")
                         }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault()
+                          }
+                        }}
                         className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                         aria-label="Edit endDate"
                       >
@@ -181,7 +217,7 @@ export default function EducationSectionRenderer({
                   ) : (
                     <span>{(() => {
                       const start = formatYear(item.startDate)
-                      const end = !item.endDate ? "Present" : formatYear(item.endDate)
+                      const end = item.endDate ? formatYear(item.endDate) : "Present"
                       return start ? `${start} — ${end}` : end
                     })()}</span>
                   )}

@@ -420,7 +420,7 @@ export interface TemplateLayout {
 }
 
 export interface TemplateDefinitionDto {
-  layoutType: "single-column" | "two-column" | "modern-accent" | string
+  layoutType: string
   cssVariables?: TemplateCssVariables
   layout?: TemplateLayout
   metadata?: Record<string, unknown>

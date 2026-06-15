@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 interface SplitPaneLayoutProps {
-  leftSlot: React.ReactNode
-  centerSlot: React.ReactNode
-  rightSlot: React.ReactNode
+  readonly leftSlot: React.ReactNode
+  readonly centerSlot: React.ReactNode
+  readonly rightSlot: React.ReactNode
 }
 
 export default function SplitPaneLayout({

@@ -88,6 +88,30 @@
 - `UserRepository` injected directly into `UserController` to reload full user from DB — bypasses service-layer encapsulation; explicitly documented in dev notes as the correct pattern given JWT principal only contains email/role; consolidate DB access into `UserService` in a future service-layer cleanup pass.
 - `@NotBlank` vs `@Size(min=8)` validation ordering on `ChangePasswordRequest.newPassword` — Spring fires `@NotBlank` before `@Size` for blank input, showing "must not be blank" instead of the length message; no AC coverage for this edge; address when validation message UX is formally reviewed.
 
+## Deferred from: code review of 9-1-typescript-cognitive-complexity-and-void-operator (2026-06-11)
+
+- `applyLoginError`/`applySignupError` — `toast.error(err.detail)` has no fallback when `err.detail` is null/undefined on 400 with no matching field errors. Pre-existing behavior from original inline code; address in a future error-handling hardening pass.
+- `executeDeleteResume` — `setSidebarResumes` may be called after `EditorPage` unmount if API call is in-flight at unmount time. Pre-existing race in the original `setTimeout` async callback; address when a global request cancellation strategy is introduced.
+- `updateSectionItems` parameter named `sectionId` compared against `section.sectionType` — naming mismatch carries forward from original action signature; address in a future naming/refactor pass.
+- `workExperiences` and `education` in `mergeProfilePayload` lack `?? []` fallback guard, unlike the four optional array fields — pre-existing asymmetry; `ProfileDto` declares both as non-nullable so risk is low; normalise in a future ProfileDto guard pass.
+- `applyLoginError`/`applySignupError` implicit caller contract (caller must clear field errors first) is undocumented; safe in current module-private usage; document or enforce if these patterns are extracted to shared utilities in future.
+
+## Deferred from: code review of 9-7-type-safety-and-deprecated-apis (2026-06-12)
+
+- Two-column `ResumeCanvas` sections not assigned to either column definition (`leftColumnIds` / `rightColumnIds`) are silently dropped — no fallback rendering, no warning. Pre-existing gap; address when two-column layout edge cases are formally specified.
+- `null` `issueDate`/`expirationDate` in `CertificationsSectionRenderer` rendered as empty editable span; blur event writes empty string to store, converting `null → ""` silently and triggering autosave diff. Pre-existing pattern; address when null/optional date field UX is formally specified.
+
+## Deferred from: code review of 9-8-java-test-quality-time-constants-and-clock (2026-06-12)
+
+- `Clock` bean registered in `JacksonConfig` — semantically unrelated to Jackson serialization; if a `@WebMvcTest` slice loads `JacksonConfig` without `TokenService`, the bean is harmless, but the placement makes the dependency implicit. Move to a dedicated `ClockConfig.java` or `AppConfig.java` in a future infrastructure cleanup pass.
+- `AuthControllerIntegrationTest` expired-token test uses `Clock.systemUTC()` — the token is forced-expired via `expirationMs=-1000L` (real-clock-independent), so this is not a flakiness risk in practice. Note for a future test cleanup pass: a `Clock.fixed(pastInstant)` would be cleaner and fully explicit.
+- `TokenService` has no validation guard on `expirationMs ≤ 0` — a misconfigured zero or negative value silently produces immediately-expired tokens in production. Pre-existing; add a constructor `Preconditions.checkArgument(expirationMs > 0)` in a future hardening pass.
+- `user.getEmail()` and `user.getRole()` passed to JWT builder without null checks — pre-existing; a null role produces `ROLE_null` authority silently denying all role-gated endpoints. Address in a future service-layer hardening pass.
+
+## Deferred from: code review of 9-9-code-style-simplified-conditionals-and-idioms (2026-06-12)
+
+- Latent dedup gap in restore guards (`DashboardPage.tsx`, `EditorPage.tsx`) — rapid delete-then-undo-then-delete cycle can reorder the resume list because the restore appends at the end rather than restoring original position. Not introduced by this story (pre-existing with `.find()`); the `.some()` refactor preserves identical behavior.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 
@@ -108,3 +132,30 @@
 ## Deferred from: code review of 4-10-parsing-service-and-parsedresumedto-refactor (2026-06-11)
 
 - `LlmSectionExtractor.java` switch on `ResumeSectionType` has no `default` clause — new enum values added in future stories would silently produce no typed items in `ParsedResumeDto`. Not a current bug; address if new section types are added.
+
+## Deferred from: code review of 9-3-accessibility-and-aria-compliance (2026-06-11)
+
+- `aria-multiline="true"` missing on multiline description/summary fields (`SummarySectionRenderer.tsx:141`, `WorkExperienceSectionRenderer.tsx` description span) — screen readers announce as single-line textbox; pre-existing omission from original contentEditable implementation.
+- camelCase `aria-label` values (`"Edit jobTitle"`, `"Edit fieldOfStudy"`, `"Edit startDate"`, etc.) are read verbatim by screen readers as single words — pre-existing label naming from original implementation; address in a future accessibility polish pass with human-readable labels.
+- `aria-label="Edit issueDate"` copy-paste bug on `expirationDate` span in `CertificationsSectionRenderer.tsx` — both issueDate and expirationDate spans carry the same label; pre-existing error not introduced by this story.
+- Non-unique `aria-label` values across multiple items of the same type (e.g., 3× "Edit company") — pre-existing pattern; requires item-identity context in labels (e.g., "Edit company for Senior Engineer at Acme").
+- `ProfilePage.tsx:253` `<li role="button">` — pre-existing S6819 violation; fully keyboard-accessible (has `onKeyDown`); out of story 9-3 scope; address in story 9-x or a dedicated accessibility pass.
+- `ResumeSidebarItem.tsx:32` `<div role="button">` — pre-existing S6819 violation; fully keyboard-accessible (has `onKeyDown`); out of story 9-3 scope; address in story 9-x or a dedicated accessibility pass.
+- `role="textbox"` on `<span contentEditable>` is redundant — browser already maps `contenteditable` to implicit textbox role; explicit `role="textbox"` may cause NVDA+Firefox to double-announce; cannot remove without re-introducing S6848; defer to a future ARIA audit when screen-reader compatibility can be tested end-to-end.
+- No `KeyboardSensor` registered in any `DndContext` — drag handle `<button>` is Tab-reachable but keyboard drag activation is silently non-functional; `{...listeners}` has no sensor to dispatch to; address when keyboard drag is formally specified.
+- `onBlur` uses `textContent` which concatenates descendant markup on paste of formatted content — `onPaste` sanitisation out of scope; address in a future content-editing quality pass.
+- Enter-blocking `onKeyDown` in single-line contentEditable fields does not prevent pasted newlines — `onPaste` sanitisation out of scope for this story.
+- `SummarySectionRenderer` edit-mode `<div>` tag change from `<p>` has no dedicated test asserting element type — address in a future test quality pass.
+
+## Deferred from: code review of 9-4-java-backend-code-quality-llmsectionextractor (2026-06-11)
+
+- `catch (Exception e)` in `parseJsonItems` is over-broad (catches `Error` subclasses). Pre-existing pattern throughout `LlmSectionExtractor.java` — identical to the `catch (Exception e)` in `toStringMap` and item-level catch in `extractSectionItems`. Narrow to `catch (JsonProcessingException e)` in a future catch-narrowing quality pass.
+
+## Deferred from: code review of 9-6-configuration-content-length-and-profileservice (2026-06-12)
+
+- `application.yml` `max-request-size` equals `max-file-size` (both 8MB) — leaves no headroom for multipart framing overhead. Pre-existing pattern (was 10MB/10MB). Consider setting `max-request-size: 10MB` in a future hardening pass.
+- `FileValidator.java` `>` (strict) vs Spring's `>=` (inclusive) on the 8MB boundary — a file of exactly 8MB passes `FileValidator` but Spring rejects it before the validator is reached. Pre-existing operator; unchanged from 10MB behavior. Add exact-boundary test in a future validator hardening pass.
+- `FileValidatorTest.java` — no test for exactly-8MB boundary case. Pre-existing gap; AC3 only specified 9MB test.
+- `ProfileMapper.toDto(Profile)` — no null-guard on collection getters. Pre-existing pattern; `Profile` initializes all collections as `ArrayList`. Add null guard if `Profile` is ever constructed without initialization.
+- `ProfileMapper` helper methods — no null-guard on method arguments. Pre-existing pattern. Null elements in input collections would NPE without context. Add null checks if input validation is ever relaxed.
+- `FileValidator.validate()` — does not reject zero-byte files. Pre-existing gap. A 0-byte file with valid MIME passes both checks. Add empty-file guard in a future validator hardening pass.

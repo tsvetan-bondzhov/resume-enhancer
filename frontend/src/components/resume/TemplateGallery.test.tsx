@@ -114,7 +114,7 @@ describe("TemplateGallery", () => {
     // two-column thumbnail uses flex layout with two column divs
     const button = screen.getByLabelText(/apply classic template/i)
     // The two-column thumbnail has a flex container with gap-0.5
-    const thumbContainer = button.querySelector(".flex.gap-0\\.5")
+    const thumbContainer = button.querySelector(String.raw`.flex.gap-0\.5`)
     expect(thumbContainer).toBeInTheDocument()
   })
 

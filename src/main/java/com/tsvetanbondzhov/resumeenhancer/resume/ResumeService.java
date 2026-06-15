@@ -38,6 +38,8 @@ import java.util.UUID;
 @Service
 public class ResumeService {
 
+    private static final String ACCESS_DENIED_MSG = "Access denied or resume not found";
+
     private final ResumeRepository resumeRepository;
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
@@ -83,7 +85,7 @@ public class ResumeService {
     public ResumeDto getResume(String email, UUID resumeId) {
         User user = resolveUser(email);
         Resume resume = resumeRepository.findByIdAndUser(resumeId, user)
-                .orElseThrow(() -> new ResumeAccessDeniedException("Access denied or resume not found"));
+                .orElseThrow(() -> new ResumeAccessDeniedException(ACCESS_DENIED_MSG));
         return toDto(resume);
     }
 
@@ -91,7 +93,7 @@ public class ResumeService {
     public void deleteResume(String email, UUID resumeId) {
         User user = resolveUser(email);
         Resume resume = resumeRepository.findByIdAndUser(resumeId, user)
-                .orElseThrow(() -> new ResumeAccessDeniedException("Access denied or resume not found"));
+                .orElseThrow(() -> new ResumeAccessDeniedException(ACCESS_DENIED_MSG));
         resumeRepository.delete(resume);
     }
 
@@ -99,7 +101,7 @@ public class ResumeService {
     public ResumeDto cloneResume(String email, UUID resumeId, SaveAsRequest request) {
         User user = resolveUser(email);
         Resume original = resumeRepository.findByIdAndUser(resumeId, user)
-                .orElseThrow(() -> new ResumeAccessDeniedException("Access denied or resume not found"));
+                .orElseThrow(() -> new ResumeAccessDeniedException(ACCESS_DENIED_MSG));
 
         Resume clone = new Resume();
         clone.setUser(user);
@@ -117,7 +119,7 @@ public class ResumeService {
     public ResumeDto updateResume(String email, UUID resumeId, UpdateResumeRequest request) {
         User user = resolveUser(email);
         Resume resume = resumeRepository.findByIdAndUser(resumeId, user)
-                .orElseThrow(() -> new ResumeAccessDeniedException("Access denied or resume not found"));
+                .orElseThrow(() -> new ResumeAccessDeniedException(ACCESS_DENIED_MSG));
         resume.setName(request.name());
         resume.setResumeContent(request.content());
         // Only overwrite templateId when explicitly provided — null means "keep existing"

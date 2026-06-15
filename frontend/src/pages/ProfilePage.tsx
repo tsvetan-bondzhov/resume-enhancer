@@ -18,6 +18,48 @@ import { useResumeUpload } from "@/hooks/useResumeUpload"
 const STEPS = ["Experience", "Education", "Skills", "Certifications", "Languages", "Projects", "Volunteering", "Summary"]
 const LAST_STEP = STEPS.length - 1 // 7 — SummaryStep handles its own navigation
 
+const EMPTY_PROFILE: ProfileDto = {
+  summary: null,
+  contactEmail: null,
+  linkedInUrl: null,
+  personalPageUrl: null,
+  blogUrl: null,
+  locationCity: null,
+  locationCountry: null,
+  workExperiences: [],
+  education: [],
+  skills: [],
+  certifications: [],
+  languages: [],
+  projects: [],
+  volunteering: [],
+}
+
+function mergeProfilePayload(
+  partial: Partial<ProfileUpdateRequest>,
+  current: ProfileDto
+): ProfileUpdateRequest {
+  return {
+    // String fields: use !== undefined so an explicit null (field cleared by user) passes through.
+    // ?? would treat null as missing and fall back to the current value, silently refusing to clear.
+    summary: partial.summary !== undefined ? partial.summary : current.summary,
+    contactEmail: partial.contactEmail !== undefined ? partial.contactEmail : current.contactEmail,
+    linkedInUrl: partial.linkedInUrl !== undefined ? partial.linkedInUrl : current.linkedInUrl,
+    personalPageUrl: partial.personalPageUrl !== undefined ? partial.personalPageUrl : current.personalPageUrl,
+    blogUrl: partial.blogUrl !== undefined ? partial.blogUrl : current.blogUrl,
+    locationCity: partial.locationCity !== undefined ? partial.locationCity : current.locationCity,
+    locationCountry: partial.locationCountry !== undefined ? partial.locationCountry : current.locationCountry,
+    // Array fields: ?? is safe — step components never pass null for these, only undefined (omitted).
+    workExperiences: partial.workExperiences ?? current.workExperiences,
+    education: partial.education ?? current.education,
+    skills: partial.skills ?? current.skills,
+    certifications: partial.certifications ?? current.certifications ?? [],
+    languages: partial.languages ?? current.languages ?? [],
+    projects: partial.projects ?? current.projects ?? [],
+    volunteering: partial.volunteering ?? current.volunteering ?? [],
+  }
+}
+
 function isEmptyProfile(profile: ProfileDto): boolean {
   return (
     // Use !profile.summary to catch both null and empty string ""
@@ -97,54 +139,8 @@ export default function ProfilePage() {
     // Always cleared in finally.
     setSaving(true)
     try {
-      const current = profile ?? {
-        summary: null,
-        contactEmail: null,
-        linkedInUrl: null,
-        personalPageUrl: null,
-        blogUrl: null,
-        locationCity: null,
-        locationCountry: null,
-        workExperiences: [],
-        education: [],
-        skills: [],
-        certifications: [],
-        languages: [],
-        projects: [],
-        volunteering: [],
-      }
-      const payload: ProfileUpdateRequest = {
-        summary: partial.summary !== undefined ? partial.summary : current.summary,
-        contactEmail: partial.contactEmail !== undefined ? partial.contactEmail : current.contactEmail,
-        linkedInUrl: partial.linkedInUrl !== undefined ? partial.linkedInUrl : current.linkedInUrl,
-        personalPageUrl: partial.personalPageUrl !== undefined ? partial.personalPageUrl : current.personalPageUrl,
-        blogUrl: partial.blogUrl !== undefined ? partial.blogUrl : current.blogUrl,
-        locationCity: partial.locationCity !== undefined ? partial.locationCity : current.locationCity,
-        locationCountry: partial.locationCountry !== undefined ? partial.locationCountry : current.locationCountry,
-        workExperiences:
-          partial.workExperiences !== undefined
-            ? partial.workExperiences
-            : current.workExperiences,
-        education:
-          partial.education !== undefined ? partial.education : current.education,
-        skills: partial.skills !== undefined ? partial.skills : current.skills,
-        certifications:
-          partial.certifications !== undefined
-            ? partial.certifications
-            : (current.certifications ?? []),
-        languages:
-          partial.languages !== undefined
-            ? partial.languages
-            : (current.languages ?? []),
-        projects:
-          partial.projects !== undefined
-            ? partial.projects
-            : (current.projects ?? []),
-        volunteering:
-          partial.volunteering !== undefined
-            ? partial.volunteering
-            : (current.volunteering ?? []),
-      }
+      const current = profile ?? EMPTY_PROFILE
+      const payload = mergeProfilePayload(partial, current)
       const updated = await apiClient.put<ProfileDto>("/api/v1/profile", payload)
       setProfile(updated)
       // Fix 1: suppress generic "Profile saved" toast on the last step —
@@ -246,29 +242,20 @@ export default function ProfilePage() {
             className="mb-8 flex gap-4"
           >
             {STEPS.map((label, index) => {
-              let className = "text-zinc-400 font-normal" // unvisited
-              if (index < currentStep) {
-                className = "text-zinc-400 font-normal" // completed — muted, no strikethrough
-              } else if (index === currentStep) {
-                className = "font-semibold text-zinc-900" // current — highlighted
-              }
+              const className = index === currentStep
+                ? "font-semibold text-zinc-900" // current — highlighted
+                : "text-zinc-400 font-normal" // unvisited or completed — muted
               return (
-                <li
-                  key={label}
-                  className={`${className} cursor-pointer select-none`}
-                  onClick={() => setStep(index)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      setStep(index)
-                    }
-                  }}
-                  aria-label={`Go to step ${label}`}
-                  aria-current={index === currentStep ? "step" : undefined}
-                >
-                  {label}
+                <li key={label}>
+                  <button
+                    type="button"
+                    className={`${className} cursor-pointer select-none`}
+                    onClick={() => setStep(index)}
+                    aria-label={`Go to step ${label}`}
+                    aria-current={index === currentStep ? "step" : undefined}
+                  >
+                    {label}
+                  </button>
                 </li>
               )
             })}

@@ -53,8 +53,7 @@ export function createEmptyItem(sectionType: ResumeSectionType): ResumeItemDto {
     }
     default: {
       const _exhaustive: never = sectionType
-      void _exhaustive
-      throw new Error(`Unknown section type: ${String(sectionType)}`)
+      throw new Error(`Unknown section type: ${String(_exhaustive)}`)
     }
   }
 }

@@ -4,20 +4,20 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from "@dnd-kit/utilities"
 import { ExternalLink, Trash2, GripVertical, Plus } from "lucide-react"
 import { formatMonthYear } from "@/lib/dateUtils"
-import type { ProjectItemDto } from "@/types/api"
+import type { ProjectItemDto, ResumeItemDto } from "@/types/api"
 
 interface ProjectsSectionRendererProps {
-  items: ProjectItemDto[]
-  onFieldChange?: (itemId: string, field: string, value: string) => void
-  onAddItem?: (position: number) => void
-  onDeleteItem?: (itemId: string) => void
-  onReorderItems?: (newItems: ProjectItemDto[]) => void
+  readonly items: readonly ProjectItemDto[]
+  readonly onFieldChange?: (itemId: string, field: string, value: string) => void
+  readonly onAddItem?: (position: number) => void
+  readonly onDeleteItem?: (itemId: string) => void
+  readonly onReorderItems?: (newItems: ResumeItemDto[]) => void
 }
 
 interface SortableItemWrapperProps {
-  id: string
-  children: React.ReactNode
-  onDeleteItem?: (itemId: string) => void
+  readonly id: string
+  readonly children: React.ReactNode
+  readonly onDeleteItem?: (itemId: string) => void
 }
 
 function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapperProps) {
@@ -38,14 +38,15 @@ function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapper
 
   return (
     <div ref={setNodeRef} style={style} className="relative group/item break-inside-avoid">
-      <div
-        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 transition-opacity cursor-grab touch-none"
+      <button
+        type="button"
+        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab touch-none"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
       >
         <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
+      </button>
       {onDeleteItem && (
         <button
           type="button"
@@ -89,7 +90,7 @@ export default function ProjectsSectionRenderer({
     const oldIndex = items.findIndex((i) => i.id === active.id)
     const newIndex = items.findIndex((i) => i.id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
-    onReorderItems(arrayMove(items, oldIndex, newIndex))
+    onReorderItems(arrayMove([...items], oldIndex, newIndex))
   }
 
   const content = (
@@ -103,11 +104,18 @@ export default function ProjectsSectionRenderer({
                 <p className="font-semibold text-sm">
                   {onFieldChange ? (
                     <span
+                      role="textbox"
+                      tabIndex={0}
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onFieldChange(item.id, "name", e.currentTarget.textContent ?? "")
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                        }
+                      }}
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                       aria-label="Edit name"
                     >
@@ -123,11 +131,18 @@ export default function ProjectsSectionRenderer({
                   {onFieldChange ? (
                     <>
                       <span
+                        role="textbox"
+                        tabIndex={0}
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) =>
                           onFieldChange(item.id, "startDate", e.currentTarget.textContent ?? "")
                         }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault()
+                          }
+                        }}
                         className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                         aria-label="Edit startDate"
                       >
@@ -135,11 +150,18 @@ export default function ProjectsSectionRenderer({
                       </span>
                       {" — "}
                       <span
+                        role="textbox"
+                        tabIndex={0}
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) =>
                           onFieldChange(item.id, "endDate", e.currentTarget.textContent ?? "")
                         }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault()
+                          }
+                        }}
                         className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                         aria-label="Edit endDate"
                       >
@@ -149,7 +171,7 @@ export default function ProjectsSectionRenderer({
                   ) : (
                     <span>{(() => {
                       const start = formatMonthYear(item.startDate)
-                      const end = item.isCurrent || !item.endDate ? "Present" : formatMonthYear(item.endDate)
+                      const end = !item.isCurrent && item.endDate ? formatMonthYear(item.endDate) : "Present"
                       return start ? `${start} — ${end}` : end
                     })()}</span>
                   )}
@@ -159,11 +181,18 @@ export default function ProjectsSectionRenderer({
                 <div className="flex flex-wrap gap-1 mt-1">
                   {onFieldChange ? (
                     <span
+                      role="textbox"
+                      tabIndex={0}
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onFieldChange(item.id, "technologies", e.currentTarget.textContent ?? "")
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                        }
+                      }}
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block text-xs text-muted-foreground"
                       aria-label="Edit technologies"
                     >
@@ -185,11 +214,18 @@ export default function ProjectsSectionRenderer({
                 <p className="text-sm mt-1">
                   {onFieldChange ? (
                     <span
+                      role="textbox"
+                      tabIndex={0}
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onFieldChange(item.id, "description", e.currentTarget.textContent ?? "")
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                        }
+                      }}
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
                       aria-label="Edit description"
                     >
@@ -204,11 +240,18 @@ export default function ProjectsSectionRenderer({
                 <div className="mt-1">
                   {onFieldChange ? (
                     <span
+                      role="textbox"
+                      tabIndex={0}
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onFieldChange(item.id, "link", e.currentTarget.textContent ?? "")
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                        }
+                      }}
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block text-xs text-primary"
                       aria-label="Edit link"
                     >

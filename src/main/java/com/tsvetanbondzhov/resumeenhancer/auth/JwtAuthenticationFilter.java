@@ -25,12 +25,10 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
-    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
-    public JwtAuthenticationFilter(TokenService tokenService, UserRepository userRepository, ObjectMapper objectMapper) {
+    public JwtAuthenticationFilter(TokenService tokenService, ObjectMapper objectMapper) {
         this.tokenService = tokenService;
-        this.userRepository = userRepository;
         this.objectMapper = objectMapper;
     }
 

@@ -9,6 +9,11 @@ import ResumeDashboardCardSkeleton from "@/components/resume/ResumeDashboardCard
 import { Button } from "@/components/ui/button"
 import type { CreateResumeRequest, ResumeDto } from "@/types/api"
 
+function restoreResume(prev: ResumeDto[], resume: ResumeDto): ResumeDto[] {
+  if (prev.some((r) => r.id === resume.id)) return prev
+  return [...prev, resume]
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate()
   const [displayedResumes, setDisplayedResumes] = useState<ResumeDto[]>([])
@@ -87,10 +92,7 @@ export default function DashboardPage() {
         await apiClient.delete(`/api/v1/resumes/${resume.id}`)
       } catch {
         // Restore on failure
-        setDisplayedResumes((prev) => {
-          if (prev.find((r) => r.id === resume.id)) return prev
-          return [...prev, resume]
-        })
+        setDisplayedResumes((prev) => restoreResume(prev, resume))
         toast.error("Delete failed — resume restored")
       }
     }, 5000)
@@ -105,10 +107,7 @@ export default function DashboardPage() {
           const id = pendingDeletes.current.get(resume.id)
           if (id !== undefined) clearTimeout(id)
           pendingDeletes.current.delete(resume.id)
-          setDisplayedResumes((prev) => {
-            if (prev.find((r) => r.id === resume.id)) return prev
-            return [...prev, resume]
-          })
+          setDisplayedResumes((prev) => restoreResume(prev, resume))
         },
       },
       duration: 5000,

@@ -12,7 +12,7 @@ export default function SettingsPage() {
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  async function handleChangePassword(e: React.FormEvent) {
+  async function handleChangePassword(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (newPassword !== confirmPassword) {
       setConfirmError("Passwords do not match")

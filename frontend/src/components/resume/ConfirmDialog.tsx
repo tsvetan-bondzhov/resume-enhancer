@@ -10,14 +10,14 @@ import {
 import { Button } from "@/components/ui/button"
 
 interface ConfirmDialogProps {
-  open: boolean
-  title: string
-  description: string
-  confirmLabel?: string
-  cancelLabel?: string
-  isDestructive?: boolean
-  onConfirm: () => void
-  onCancel: () => void
+  readonly open: boolean
+  readonly title: string
+  readonly description: string
+  readonly confirmLabel?: string
+  readonly cancelLabel?: string
+  readonly isDestructive?: boolean
+  readonly onConfirm: () => void
+  readonly onCancel: () => void
 }
 
 export default function ConfirmDialog({
