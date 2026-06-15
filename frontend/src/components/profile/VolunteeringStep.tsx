@@ -78,7 +78,7 @@ export default function VolunteeringStep({
         const newDraft = { ...entry.draft, [field]: value }
         const newErrors = { ...entry.errors }
         if (field === "role" || field === "organization") {
-          delete newErrors[field as keyof FieldErrors]
+          delete newErrors[field]
         }
         return { draft: newDraft, errors: newErrors }
       }),

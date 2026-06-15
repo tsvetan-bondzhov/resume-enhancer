@@ -61,7 +61,7 @@ function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapper
   )
 }
 
-function AddItemButton({ onClick }: { onClick: () => void }) {
+function AddItemButton({ onClick }: Readonly<{ onClick: () => void }>) {
   return (
     <button
       type="button"
@@ -96,7 +96,7 @@ export default function SummarySectionRenderer({
     <div className="group/section">
       {onAddItem && <AddItemButton onClick={() => onAddItem(0)} />}
       {items.map((item, index) =>
-        item.text != null ? (
+        item.text == null ? null : (
           <React.Fragment key={item.id}>
             <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
               {(() => {
@@ -159,7 +159,7 @@ export default function SummarySectionRenderer({
             </SortableItemWrapper>
             {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} />}
           </React.Fragment>
-        ) : null
+        )
       )}
     </div>
   )

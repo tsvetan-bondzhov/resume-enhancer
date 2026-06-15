@@ -1,5 +1,4 @@
-import { useRef, useState } from "react"
-import React from "react"
+import React, { useRef, useState } from "react"
 import { toast } from "sonner"
 import { apiClient, ApiError } from "@/lib/apiClient"
 import { useProfileStore } from "@/stores/useProfileStore"
@@ -11,7 +10,6 @@ import type {
   SkillRequest,
   CertificationRequest,
   LanguageRequest,
-  LanguageProficiencyLevel,
   ProjectRequest,
   VolunteeringRequest,
 } from "@/types/api"
@@ -49,7 +47,7 @@ export function mapParsedToProfile(
 
   const languages: LanguageRequest[] = (parsed.languages ?? []).map((item) => ({
     name: item.language ?? "",
-    proficiencyLevel: "INTERMEDIATE" as LanguageProficiencyLevel,
+    proficiencyLevel: "INTERMEDIATE",
   }))
 
   const projects: ProjectRequest[] = (parsed.projects ?? []).map((item) => ({

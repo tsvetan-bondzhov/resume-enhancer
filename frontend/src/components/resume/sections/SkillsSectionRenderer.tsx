@@ -61,7 +61,7 @@ function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapper
   )
 }
 
-function AddItemButton({ onClick }: { onClick: () => void }) {
+function AddItemButton({ onClick }: Readonly<{ onClick: () => void }>) {
   return (
     <button
       type="button"
@@ -96,7 +96,7 @@ export default function SkillsSectionRenderer({
     <div className="flex flex-wrap gap-1 group/section">
       {onAddItem && <AddItemButton onClick={() => onAddItem(0)} />}
       {items.map((item, index) =>
-        item.name != null ? (
+        item.name == null ? null : (
           <React.Fragment key={item.id}>
             <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
               <span className="inline-block bg-zinc-100 text-zinc-700 text-xs px-2 py-0.5 rounded-sm">
@@ -126,7 +126,7 @@ export default function SkillsSectionRenderer({
             </SortableItemWrapper>
             {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} />}
           </React.Fragment>
-        ) : null
+        )
       )}
     </div>
   )

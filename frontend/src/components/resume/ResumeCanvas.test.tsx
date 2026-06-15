@@ -55,7 +55,7 @@ function fireResizeObserver(height: number) {
   act(() => {
     instance.callback(
       [{ contentRect: { height } } as unknown as ResizeObserverEntry],
-      instance as unknown as ResizeObserver
+      instance
     )
   })
 }

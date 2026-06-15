@@ -28,4 +28,4 @@ class ResizeObserverStub implements ResizeObserverStubInstance {
   disconnect() { /* no-op */ }
 }
 
-globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver
+globalThis.ResizeObserver = ResizeObserverStub

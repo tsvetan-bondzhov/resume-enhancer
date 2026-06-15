@@ -79,7 +79,7 @@ export default function ExperienceStep({
         // Clear error on change for text fields
         const newErrors = { ...entry.errors }
         if (field === "jobTitle" || field === "company") {
-          delete newErrors[field as keyof FieldErrors]
+          delete newErrors[field]
         }
         return { draft: newDraft, errors: newErrors }
       }),

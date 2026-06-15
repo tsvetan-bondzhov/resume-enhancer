@@ -16,13 +16,13 @@ export function createSseConnection(
 ): () => void {
   const es = new EventSource(url)
   es.addEventListener("token", (e) =>
-    handlers.onToken(JSON.parse((e as MessageEvent).data)),
+    handlers.onToken(JSON.parse(e.data)),
   )
   es.addEventListener("patch", (e) =>
-    handlers.onPatch(JSON.parse((e as MessageEvent).data)),
+    handlers.onPatch(JSON.parse(e.data)),
   )
   es.addEventListener("done", (e) => {
-    handlers.onDone(JSON.parse((e as MessageEvent).data))
+    handlers.onDone(JSON.parse(e.data))
     es.close()
   })
   es.addEventListener("error", (e) => {

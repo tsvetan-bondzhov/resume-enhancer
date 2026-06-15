@@ -33,7 +33,7 @@ const mockGet = vi.mocked(apiClient.get)
 
 function mockGetWithResume(resume: ResumeDto) {
   mockGet.mockImplementation((url: string) => {
-    if ((url as string).includes("resume-templates")) return Promise.resolve([])
+    if (url.includes("resume-templates")) return Promise.resolve([])
     return Promise.resolve(resume)
   })
 }
@@ -78,7 +78,7 @@ describe("EditorPage", () => {
     vi.mocked(apiClient.put).mockReturnValue(new Promise(() => {}))
     // Default: templates endpoint returns empty array so TemplateGallery renders without crashing
     mockGet.mockImplementation((url: string) => {
-      if ((url as string).includes("resume-templates")) return Promise.resolve([])
+      if (url.includes("resume-templates")) return Promise.resolve([])
       return new Promise(() => {})
     })
     mockNavigate.mockReset()
@@ -91,7 +91,7 @@ describe("EditorPage", () => {
 
   it("renders skeleton while loading", () => {
     mockGet.mockImplementation((url: string) => {
-      if ((url as string).includes("resume-templates")) return Promise.resolve([])
+      if (url.includes("resume-templates")) return Promise.resolve([])
       return new Promise(() => {})
     })
     render(<EditorPage />)
@@ -111,7 +111,7 @@ describe("EditorPage", () => {
 
   it("renders error toast on fetch failure", async () => {
     mockGet.mockImplementation((url: string) => {
-      if ((url as string).includes("resume-templates")) return Promise.resolve([])
+      if (url.includes("resume-templates")) return Promise.resolve([])
       return Promise.reject(new Error("network"))
     })
     render(<EditorPage />)
@@ -203,7 +203,7 @@ describe("EditorPage", () => {
 
   it("renders back navigation button in error state (AC6)", async () => {
     mockGet.mockImplementation((url: string) => {
-      if ((url as string).includes("resume-templates")) return Promise.resolve([])
+      if (url.includes("resume-templates")) return Promise.resolve([])
       return Promise.reject(new Error("network"))
     })
     render(<EditorPage />)

@@ -61,7 +61,7 @@ function SortableItemWrapper({ id, children, onDeleteItem }: SortableItemWrapper
   )
 }
 
-function AddItemButton({ onClick }: { onClick: () => void }) {
+function AddItemButton({ onClick }: Readonly<{ onClick: () => void }>) {
   return (
     <button
       type="button"
