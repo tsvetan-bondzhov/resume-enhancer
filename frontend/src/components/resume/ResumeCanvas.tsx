@@ -94,52 +94,7 @@ export default function ResumeCanvas({
   const renderSections = useCallback((): React.ReactNode => {
     if (document === null) return null
 
-    if (isTwoColumn) {
-      const leftSections = orderedSections.filter((s) => leftColumnIds.has(s.sectionType))
-      const rightSections = orderedSections.filter((s) => rightColumnIds.has(s.sectionType))
-
-      return (
-        <div className="flex gap-6">
-          <div className="flex flex-col gap-4 basis-1/3">
-            {leftSections.map((section) => (
-              <ResumeSection
-                key={section.sectionType}
-                section={section}
-                onTitleChange={(title) => onTitleChange?.(section.sectionType, title)}
-                onFieldChange={
-                  onFieldChange
-                    ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
-                    : undefined
-                }
-                onAddItem={onAddItem ? (position) => onAddItem(section.sectionType, position) : undefined}
-                onDeleteItem={onDeleteItem ? (itemId) => onDeleteItem(section.sectionType, itemId) : undefined}
-                onReorderItems={onReorderItems ? (newItems) => onReorderItems(section.sectionType, newItems) : undefined}
-              />
-            ))}
-          </div>
-          <div className="flex flex-col gap-4 flex-1">
-            {rightSections.map((section) => (
-              <ResumeSection
-                key={section.sectionType}
-                section={section}
-                onTitleChange={(title) => onTitleChange?.(section.sectionType, title)}
-                onFieldChange={
-                  onFieldChange
-                    ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
-                    : undefined
-                }
-                onAddItem={onAddItem ? (position) => onAddItem(section.sectionType, position) : undefined}
-                onDeleteItem={onDeleteItem ? (itemId) => onDeleteItem(section.sectionType, itemId) : undefined}
-                onReorderItems={onReorderItems ? (newItems) => onReorderItems(section.sectionType, newItems) : undefined}
-              />
-            ))}
-          </div>
-        </div>
-      )
-    }
-
-    // Single-column, modern-accent, or two-column graceful degradation when column arrays are empty.
-    return orderedSections.map((section) => (
+    const renderSection = (section: (typeof orderedSections)[number]) => (
       <ResumeSection
         key={section.sectionType}
         section={section}
@@ -153,7 +108,26 @@ export default function ResumeCanvas({
         onDeleteItem={onDeleteItem ? (itemId) => onDeleteItem(section.sectionType, itemId) : undefined}
         onReorderItems={onReorderItems ? (newItems) => onReorderItems(section.sectionType, newItems) : undefined}
       />
-    ))
+    )
+
+    if (isTwoColumn) {
+      const leftSections = orderedSections.filter((s) => leftColumnIds.has(s.sectionType))
+      const rightSections = orderedSections.filter((s) => rightColumnIds.has(s.sectionType))
+
+      return (
+        <div className="flex gap-6">
+          <div className="flex flex-col gap-4 basis-1/3">
+            {leftSections.map(renderSection)}
+          </div>
+          <div className="flex flex-col gap-4 flex-1">
+            {rightSections.map(renderSection)}
+          </div>
+        </div>
+      )
+    }
+
+    // Single-column, modern-accent, or two-column graceful degradation when column arrays are empty.
+    return orderedSections.map(renderSection)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [document, template, onTitleChange, onFieldChange, onAddItem, onDeleteItem, onReorderItems])
 

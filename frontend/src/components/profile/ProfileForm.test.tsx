@@ -1,3 +1,4 @@
+import React from "react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
@@ -12,6 +13,55 @@ import CertificationsStep from "./CertificationsStep"
 import LanguagesStep from "./LanguagesStep"
 import ProjectsStep from "./ProjectsStep"
 import VolunteeringStep from "./VolunteeringStep"
+
+// ── Test helpers ────────────────────────────────────────────────────────────
+
+async function testAddAnotherAppendsEntry(
+  Component: React.ComponentType<{ onSaveAndContinue: ReturnType<typeof vi.fn> }>,
+  placeholder: string,
+) {
+  const user = userEvent.setup()
+  const onSaveAndContinue = vi.fn()
+
+  render(<Component onSaveAndContinue={onSaveAndContinue} />)
+
+  const initialInputs = screen.getAllByPlaceholderText(placeholder)
+  expect(initialInputs).toHaveLength(1)
+
+  const addButton = screen.getByRole("button", { name: /add another/i })
+  await user.click(addButton)
+
+  await waitFor(() => {
+    const updatedInputs = screen.getAllByPlaceholderText(placeholder)
+    expect(updatedInputs).toHaveLength(2)
+  })
+}
+
+async function testEmptySubmitDoesNotCall(
+  Component: React.ComponentType<{ onSaveAndContinue: ReturnType<typeof vi.fn> }>,
+  errorText: string,
+  beforeSubmit?: (user: ReturnType<typeof userEvent.setup>) => Promise<void>,
+) {
+  const user = userEvent.setup()
+  const onSaveAndContinue = vi.fn()
+
+  render(<Component onSaveAndContinue={onSaveAndContinue} />)
+
+  if (beforeSubmit) {
+    await beforeSubmit(user)
+  }
+
+  const saveButton = screen.getByRole("button", { name: /save & continue/i })
+  await user.click(saveButton)
+
+  expect(onSaveAndContinue).not.toHaveBeenCalled()
+
+  await waitFor(() => {
+    expect(screen.getByText(errorText)).toBeInTheDocument()
+  })
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 
 // Mock apiClient
 vi.mock("@/lib/apiClient", () => ({
@@ -200,21 +250,7 @@ describe("EducationStep", () => {
   })
 
   it("clicking 'Add another' appends a new education entry", async () => {
-    const user = userEvent.setup()
-    const onSaveAndContinue = vi.fn()
-
-    render(<EducationStep onSaveAndContinue={onSaveAndContinue} />)
-
-    const initialInputs = screen.getAllByPlaceholderText("e.g. State University")
-    expect(initialInputs).toHaveLength(1)
-
-    const addButton = screen.getByRole("button", { name: /add another/i })
-    await user.click(addButton)
-
-    await waitFor(() => {
-      const updatedInputs = screen.getAllByPlaceholderText("e.g. State University")
-      expect(updatedInputs).toHaveLength(2)
-    })
+    await testAddAnotherAppendsEntry(EducationStep, "e.g. State University")
   })
 
   it("filling a valid institution and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {
@@ -249,19 +285,7 @@ describe("EducationStep", () => {
   })
 
   it("does not call onSaveAndContinue when institution is empty on submit", async () => {
-    const user = userEvent.setup()
-    const onSaveAndContinue = vi.fn()
-
-    render(<EducationStep onSaveAndContinue={onSaveAndContinue} />)
-
-    const saveButton = screen.getByRole("button", { name: /save & continue/i })
-    await user.click(saveButton)
-
-    expect(onSaveAndContinue).not.toHaveBeenCalled()
-
-    await waitFor(() => {
-      expect(screen.getByText("Institution is required")).toBeInTheDocument()
-    })
+    await testEmptySubmitDoesNotCall(EducationStep, "Institution is required")
   })
 })
 
@@ -289,21 +313,7 @@ describe("SkillsStep", () => {
   })
 
   it("clicking 'Add another' appends a new skill entry", async () => {
-    const user = userEvent.setup()
-    const onSaveAndContinue = vi.fn()
-
-    render(<SkillsStep onSaveAndContinue={onSaveAndContinue} />)
-
-    const initialInputs = screen.getAllByPlaceholderText("e.g. TypeScript")
-    expect(initialInputs).toHaveLength(1)
-
-    const addButton = screen.getByRole("button", { name: /add another/i })
-    await user.click(addButton)
-
-    await waitFor(() => {
-      const updatedInputs = screen.getAllByPlaceholderText("e.g. TypeScript")
-      expect(updatedInputs).toHaveLength(2)
-    })
+    await testAddAnotherAppendsEntry(SkillsStep, "e.g. TypeScript")
   })
 
   it("filling a valid skill and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {
@@ -431,21 +441,7 @@ describe("CertificationsStep", () => {
   })
 
   it("clicking 'Add another' appends a new certification entry", async () => {
-    const user = userEvent.setup()
-    const onSaveAndContinue = vi.fn()
-
-    render(<CertificationsStep onSaveAndContinue={onSaveAndContinue} />)
-
-    const initialInputs = screen.getAllByPlaceholderText("e.g. AWS Cloud Practitioner")
-    expect(initialInputs).toHaveLength(1)
-
-    const addButton = screen.getByRole("button", { name: /add another/i })
-    await user.click(addButton)
-
-    await waitFor(() => {
-      const updatedInputs = screen.getAllByPlaceholderText("e.g. AWS Cloud Practitioner")
-      expect(updatedInputs).toHaveLength(2)
-    })
+    await testAddAnotherAppendsEntry(CertificationsStep, "e.g. AWS Cloud Practitioner")
   })
 
   it("filling a valid certification and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {
@@ -476,19 +472,7 @@ describe("CertificationsStep", () => {
   })
 
   it("does not call onSaveAndContinue when certification name is empty on submit", async () => {
-    const user = userEvent.setup()
-    const onSaveAndContinue = vi.fn()
-
-    render(<CertificationsStep onSaveAndContinue={onSaveAndContinue} />)
-
-    const saveButton = screen.getByRole("button", { name: /save & continue/i })
-    await user.click(saveButton)
-
-    expect(onSaveAndContinue).not.toHaveBeenCalled()
-
-    await waitFor(() => {
-      expect(screen.getByText("Certification name is required")).toBeInTheDocument()
-    })
+    await testEmptySubmitDoesNotCall(CertificationsStep, "Certification name is required")
   })
 })
 
@@ -516,21 +500,7 @@ describe("LanguagesStep", () => {
   })
 
   it("clicking 'Add another' appends a new language entry", async () => {
-    const user = userEvent.setup()
-    const onSaveAndContinue = vi.fn()
-
-    render(<LanguagesStep onSaveAndContinue={onSaveAndContinue} />)
-
-    const initialInputs = screen.getAllByPlaceholderText("e.g. English")
-    expect(initialInputs).toHaveLength(1)
-
-    const addButton = screen.getByRole("button", { name: /add another/i })
-    await user.click(addButton)
-
-    await waitFor(() => {
-      const updatedInputs = screen.getAllByPlaceholderText("e.g. English")
-      expect(updatedInputs).toHaveLength(2)
-    })
+    await testAddAnotherAppendsEntry(LanguagesStep, "e.g. English")
   })
 
   it("filling a valid language with proficiency and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {
@@ -565,22 +535,14 @@ describe("LanguagesStep", () => {
   })
 
   it("does not call onSaveAndContinue when proficiency level is not selected on submit", async () => {
-    const user = userEvent.setup()
-    const onSaveAndContinue = vi.fn()
-
-    render(<LanguagesStep onSaveAndContinue={onSaveAndContinue} />)
-
-    const nameInput = screen.getByPlaceholderText("e.g. English")
-    await user.type(nameInput, "German")
-
-    const saveButton = screen.getByRole("button", { name: /save & continue/i })
-    await user.click(saveButton)
-
-    expect(onSaveAndContinue).not.toHaveBeenCalled()
-
-    await waitFor(() => {
-      expect(screen.getByText("Proficiency level is required")).toBeInTheDocument()
-    })
+    await testEmptySubmitDoesNotCall(
+      LanguagesStep,
+      "Proficiency level is required",
+      async (user) => {
+        const nameInput = screen.getByPlaceholderText("e.g. English")
+        await user.type(nameInput, "German")
+      },
+    )
   })
 })
 
@@ -608,21 +570,7 @@ describe("ProjectsStep", () => {
   })
 
   it("clicking 'Add another' appends a new project entry", async () => {
-    const user = userEvent.setup()
-    const onSaveAndContinue = vi.fn()
-
-    render(<ProjectsStep onSaveAndContinue={onSaveAndContinue} />)
-
-    const initialInputs = screen.getAllByPlaceholderText("e.g. Resume Enhancer")
-    expect(initialInputs).toHaveLength(1)
-
-    const addButton = screen.getByRole("button", { name: /add another/i })
-    await user.click(addButton)
-
-    await waitFor(() => {
-      const updatedInputs = screen.getAllByPlaceholderText("e.g. Resume Enhancer")
-      expect(updatedInputs).toHaveLength(2)
-    })
+    await testAddAnotherAppendsEntry(ProjectsStep, "e.g. Resume Enhancer")
   })
 
   it("filling a valid project and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {
@@ -677,21 +625,7 @@ describe("VolunteeringStep", () => {
   })
 
   it("clicking 'Add another' appends a new volunteering entry", async () => {
-    const user = userEvent.setup()
-    const onSaveAndContinue = vi.fn()
-
-    render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
-
-    const initialInputs = screen.getAllByPlaceholderText("e.g. Mentor")
-    expect(initialInputs).toHaveLength(1)
-
-    const addButton = screen.getByRole("button", { name: /add another/i })
-    await user.click(addButton)
-
-    await waitFor(() => {
-      const updatedInputs = screen.getAllByPlaceholderText("e.g. Mentor")
-      expect(updatedInputs).toHaveLength(2)
-    })
+    await testAddAnotherAppendsEntry(VolunteeringStep, "e.g. Mentor")
   })
 
   it("filling valid role and organization and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {

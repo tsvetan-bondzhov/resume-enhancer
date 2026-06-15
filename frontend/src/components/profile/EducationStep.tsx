@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateRangeGrid, EntryCardHeader, StepFooter } from "./profileStepShared"
 import type { ProfileUpdateRequest, EducationRequest } from "@/types/api"
 
 interface EducationDraft {
@@ -145,19 +145,7 @@ export default function EducationStep({
         // Use stable id as key — avoids React reconciliation bugs when entries
         // are removed from the middle of the list.
         <div key={entry.draft.id} className="rounded-md border p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-zinc-600">
-              Entry {index + 1}
-            </span>
-            <button
-              type="button"
-              aria-label={`Remove entry ${index + 1}`}
-              onClick={() => removeEntry(index)}
-              className="text-sm text-red-500 hover:text-red-700"
-            >
-              ×
-            </button>
-          </div>
+          <EntryCardHeader index={index} onRemove={() => removeEntry(index)} />
 
           <div className="space-y-2">
             <label
@@ -214,51 +202,18 @@ export default function EducationStep({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label
-                htmlFor={`eduStartDate-${entry.draft.id}`}
-                className="text-sm font-medium"
-              >
-                Start Date
-              </label>
-              <Input
-                id={`eduStartDate-${entry.draft.id}`}
-                type="date"
-                value={entry.draft.startDate}
-                onChange={(e) =>
-                  updateField(index, "startDate", e.target.value)
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label
-                htmlFor={`eduEndDate-${entry.draft.id}`}
-                className="text-sm font-medium"
-              >
-                End Date
-              </label>
-              <Input
-                id={`eduEndDate-${entry.draft.id}`}
-                type="date"
-                value={entry.draft.endDate}
-                onChange={(e) => updateField(index, "endDate", e.target.value)}
-              />
-            </div>
-          </div>
+          <DateRangeGrid
+            startId={`eduStartDate-${entry.draft.id}`}
+            endId={`eduEndDate-${entry.draft.id}`}
+            startValue={entry.draft.startDate}
+            endValue={entry.draft.endDate}
+            onStartChange={(v) => updateField(index, "startDate", v)}
+            onEndChange={(v) => updateField(index, "endDate", v)}
+          />
         </div>
       ))}
 
-      <Button type="button" variant="outline" onClick={addAnother}>
-        + Add another
-      </Button>
-
-      <div className="flex justify-end">
-        <Button onClick={handleSubmit} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save & Continue"}
-        </Button>
-      </div>
+      <StepFooter isSaving={isSaving} onAddAnother={addAnother} onSubmit={handleSubmit} />
     </div>
   )
 }

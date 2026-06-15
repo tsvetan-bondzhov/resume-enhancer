@@ -1,9 +1,7 @@
 import { useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
+import { CurrentToggleAndDescription, DateRangeGrid, EmptyState, EntryCardHeader, RequiredField, StepFooter } from "./profileStepShared"
 import type { ProjectRequest, ProfileUpdateRequest } from "@/types/api"
 
 interface ProjectDraft {
@@ -141,48 +139,26 @@ export default function ProjectsStep({ onSaveAndContinue }: ProjectsStepProps) {
       <h2 className="text-xl font-semibold">Projects</h2>
 
       {entries.length === 0 && (
-        <div className="rounded-md border border-dashed p-6 text-center text-sm text-zinc-500">
-          No projects added yet.{" "}
-          <button type="button" onClick={addAnother} className="text-blue-600 underline">
-            Add project
-          </button>
-        </div>
+        <EmptyState
+          message="No projects added yet."
+          addLabel="Add project"
+          onAdd={addAnother}
+        />
       )}
 
       {entries.map((entry, index) => (
         <div key={entry.draft.id} className="rounded-md border p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-zinc-600">
-              Entry {index + 1}
-            </span>
-            <button
-              type="button"
-              aria-label={`Remove entry ${index + 1}`}
-              onClick={() => removeEntry(index)}
-              className="text-sm text-red-500 hover:text-red-700"
-            >
-              ×
-            </button>
-          </div>
+          <EntryCardHeader index={index} onRemove={() => removeEntry(index)} />
 
-          <div className="space-y-2">
-            <label
-              htmlFor={`name-${entry.draft.id}`}
-              className="text-sm font-medium"
-            >
-              Project Name <span className="text-red-500">*</span>
-            </label>
-            <Input
-              id={`name-${entry.draft.id}`}
-              value={entry.draft.name}
-              onChange={(e) => updateField(index, "name", e.target.value)}
-              onBlur={() => handleBlur(index, "name")}
-              placeholder="e.g. Resume Enhancer"
-            />
-            {entry.errors.name && (
-              <p className="text-sm text-red-600">{entry.errors.name}</p>
-            )}
-          </div>
+          <RequiredField
+            id={`name-${entry.draft.id}`}
+            label="Project Name"
+            value={entry.draft.name}
+            placeholder="e.g. Resume Enhancer"
+            error={entry.errors.name}
+            onChange={(v) => updateField(index, "name", v)}
+            onBlur={() => handleBlur(index, "name")}
+          />
 
           <div className="space-y-2">
             <label
@@ -216,86 +192,29 @@ export default function ProjectsStep({ onSaveAndContinue }: ProjectsStepProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label
-                htmlFor={`startDate-${entry.draft.id}`}
-                className="text-sm font-medium"
-              >
-                Start Date
-              </label>
-              <Input
-                id={`startDate-${entry.draft.id}`}
-                type="date"
-                value={entry.draft.startDate}
-                onChange={(e) =>
-                  updateField(index, "startDate", e.target.value)
-                }
-              />
-            </div>
+          <DateRangeGrid
+            startId={`startDate-${entry.draft.id}`}
+            endId={`endDate-${entry.draft.id}`}
+            startValue={entry.draft.startDate}
+            endValue={entry.draft.endDate}
+            endDateDisabled={entry.draft.isCurrent}
+            onStartChange={(v) => updateField(index, "startDate", v)}
+            onEndChange={(v) => updateField(index, "endDate", v)}
+          />
 
-            <div className="space-y-2">
-              <label
-                htmlFor={`endDate-${entry.draft.id}`}
-                className="text-sm font-medium"
-              >
-                End Date
-              </label>
-              <Input
-                id={`endDate-${entry.draft.id}`}
-                type="date"
-                value={entry.draft.endDate}
-                disabled={entry.draft.isCurrent}
-                onChange={(e) => updateField(index, "endDate", e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id={`isCurrent-${entry.draft.id}`}
-              checked={entry.draft.isCurrent}
-              onCheckedChange={(checked) =>
-                updateField(index, "isCurrent", checked === true)
-              }
-            />
-            <label
-              htmlFor={`isCurrent-${entry.draft.id}`}
-              className="text-sm font-medium"
-            >
-              This is an ongoing project
-            </label>
-          </div>
-
-          <div className="space-y-2">
-            <label
-              htmlFor={`description-${entry.draft.id}`}
-              className="text-sm font-medium"
-            >
-              Description
-            </label>
-            <Textarea
-              id={`description-${entry.draft.id}`}
-              value={entry.draft.description}
-              onChange={(e) =>
-                updateField(index, "description", e.target.value)
-              }
-              placeholder="Describe the project, your role, and impact..."
-              rows={3}
-            />
-          </div>
+          <CurrentToggleAndDescription
+            entryId={entry.draft.id}
+            isCurrentChecked={entry.draft.isCurrent}
+            currentLabel="This is an ongoing project"
+            descriptionValue={entry.draft.description}
+            descriptionPlaceholder="Describe the project, your role, and impact..."
+            onCurrentChange={(checked) => updateField(index, "isCurrent", checked)}
+            onDescriptionChange={(v) => updateField(index, "description", v)}
+          />
         </div>
       ))}
 
-      <Button type="button" variant="outline" onClick={addAnother}>
-        + Add another
-      </Button>
-
-      <div className="flex justify-end">
-        <Button onClick={handleSubmit} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save & Continue"}
-        </Button>
-      </div>
+      <StepFooter isSaving={isSaving} onAddAnother={addAnother} onSubmit={handleSubmit} />
     </div>
   )
 }

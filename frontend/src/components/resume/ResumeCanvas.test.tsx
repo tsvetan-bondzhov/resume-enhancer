@@ -60,6 +60,16 @@ function fireResizeObserver(height: number) {
   })
 }
 
+// Helper: assert that the canvas renders sections without the two-column flex wrapper.
+async function assertSingleColumnLayout(container: HTMLElement) {
+  const canvas = container.querySelector("#resume-canvas")!
+  await waitFor(() => {
+    const headings = Array.from(canvas.querySelectorAll("h2")).map((h) => h.textContent)
+    expect(headings).toContain("Skills")
+    expect(canvas.querySelector(".flex.gap-6")).not.toBeInTheDocument()
+  })
+}
+
 describe("ResumeCanvas", () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -161,13 +171,7 @@ describe("ResumeCanvas", () => {
       <ResumeCanvas document={mockDocument} templateId="t1" />
     )
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
-    const canvas = container.querySelector("#resume-canvas")!
-    await waitFor(() => {
-      // Skills section must appear in a visible page article
-      const headings = Array.from(canvas.querySelectorAll("h2")).map((h) => h.textContent)
-      expect(headings).toContain("Skills")
-      expect(canvas.querySelector(".flex.gap-6")).not.toBeInTheDocument()
-    })
+    await assertSingleColumnLayout(container)
   })
 
   // AC5 regression: modern-accent template renders a flat list without .flex.gap-6 wrapper
@@ -184,12 +188,7 @@ describe("ResumeCanvas", () => {
       <ResumeCanvas document={mockDocument} templateId="t1" />
     )
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
-    const canvas = container.querySelector("#resume-canvas")!
-    await waitFor(() => {
-      const headings = Array.from(canvas.querySelectorAll("h2")).map((h) => h.textContent)
-      expect(headings).toContain("Skills")
-      expect(canvas.querySelector(".flex.gap-6")).not.toBeInTheDocument()
-    })
+    await assertSingleColumnLayout(container)
   })
 
   // Graceful degradation: two-column with empty column arrays falls back to single-column rendering
@@ -208,12 +207,7 @@ describe("ResumeCanvas", () => {
       <ResumeCanvas document={mockDocument} templateId="t1" />
     )
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
-    const canvas = container.querySelector("#resume-canvas")!
-    await waitFor(() => {
-      const headings = Array.from(canvas.querySelectorAll("h2")).map((h) => h.textContent)
-      expect(headings).toContain("Skills")
-      expect(canvas.querySelector(".flex.gap-6")).not.toBeInTheDocument()
-    })
+    await assertSingleColumnLayout(container)
   })
 
   // AC1, AC5: multiple pages rendered when content height > one page (multi-page test)

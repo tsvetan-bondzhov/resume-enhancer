@@ -152,14 +152,11 @@ describe("ResumeSection", () => {
 
   // ─── AC7: store + autosave lifecycle integration ──────────────────────────
 
-  it("onFieldChange wired to updateItemField mutates useResumeStore state", () => {
-    const section = buildSection()
-    const resume = buildResumeWithSection(section)
+  function renderWithStoreCallbacks(section: ResumeSectionDto, resume: ReturnType<typeof buildResumeWithSection>) {
     useResumeStore.setState({
       currentResume: resume,
       lastSavedDocument: resume.content,
     })
-
     render(
       <ResumeSection
         section={section}
@@ -171,6 +168,12 @@ describe("ResumeSection", () => {
         }
       />
     )
+  }
+
+  it("onFieldChange wired to updateItemField mutates useResumeStore state", () => {
+    const section = buildSection()
+    const resume = buildResumeWithSection(section)
+    renderWithStoreCallbacks(section, resume)
 
     const field = screen.getByText("Engineer")
     fireEvent.blur(field, { target: { textContent: "Senior Engineer" } })
@@ -184,22 +187,7 @@ describe("ResumeSection", () => {
   it("onTitleChange wired to updateSectionTitle mutates useResumeStore state", () => {
     const section = buildSection()
     const resume = buildResumeWithSection(section)
-    useResumeStore.setState({
-      currentResume: resume,
-      lastSavedDocument: resume.content,
-    })
-
-    render(
-      <ResumeSection
-        section={section}
-        onTitleChange={(title) =>
-          useResumeStore.getState().updateSectionTitle(section.sectionType, title)
-        }
-        onFieldChange={(itemId, field, value) =>
-          useResumeStore.getState().updateItemField(section.sectionType, itemId, field, value)
-        }
-      />
-    )
+    renderWithStoreCallbacks(section, resume)
 
     const heading = screen.getByRole("heading", { name: /work experience/i })
     fireEvent.blur(heading, { target: { textContent: "Professional Experience" } })

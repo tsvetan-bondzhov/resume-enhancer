@@ -12,6 +12,30 @@ function makeHidden(sectionType: string): ResumeSectionDto {
   return { sectionType, title: sectionType, visible: false, items: [] } as unknown as ResumeSectionDto
 }
 
+// Helper to build a single-column template DTO
+function buildSingleColumnTemplateDto(sectionOrder: string[]): TemplateDto {
+  return {
+    templateDefinition: {
+      layoutType: "single-column",
+      layout: { sectionOrder, columns: null, headerStyle: "name-contact" },
+      accentColor: null,
+      textColor: null,
+    },
+  } as unknown as TemplateDto
+}
+
+// Helper to build a two-column template DTO
+function buildTwoColumnTemplateDto(columns: { left: string[]; right: string[] }): TemplateDto {
+  return {
+    templateDefinition: {
+      layoutType: "two-column",
+      layout: { sectionOrder: null, columns, headerStyle: "name-contact" },
+      accentColor: null,
+      textColor: null,
+    },
+  } as unknown as TemplateDto
+}
+
 describe("getOrderedSections", () => {
   // ── AC1 / AC4 ──────────────────────────────────────────────────────────────
 
@@ -22,18 +46,7 @@ describe("getOrderedSections", () => {
       makeSection("EDUCATION"),
       makeSection("WORK_EXPERIENCE"),
     ]
-    const template = {
-      templateDefinition: {
-        layoutType: "single-column",
-        layout: {
-          sectionOrder: ["WORK_EXPERIENCE", "EDUCATION", "SKILLS"],
-          columns: null,
-          headerStyle: "name-contact",
-        },
-        accentColor: null,
-        textColor: null,
-      },
-    } as unknown as TemplateDto
+    const template = buildSingleColumnTemplateDto(["WORK_EXPERIENCE", "EDUCATION", "SKILLS"])
 
     const result = getOrderedSections(sections, template)
     expect(result.map((s) => s.sectionType)).toEqual(["SKILLS", "EDUCATION", "WORK_EXPERIENCE"])
@@ -66,18 +79,7 @@ describe("getOrderedSections", () => {
       makeSection("WORK_EXPERIENCE"),
       makeSection("VOLUNTEER_WORK"), // not in template sectionOrder
     ]
-    const template = {
-      templateDefinition: {
-        layoutType: "single-column",
-        layout: {
-          sectionOrder: ["WORK_EXPERIENCE"],
-          columns: null,
-          headerStyle: "name-contact",
-        },
-        accentColor: null,
-        textColor: null,
-      },
-    } as unknown as TemplateDto
+    const template = buildSingleColumnTemplateDto(["WORK_EXPERIENCE"])
 
     const result = getOrderedSections(sections, template)
     expect(result.map((s) => s.sectionType)).toEqual(["WORK_EXPERIENCE", "VOLUNTEER_WORK"])
@@ -92,18 +94,7 @@ describe("getOrderedSections", () => {
       makeSection("SKILLS"),          // left column per template
       makeSection("EDUCATION"),       // left column per template
     ]
-    const template = {
-      templateDefinition: {
-        layoutType: "two-column",
-        layout: {
-          sectionOrder: null,
-          columns: { left: ["EDUCATION", "SKILLS"], right: ["WORK_EXPERIENCE"] },
-          headerStyle: "name-contact",
-        },
-        accentColor: null,
-        textColor: null,
-      },
-    } as unknown as TemplateDto
+    const template = buildTwoColumnTemplateDto({ left: ["EDUCATION", "SKILLS"], right: ["WORK_EXPERIENCE"] })
 
     const result = getOrderedSections(sections, template)
     // Left column sections first (in user order: SKILLS before EDUCATION),
@@ -117,18 +108,7 @@ describe("getOrderedSections", () => {
       makeSection("EDUCATION"),        // left column per template
       makeSection("VOLUNTEER_WORK"),   // not in either column
     ]
-    const template = {
-      templateDefinition: {
-        layoutType: "two-column",
-        layout: {
-          sectionOrder: null,
-          columns: { left: ["EDUCATION"], right: ["WORK_EXPERIENCE"] },
-          headerStyle: "name-contact",
-        },
-        accentColor: null,
-        textColor: null,
-      },
-    } as unknown as TemplateDto
+    const template = buildTwoColumnTemplateDto({ left: ["EDUCATION"], right: ["WORK_EXPERIENCE"] })
 
     const result = getOrderedSections(sections, template)
     // left: EDUCATION, right: WORK_EXPERIENCE, unassigned: VOLUNTEER_WORK (appended at end)
@@ -177,18 +157,7 @@ describe("getOrderedSections", () => {
       makeHidden("EDUCATION"), // hidden — must be excluded
       makeSection("SKILLS"),
     ]
-    const template = {
-      templateDefinition: {
-        layoutType: "single-column",
-        layout: {
-          sectionOrder: ["WORK_EXPERIENCE", "EDUCATION", "SKILLS"],
-          columns: null,
-          headerStyle: "name-contact",
-        },
-        accentColor: null,
-        textColor: null,
-      },
-    } as unknown as TemplateDto
+    const template = buildSingleColumnTemplateDto(["WORK_EXPERIENCE", "EDUCATION", "SKILLS"])
 
     const result = getOrderedSections(sections, template)
     expect(result.map((s) => s.sectionType)).toEqual(["WORK_EXPERIENCE", "SKILLS"])
@@ -200,18 +169,7 @@ describe("getOrderedSections", () => {
       makeHidden("SKILLS"),    // hidden left-column section — must be excluded
       makeSection("EDUCATION"),
     ]
-    const template = {
-      templateDefinition: {
-        layoutType: "two-column",
-        layout: {
-          sectionOrder: null,
-          columns: { left: ["SKILLS", "EDUCATION"], right: ["WORK_EXPERIENCE"] },
-          headerStyle: "name-contact",
-        },
-        accentColor: null,
-        textColor: null,
-      },
-    } as unknown as TemplateDto
+    const template = buildTwoColumnTemplateDto({ left: ["SKILLS", "EDUCATION"], right: ["WORK_EXPERIENCE"] })
 
     const result = getOrderedSections(sections, template)
     expect(result.map((s) => s.sectionType)).toEqual(["EDUCATION", "WORK_EXPERIENCE"])
