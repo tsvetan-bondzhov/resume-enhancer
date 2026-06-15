@@ -103,6 +103,61 @@ export default function TemplateGallery({
 
   const activeTemplate = templates.find(t => t.id === activeTemplateId)
 
+  function renderTabContent(tab: FilterTab) {
+    if (isLoading) {
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          <Skeleton className="h-24 w-full rounded" />
+          <Skeleton className="h-24 w-full rounded" />
+          <Skeleton className="h-24 w-full rounded" />
+        </div>
+      )
+    }
+    const items = filteredTemplates(tab)
+    if (items.length === 0) {
+      return (
+        <p className="text-xs text-muted-foreground text-center py-4">
+          No templates in this category
+        </p>
+      )
+    }
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {items.map((template) => {
+          const isActive = template.id === activeTemplateId
+          return (
+            <button
+              key={template.id}
+              type="button"
+              onClick={() => onApply(template.id)}
+              aria-label={`Apply ${template.name} template${isActive ? " (active)" : ""}`}
+              aria-pressed={isActive}
+              className={[
+                "relative rounded border text-left p-2 transition-all hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+                isActive
+                  ? "border-blue-500 ring-1 ring-blue-500 bg-blue-50"
+                  : "border-border bg-card hover:border-zinc-400",
+              ].join(" ")}
+            >
+              <TemplateThumbnail template={template} />
+
+              <p className="text-xs font-medium truncate">{template.name}</p>
+
+              {isActive && (
+                <span
+                  className="absolute top-1 right-1 text-[10px] bg-blue-500 text-white px-1 rounded"
+                  aria-hidden="true"
+                >
+                  Active
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div className="px-3 py-2">
       <p className="text-sm font-medium mb-3">Templates</p>
@@ -130,51 +185,7 @@ export default function TemplateGallery({
 
         {FILTER_TABS.map((tab) => (
           <TabsContent key={tab} value={tab} className="mt-0">
-            {isLoading ? (
-              <div className="grid grid-cols-2 gap-2">
-                <Skeleton className="h-24 w-full rounded" />
-                <Skeleton className="h-24 w-full rounded" />
-                <Skeleton className="h-24 w-full rounded" />
-              </div>
-            ) : filteredTemplates(tab).length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">
-                No templates in this category
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {filteredTemplates(tab).map((template) => {
-                  const isActive = template.id === activeTemplateId
-                  return (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => onApply(template.id)}
-                      aria-label={`Apply ${template.name} template${isActive ? " (active)" : ""}`}
-                      aria-pressed={isActive}
-                      className={[
-                        "relative rounded border text-left p-2 transition-all hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                        isActive
-                          ? "border-blue-500 ring-1 ring-blue-500 bg-blue-50"
-                          : "border-border bg-card hover:border-zinc-400",
-                      ].join(" ")}
-                    >
-                      <TemplateThumbnail template={template} />
-
-                      <p className="text-xs font-medium truncate">{template.name}</p>
-
-                      {isActive && (
-                        <span
-                          className="absolute top-1 right-1 text-[10px] bg-blue-500 text-white px-1 rounded"
-                          aria-hidden="true"
-                        >
-                          Active
-                        </span>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+            {renderTabContent(tab)}
           </TabsContent>
         ))}
       </Tabs>

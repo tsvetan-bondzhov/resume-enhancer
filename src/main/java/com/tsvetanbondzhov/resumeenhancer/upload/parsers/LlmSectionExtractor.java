@@ -157,14 +157,7 @@ public class LlmSectionExtractor {
 
             List<ResumeItem> result = new ArrayList<>();
             for (Map<String, Object> rawItem : rawItems) {
-                try {
-                    ResumeItem item = buildTypedItem(sectionType, rawItem, fullRawText);
-                    result.add(item);
-                } catch (Exception e) {
-                    log.warn("Failed to build typed item for section '{}', using GenericItem fallback: {}",
-                        rawSection.title(), e.getMessage());
-                    result.add(new GenericItem(UUID.randomUUID().toString(), toStringMap(rawItem)));
-                }
+                result.add(buildItemWithFallback(sectionType, rawItem, fullRawText, rawSection.title()));
             }
             return result;
 
@@ -172,6 +165,20 @@ public class LlmSectionExtractor {
             log.warn("LLM extraction failed for section '{}', using heuristic fallback: {}",
                 rawSection.title(), e.getMessage());
             return heuristicItems(rawSection);
+        }
+    }
+
+    private ResumeItem buildItemWithFallback(
+            ResumeSectionType sectionType,
+            Map<String, Object> rawItem,
+            String fullRawText,
+            String sectionTitle) {
+        try {
+            return buildTypedItem(sectionType, rawItem, fullRawText);
+        } catch (Exception e) {
+            log.warn("Failed to build typed item for section '{}', using GenericItem fallback: {}",
+                sectionTitle, e.getMessage());
+            return new GenericItem(UUID.randomUUID().toString(), toStringMap(rawItem));
         }
     }
 

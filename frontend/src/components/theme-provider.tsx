@@ -158,14 +158,14 @@ export function ThemeProvider({
       }
 
       setThemeState((currentTheme) => {
-        const nextTheme =
-          currentTheme === "dark"
-            ? "light"
-            : currentTheme === "light"
-              ? "dark"
-              : getSystemTheme() === "dark"
-                ? "light"
-                : "dark"
+        let nextTheme: string
+        if (currentTheme === "dark") {
+          nextTheme = "light"
+        } else if (currentTheme === "light") {
+          nextTheme = "dark"
+        } else {
+          nextTheme = getSystemTheme() === "dark" ? "light" : "dark"
+        }
 
         localStorage.setItem(storageKey, nextTheme)
         return nextTheme
