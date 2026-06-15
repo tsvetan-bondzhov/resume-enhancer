@@ -78,11 +78,8 @@ export default function EditorToolbar({
     }
   }
 
-  const saveButtonLabel = isDirty
-    ? "Save"
-    : lastSavedAt
-    ? `Saved ${savedAgoText}`
-    : "Saved"
+  const savedLabel = lastSavedAt ? `Saved ${savedAgoText}` : "Saved"
+  const saveButtonLabel = isDirty ? "Save" : savedLabel
 
   return (
     <div className="h-12 border-b border-border bg-card flex items-center gap-2 px-4 shrink-0">

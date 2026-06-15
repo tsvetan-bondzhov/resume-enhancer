@@ -31,6 +31,13 @@ vi.mock("react-router-dom", async (importOriginal) => {
 
 const mockGet = vi.mocked(apiClient.get)
 
+function mockGetWithResume(resume: ResumeDto) {
+  mockGet.mockImplementation((url: string) => {
+    if ((url as string).includes("resume-templates")) return Promise.resolve([])
+    return Promise.resolve(resume)
+  })
+}
+
 function buildResume(overrides?: Partial<ResumeDto>): ResumeDto {
   return {
     id: "test-resume-id",
@@ -81,14 +88,6 @@ describe("EditorPage", () => {
     useResumeStore.getState().setCurrentResume(null)
     useResumeStore.getState().setLastSavedDocument(null)
   })
-
-  /** Helper: return resume data for resume URL, empty array for templates URL */
-  function mockGetWithResume(resume: ResumeDto) {
-    mockGet.mockImplementation((url: string) => {
-      if ((url as string).includes("resume-templates")) return Promise.resolve([])
-      return Promise.resolve(resume)
-    })
-  }
 
   it("renders skeleton while loading", () => {
     mockGet.mockImplementation((url: string) => {

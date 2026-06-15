@@ -24,8 +24,11 @@ export default function ResumeDashboardCard({
 }: ResumeDashboardCardProps) {
   return (
     <div
+      role="button"
+      tabIndex={0}
       className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-150 hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
       onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen() }}
     >
       {/* Mini preview area — scaled-down live ResumeCanvas */}
       {/* aria-hidden: preview is decorative — screen readers see the info bar instead */}

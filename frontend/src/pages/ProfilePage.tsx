@@ -246,22 +246,16 @@ export default function ProfilePage() {
                 ? "font-semibold text-zinc-900" // current — highlighted
                 : "text-zinc-400 font-normal" // unvisited or completed — muted
               return (
-                <li
-                  key={label}
-                  className={`${className} cursor-pointer select-none`}
-                  onClick={() => setStep(index)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      setStep(index)
-                    }
-                  }}
-                  aria-label={`Go to step ${label}`}
-                  aria-current={index === currentStep ? "step" : undefined}
-                >
-                  {label}
+                <li key={label}>
+                  <button
+                    type="button"
+                    className={`${className} cursor-pointer select-none`}
+                    onClick={() => setStep(index)}
+                    aria-label={`Go to step ${label}`}
+                    aria-current={index === currentStep ? "step" : undefined}
+                  >
+                    {label}
+                  </button>
                 </li>
               )
             })}

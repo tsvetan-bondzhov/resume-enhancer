@@ -70,10 +70,6 @@ class ResumeSectionMigrationTest {
         ObjectMapper mapper = new ObjectMapper();
 
         // Build fixture JSON matching pre-migration DB structure
-        // {"sections": [{"id": "experience", "title": "Work Experience", "visible": true, "items": []},
-        //               {"id": "education",  "title": "Education",       "visible": true, "items": []},
-        //               {"id": "skills",     "title": "Skills",          "visible": true, "items": []},
-        //               {"id": "weird-uuid", "title": "Unknown Section",  "visible": true, "items": []}]}
         ObjectNode doc = mapper.createObjectNode();
         ArrayNode sections = doc.putArray("sections");
 
