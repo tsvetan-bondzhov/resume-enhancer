@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,17 @@ export default function SkillsStep({ onSaveAndContinue }: SkillsStepProps) {
     return existing.map((s) => ({ id: crypto.randomUUID(), name: s.name }))
   })
 
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([])
+  const shouldFocusLast = useRef(false)
+
+  useEffect(() => {
+    if (shouldFocusLast.current) {
+      shouldFocusLast.current = false
+      const last = inputRefs.current[skills.length - 1]
+      last?.focus()
+    }
+  })
+
   function updateSkill(index: number, value: string) {
     setSkills((prev) =>
       prev.map((s, i) => {
@@ -49,6 +60,14 @@ export default function SkillsStep({ onSaveAndContinue }: SkillsStepProps) {
 
   function addAnother() {
     setSkills((prev) => [...prev, { id: crypto.randomUUID(), name: "" }])
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>, index: number) {
+    if (e.key === "Enter" && index === skills.length - 1) {
+      e.preventDefault()
+      shouldFocusLast.current = true
+      setSkills((prev) => [...prev, { id: crypto.randomUUID(), name: "" }])
+    }
   }
 
   function removeSkill(index: number) {
@@ -96,9 +115,11 @@ export default function SkillsStep({ onSaveAndContinue }: SkillsStepProps) {
               <Input
                 id={`skill-${skill.id}`}
                 aria-label={`Skill ${index + 1}`}
+                ref={(el) => { inputRefs.current[index] = el }}
                 value={skill.name}
                 onChange={(e) => updateSkill(index, e.target.value)}
                 onBlur={() => handleBlur(index)}
+                onKeyDown={(e) => handleKeyDown(e, index)}
                 placeholder="e.g. TypeScript"
               />
               <button

@@ -376,6 +376,48 @@ describe("SkillsStep", () => {
       expect(screen.getByText("Skill name is required")).toBeInTheDocument()
     })
   })
+
+  it("pressing Enter on the last skill input adds a new entry and focuses it", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<SkillsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const firstInput = screen.getByPlaceholderText("e.g. TypeScript")
+    await user.type(firstInput, "React")
+
+    // Press Enter on the last (currently only) skill input
+    await user.keyboard("{Enter}")
+
+    await waitFor(() => {
+      const inputs = screen.getAllByPlaceholderText("e.g. TypeScript")
+      expect(inputs).toHaveLength(2)
+      expect(inputs[1]).toHaveFocus()
+    })
+  })
+
+  it("pressing Enter on a non-last skill input does not add a new entry", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<SkillsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    // Add a second skill via the button so there are two entries
+    const addButton = screen.getByRole("button", { name: /add another/i })
+    await user.click(addButton)
+
+    await waitFor(() => {
+      expect(screen.getAllByPlaceholderText("e.g. TypeScript")).toHaveLength(2)
+    })
+
+    // Focus and press Enter on the FIRST input (not the last)
+    const inputs = screen.getAllByPlaceholderText("e.g. TypeScript")
+    await user.click(inputs[0])
+    await user.keyboard("{Enter}")
+
+    // Should still be 2 inputs (no new one added)
+    expect(screen.getAllByPlaceholderText("e.g. TypeScript")).toHaveLength(2)
+  })
 })
 
 describe("SummaryStep", () => {
