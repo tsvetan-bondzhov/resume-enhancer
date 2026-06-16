@@ -9,8 +9,24 @@ param(
 
 $ReportTaskFile = ".scannerwork\report-task.txt"
 
-# --- Run the scan (sonar-project.properties sets qualitygate.wait=true) ---
-Write-Host "Running sonar-scanner..."
+# --- Step 1: Build and run Java tests, generate JaCoCo coverage report ---
+Write-Host "Step 1/3: Running mvn verify..."
+.\mvnw.cmd verify
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "mvn verify failed. Fix build/test errors before pushing."
+    exit 1
+}
+
+# --- Step 2: Run frontend tests and generate lcov coverage report ---
+Write-Host "`nStep 2/3: Running frontend test:coverage..."
+npm run test:coverage --prefix frontend
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Frontend test:coverage failed. Fix test errors before pushing."
+    exit 1
+}
+
+# --- Step 3: Run the scan (sonar-project.properties sets qualitygate.wait=true) ---
+Write-Host "`nStep 3/3: Running sonar-scanner..."
 sonar-scanner
 $ScanExitCode = $LASTEXITCODE
 
