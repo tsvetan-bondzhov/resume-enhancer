@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import type { ResumeDto } from "@/types/api"
 import ResumeDashboardCard from "./ResumeDashboardCard"
 
@@ -83,5 +84,98 @@ describe("ResumeDashboardCard", () => {
     const outerWrapper = container.querySelector("[style*='height: 200px']")
     expect(outerWrapper).toBeInTheDocument()
     expect(outerWrapper?.classList.contains("pointer-events-none")).toBe(false)
+  })
+
+  // Line 31: onKeyDown — pressing Enter triggers onOpen
+  it("pressing Enter on the card triggers onOpen", async () => {
+    const user = userEvent.setup()
+    const onOpen = vi.fn()
+    const { container } = render(
+      <ResumeDashboardCard
+        resume={buildResume()}
+        onOpen={onOpen}
+        onDuplicate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    // The outermost role="button" div
+    const outerCard = container.querySelector("[role='button'][tabindex='0']") as HTMLElement
+    outerCard.focus()
+    await user.keyboard("{Enter}")
+    expect(onOpen).toHaveBeenCalled()
+  })
+
+  // Line 31: onKeyDown — pressing Space triggers onOpen
+  it("pressing Space on the card triggers onOpen", async () => {
+    const user = userEvent.setup()
+    const onOpen = vi.fn()
+    const { container } = render(
+      <ResumeDashboardCard
+        resume={buildResume()}
+        onOpen={onOpen}
+        onDuplicate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    const outerCard = container.querySelector("[role='button'][tabindex='0']") as HTMLElement
+    outerCard.focus()
+    await user.keyboard(" ")
+    expect(onOpen).toHaveBeenCalled()
+  })
+
+  // Lines 84-85: Export button calls toast
+  it("clicking the Export button calls toast with 'Export coming soon'", async () => {
+    const { toast } = await import("sonner")
+    const user = userEvent.setup()
+    renderCard()
+    const exportButton = screen.getByLabelText("Export resume")
+    await user.click(exportButton)
+    expect(toast).toHaveBeenCalledWith("Export coming soon")
+  })
+
+  // Line 31: onKeyDown — pressing an unrelated key does NOT trigger onOpen
+  it("pressing other keys on the card does not trigger onOpen", async () => {
+    const user = userEvent.setup()
+    const onOpen = vi.fn()
+    const { container } = render(
+      <ResumeDashboardCard
+        resume={buildResume()}
+        onOpen={onOpen}
+        onDuplicate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    const outerCard = container.querySelector("[role='button'][tabindex='0']") as HTMLElement
+    outerCard.focus()
+    await user.keyboard("{Escape}")
+    expect(onOpen).not.toHaveBeenCalled()
+  })
+
+  // ResumeDashboardCard shows "Tailored" badge when isTailored is true
+  it("shows Tailored badge when isTailored is true (line 58 branch)", () => {
+    renderCard(buildResume({ isTailored: true }))
+    expect(screen.getByText("Tailored")).toBeInTheDocument()
+  })
+
+  // ResumeDashboardCard shows "Base" badge when isTailored is false
+  it("shows Base badge when isTailored is false (line 58 else branch)", () => {
+    renderCard(buildResume({ isTailored: false }))
+    expect(screen.getByText("Base")).toBeInTheDocument()
+  })
+
+  // isDuplicating=true shows spinner
+  it("shows Loader2 spinner when isDuplicating is true", () => {
+    const { container } = render(
+      <ResumeDashboardCard
+        resume={buildResume()}
+        onOpen={vi.fn()}
+        onDuplicate={vi.fn()}
+        onDelete={vi.fn()}
+        isDuplicating={true}
+      />,
+    )
+    // Loader2 renders an svg with animate-spin class
+    const spinner = container.querySelector(".animate-spin")
+    expect(spinner).toBeInTheDocument()
   })
 })
