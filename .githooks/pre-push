@@ -1,0 +1,19 @@
+#!/bin/sh
+# pre-push hook: blocks push if SonarQube quality gate fails.
+# The PowerShell script handles scanning, quality gate polling, and issue reporting.
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+SCRIPT="$REPO_ROOT/scripts/sonar-check.ps1"
+
+echo "Running SonarQube quality gate check..."
+
+powershell.exe -ExecutionPolicy Bypass -NoProfile -File "$SCRIPT"
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "Push BLOCKED: resolve the SonarQube issues above before pushing."
+    exit 1
+fi
+
+exit 0
