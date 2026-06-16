@@ -164,7 +164,7 @@ export function SortableItemWrapper({
   children,
   onDeleteItem,
   containerClassName = "relative group/item break-inside-avoid",
-  deleteButtonClassName = "absolute right-0 top-0 opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted hover:text-red-500",
+  deleteButtonClassName = "absolute right-0 top-0 opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted hover:text-red-500 cursor-pointer",
   deleteIconClassName = "h-3.5 w-3.5",
 }: SortableItemWrapperProps) {
   const {
@@ -198,6 +198,7 @@ export function SortableItemWrapper({
           type="button"
           className={deleteButtonClassName}
           aria-label="Delete item"
+          title="Delete item"
           onClick={() => onDeleteItem(id)}
         >
           <Trash2 className={deleteIconClassName} />
@@ -213,8 +214,9 @@ export function AddItemButton({ onClick }: Readonly<{ onClick: () => void }>) {
     <div className="relative h-0 overflow-visible">
       <button
         type="button"
-        className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-full h-4 invisible group-hover/section:visible opacity-0 group-hover/section:opacity-100 transition-opacity hover:opacity-100"
+        className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-full h-4 invisible group-hover/section:visible opacity-0 group-hover/section:opacity-100 transition-opacity hover:opacity-100 cursor-pointer"
         aria-label="Add item here"
+        title="Add item"
         onClick={onClick}
       >
         <div className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
