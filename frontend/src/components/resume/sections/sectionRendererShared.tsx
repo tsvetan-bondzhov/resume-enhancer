@@ -1,6 +1,6 @@
 import React, { useRef } from "react"
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core"
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable"
+import { SortableContext, verticalListSortingStrategy, rectSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { Trash2, GripVertical, Plus } from "lucide-react"
 import type { ResumeItemDto } from "@/types/api"
@@ -245,6 +245,7 @@ interface SectionDndWrapperProps {
   readonly items: readonly { id: string }[]
   readonly onReorderItems?: (newItems: ResumeItemDto[]) => void
   readonly children: React.ReactNode
+  readonly strategy?: "vertical" | "rect"
 }
 
 interface EditableTitleFieldProps {
@@ -290,13 +291,14 @@ export function EditableDescriptionField({ itemId, value, onFieldChange, placeho
   )
 }
 
-export function SectionDndWrapper({ items, onReorderItems, children }: SectionDndWrapperProps) {
+export function SectionDndWrapper({ items, onReorderItems, children, strategy = "vertical" }: SectionDndWrapperProps) {
   const handleDragEnd = createHandleDragEnd(items, onReorderItems)
+  const sortingStrategy = strategy === "rect" ? rectSortingStrategy : verticalListSortingStrategy
 
   if (onReorderItems) {
     return (
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={items.map((i) => i.id)} strategy={sortingStrategy}>
           {children}
         </SortableContext>
       </DndContext>
