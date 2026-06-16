@@ -49,9 +49,8 @@ vi.mock("@/stores/useAuthStore", () => ({
   },
 }))
 
-import { apiClient } from "@/lib/apiClient"
+import { apiClient, ApiError } from "@/lib/apiClient"
 import { toast } from "sonner"
-import { ApiError } from "@/lib/apiClient"
 
 const mockPost = vi.mocked(apiClient.post)
 const mockToastError = vi.mocked(toast.error)

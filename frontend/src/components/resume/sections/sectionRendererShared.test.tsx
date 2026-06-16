@@ -11,6 +11,16 @@ import {
 import type { DragEndEvent } from "@dnd-kit/core"
 import type { ResumeItemDto } from "@/types/api"
 
+function buildEvent(activeId: string, overId: string | null): DragEndEvent {
+  return {
+    active: { id: activeId, data: { current: undefined }, rect: { current: { initial: null, translated: null } } },
+    over: overId ? { id: overId, data: { current: undefined }, rect: { width: 0, height: 0, left: 0, top: 0, right: 0, bottom: 0, } as DOMRect } : null,
+    activatorEvent: new Event("pointerdown"),
+    collisions: [],
+    delta: { x: 0, y: 0, scaleX: 1, scaleY: 1 },
+  } as unknown as DragEndEvent
+}
+
 // ─── createHandleDragEnd ──────────────────────────────────────────────────────
 
 describe("createHandleDragEnd", () => {
@@ -18,16 +28,6 @@ describe("createHandleDragEnd", () => {
 
   function buildItems(...ids: string[]): Item[] {
     return ids.map((id) => ({ id }))
-  }
-
-  function buildEvent(activeId: string, overId: string | null): DragEndEvent {
-    return {
-      active: { id: activeId, data: { current: undefined }, rect: { current: { initial: null, translated: null } } },
-      over: overId ? { id: overId, data: { current: undefined }, rect: { width: 0, height: 0, left: 0, top: 0, right: 0, bottom: 0, } as DOMRect } : null,
-      activatorEvent: new Event("pointerdown"),
-      collisions: [],
-      delta: { x: 0, y: 0, scaleX: 1, scaleY: 1 },
-    } as unknown as DragEndEvent
   }
 
   it("calls onReorderItems with reordered array when active and over differ (lines 163-166)", () => {
@@ -66,7 +66,7 @@ describe("createHandleDragEnd", () => {
   it("returns early when onReorderItems is not provided (line 162)", () => {
     const items = buildItems("a", "b")
     // no onReorderItems provided — should not throw
-    const handler = createHandleDragEnd(items, undefined)
+    const handler = createHandleDragEnd(items)
 
     expect(() => handler(buildEvent("a", "b"))).not.toThrow()
   })

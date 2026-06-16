@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { MemoryRouter, Route, Routes } from "react-router-dom"
+import { MemoryRouter, Route, Routes, Navigate, Outlet } from "react-router-dom"
 
 // Mock useAuthStore — state is controlled per test
 let mockToken: string | null = null
@@ -27,12 +27,11 @@ import { router } from "./index"
 // We re-implement the ProtectedRoute inline here because it is not exported,
 // but the import above already executes all module-level lines.
 
-import { Navigate, Outlet } from "react-router-dom"
 import { useAuthStore } from "@/stores/useAuthStore"
 import AppShell from "@/components/layout/AppShell"
 
 /** Mirrors the real ProtectedRoute so we can unit-test the guard logic. */
-function ProtectedRouteUnderTest({ requireAdmin = false }: { requireAdmin?: boolean }) {
+function ProtectedRouteUnderTest({ requireAdmin = false }: Readonly<{ requireAdmin?: boolean }>) {
   const { token, user } = useAuthStore()
   if (!token) return <Navigate to="/login" replace />
   if (requireAdmin && (user as { role?: string } | null)?.role !== "ADMIN") return <Navigate to="/" replace />

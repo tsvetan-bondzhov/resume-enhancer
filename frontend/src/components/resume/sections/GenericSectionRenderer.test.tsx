@@ -88,7 +88,7 @@ describe("GenericSectionRenderer", () => {
     )
     const addButtons = screen.getAllByLabelText("Add item here")
     // Last button is after the first item → position = index + 1 = 1
-    fireEvent.click(addButtons[addButtons.length - 1])
+    fireEvent.click(addButtons.at(-1)!)
     expect(onAddItem).toHaveBeenCalledWith(1)
   })
 
