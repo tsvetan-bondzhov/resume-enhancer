@@ -5,23 +5,15 @@ import { MemoryRouter } from "react-router-dom"
 import SignupPage from "./SignupPage"
 
 // Mock apiClient
-vi.mock("@/lib/apiClient", () => ({
-  apiClient: {
-    post: vi.fn(),
-  },
-  ApiError: class ApiError extends Error {
-    status: number
-    detail: string
-    errors?: Record<string, string[]>
-    constructor(status: number, detail: string, errors?: Record<string, string[]>) {
-      super(detail)
-      this.name = "ApiError"
-      this.status = status
-      this.detail = detail
-      this.errors = errors
-    }
-  },
-}))
+vi.mock("@/lib/apiClient", async () => {
+  const { MockApiError } = await import("@/test-utils/mockApiError")
+  return {
+    apiClient: {
+      post: vi.fn(),
+    },
+    ApiError: MockApiError,
+  }
+})
 
 // Mock sonner
 vi.mock("sonner", () => ({

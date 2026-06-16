@@ -4,6 +4,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from "@dnd-kit/utilities"
 import { Trash2, GripVertical, Plus } from "lucide-react"
 import type { ResumeItemDto } from "@/types/api"
+import { formatMonthYear } from "@/lib/dateUtils"
 
 // ─── Shared editable field primitives ────────────────────────────────────────
 
@@ -77,6 +78,46 @@ export function EditableDateRange({
         ariaLabel="Edit endDate"
       />
     </>
+  )
+}
+
+interface DateRangeDisplayProps {
+  readonly itemId: string
+  readonly startDate: string | null
+  readonly endDate: string | null
+  readonly isCurrent?: boolean
+  readonly onFieldChange?: (itemId: string, field: string, value: string) => void
+}
+
+export function DateRangeContent({
+  itemId,
+  startDate,
+  endDate,
+  isCurrent,
+  onFieldChange,
+}: DateRangeDisplayProps) {
+  return onFieldChange ? (
+    <EditableDateRange
+      itemId={itemId}
+      startDate={startDate}
+      endDate={endDate}
+      isCurrent={isCurrent}
+      onFieldChange={onFieldChange}
+    />
+  ) : (
+    <span>{(() => {
+      const start = formatMonthYear(startDate)
+      const end = !isCurrent && endDate ? formatMonthYear(endDate) : "Present"
+      return start ? `${start} — ${end}` : end
+    })()}</span>
+  )
+}
+
+export function DateRangeDisplay(props: DateRangeDisplayProps) {
+  return (
+    <p className="text-muted-foreground italic text-sm">
+      <DateRangeContent {...props} />
+    </p>
   )
 }
 

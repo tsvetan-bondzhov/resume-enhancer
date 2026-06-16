@@ -1,7 +1,7 @@
-import { useState } from "react"
+﻿import { useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
 import { Input } from "@/components/ui/input"
-import { EmptyState, EntryCardHeader, RequiredField, StepFooter } from "./profileStepShared"
+import { EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit } from "./profileStepShared"
 import type { CertificationRequest, ProfileUpdateRequest } from "@/types/api"
 
 interface CertificationDraft {
@@ -109,19 +109,20 @@ export default function CertificationsStep({
   }
 
   async function handleSubmit() {
-    const validated = validateAll()
-    setEntries(validated)
-    const hasErrors = validated.some((e) => e.errors.name)
-    if (hasErrors) return
-
-    const certifications: CertificationRequest[] = validated.map((e) => ({
-      name: e.draft.name,
-      issuer: e.draft.issuer || null,
-      issueDate: e.draft.issueDate || null,
-      expirationDate: e.draft.expirationDate || null,
-    }))
-
-    await onSaveAndContinue({ certifications })
+    await runSubmit(
+      validateAll,
+      setEntries,
+      (validated) => validated.some((e) => e.errors.name),
+      (validated) => ({
+        certifications: validated.map((e): CertificationRequest => ({
+          name: e.draft.name,
+          issuer: e.draft.issuer || null,
+          issueDate: e.draft.issueDate || null,
+          expirationDate: e.draft.expirationDate || null,
+        })),
+      }),
+      onSaveAndContinue,
+    )
   }
 
   return (

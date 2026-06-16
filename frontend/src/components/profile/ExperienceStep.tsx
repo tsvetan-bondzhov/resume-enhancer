@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
-import { CurrentToggleAndDescription, DateRangeGrid, EmptyState, EntryCardHeader, RequiredField, StepFooter } from "./profileStepShared"
+import { EntryDateRangeAndActivity, EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit, makeUpdateField } from "./profileStepShared"
 import type { ProfileUpdateRequest, WorkExperienceRequest } from "@/types/api"
 
 interface ExperienceDraft {
@@ -64,24 +64,7 @@ export default function ExperienceStep({
     }))
   })
 
-  function updateField(
-    index: number,
-    field: keyof Omit<ExperienceDraft, "id">,
-    value: string | boolean,
-  ) {
-    setEntries((prev) =>
-      prev.map((entry, i) => {
-        if (i !== index) return entry
-        const newDraft = { ...entry.draft, [field]: value }
-        // Clear error on change for text fields
-        const newErrors = { ...entry.errors }
-        if (field === "jobTitle" || field === "company") {
-          delete newErrors[field]
-        }
-        return { draft: newDraft, errors: newErrors }
-      }),
-    )
-  }
+  const updateField = makeUpdateField<ExperienceDraft, FieldErrors>(setEntries, ["jobTitle", "company"])
 
   function handleBlur(index: number, field: "jobTitle" | "company") {
     setEntries((prev) =>
@@ -118,23 +101,22 @@ export default function ExperienceStep({
   }
 
   async function handleSubmit() {
-    const validated = validateAll()
-    setEntries(validated)
-    const hasErrors = validated.some(
-      (e) => e.errors.jobTitle || e.errors.company,
+    await runSubmit(
+      validateAll,
+      setEntries,
+      (validated) => validated.some((e) => e.errors.jobTitle || e.errors.company),
+      (validated) => ({
+        workExperiences: validated.map((e): WorkExperienceRequest => ({
+          jobTitle: e.draft.jobTitle,
+          company: e.draft.company,
+          startDate: e.draft.startDate || null,
+          endDate: e.draft.isCurrent ? null : e.draft.endDate || null,
+          isCurrent: e.draft.isCurrent,
+          description: e.draft.description || null,
+        })),
+      }),
+      onSaveAndContinue,
     )
-    if (hasErrors) return
-
-    const workExperiences: WorkExperienceRequest[] = validated.map((e) => ({
-      jobTitle: e.draft.jobTitle,
-      company: e.draft.company,
-      startDate: e.draft.startDate || null,
-      endDate: e.draft.isCurrent ? null : e.draft.endDate || null,
-      isCurrent: e.draft.isCurrent,
-      description: e.draft.description || null,
-    }))
-
-    await onSaveAndContinue({ workExperiences })
   }
 
   return (
@@ -175,22 +157,16 @@ export default function ExperienceStep({
             onBlur={() => handleBlur(index, "company")}
           />
 
-          <DateRangeGrid
-            startId={`startDate-${entry.draft.id}`}
-            endId={`endDate-${entry.draft.id}`}
+          <EntryDateRangeAndActivity
+            entryId={entry.draft.id}
             startValue={entry.draft.startDate}
             endValue={entry.draft.endDate}
-            endDateDisabled={entry.draft.isCurrent}
-            onStartChange={(v) => updateField(index, "startDate", v)}
-            onEndChange={(v) => updateField(index, "endDate", v)}
-          />
-
-          <CurrentToggleAndDescription
-            entryId={entry.draft.id}
-            isCurrentChecked={entry.draft.isCurrent}
+            isCurrent={entry.draft.isCurrent}
             currentLabel="I currently work here"
             descriptionValue={entry.draft.description}
             descriptionPlaceholder="Describe your responsibilities and accomplishments..."
+            onStartChange={(v) => updateField(index, "startDate", v)}
+            onEndChange={(v) => updateField(index, "endDate", v)}
             onCurrentChange={(checked) => updateField(index, "isCurrent", checked)}
             onDescriptionChange={(v) => updateField(index, "description", v)}
           />

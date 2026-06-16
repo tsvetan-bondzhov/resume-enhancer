@@ -13,6 +13,28 @@ function buildItem(overrides?: Partial<LanguageItemDto>): LanguageItemDto {
   }
 }
 
+function testBlurCallsOnFieldChange(label: string, fieldKey: string, value: string) {
+  const onFieldChange = vi.fn()
+  render(<LanguagesSectionRenderer items={[buildItem()]} onFieldChange={onFieldChange} />)
+
+  const field = screen.getByLabelText(label)
+  fireEvent.blur(field, { target: { textContent: value } })
+
+  expect(onFieldChange).toHaveBeenCalledWith("lang-1", fieldKey, value)
+}
+
+function testEnterKeyPreventsDefault(label: string) {
+  const onFieldChange = vi.fn()
+  render(<LanguagesSectionRenderer items={[buildItem()]} onFieldChange={onFieldChange} />)
+
+  const field = screen.getByLabelText(label)
+  const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+  const preventDefaultSpy = vi.spyOn(event, "preventDefault")
+  field.dispatchEvent(event)
+
+  expect(preventDefaultSpy).toHaveBeenCalled()
+}
+
 describe("LanguagesSectionRenderer", () => {
   it("renders language name in read-only mode", () => {
     render(<LanguagesSectionRenderer items={[buildItem()]} />)
@@ -31,13 +53,7 @@ describe("LanguagesSectionRenderer", () => {
   })
 
   it("calls onFieldChange with (itemId, 'language', value) on blur of language field", () => {
-    const onFieldChange = vi.fn()
-    render(<LanguagesSectionRenderer items={[buildItem()]} onFieldChange={onFieldChange} />)
-
-    const field = screen.getByLabelText("Edit language")
-    fireEvent.blur(field, { target: { textContent: "Spanish" } })
-
-    expect(onFieldChange).toHaveBeenCalledWith("lang-1", "language", "Spanish")
+    testBlurCallsOnFieldChange("Edit language", "language", "Spanish")
   })
 
   it("renders editable proficiency span when onFieldChange is provided", () => {
@@ -47,13 +63,7 @@ describe("LanguagesSectionRenderer", () => {
   })
 
   it("calls onFieldChange with (itemId, 'proficiency', value) on blur of proficiency field", () => {
-    const onFieldChange = vi.fn()
-    render(<LanguagesSectionRenderer items={[buildItem()]} onFieldChange={onFieldChange} />)
-
-    const field = screen.getByLabelText("Edit proficiency")
-    fireEvent.blur(field, { target: { textContent: "Fluent" } })
-
-    expect(onFieldChange).toHaveBeenCalledWith("lang-1", "proficiency", "Fluent")
+    testBlurCallsOnFieldChange("Edit proficiency", "proficiency", "Fluent")
   })
 
   it("does not render language field when language is null", () => {
@@ -96,26 +106,10 @@ describe("LanguagesSectionRenderer", () => {
   })
 
   it("prevents Enter key default in language editable field", () => {
-    const onFieldChange = vi.fn()
-    render(<LanguagesSectionRenderer items={[buildItem()]} onFieldChange={onFieldChange} />)
-
-    const field = screen.getByLabelText("Edit language")
-    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
-    const preventDefaultSpy = vi.spyOn(event, "preventDefault")
-    field.dispatchEvent(event)
-
-    expect(preventDefaultSpy).toHaveBeenCalled()
+    testEnterKeyPreventsDefault("Edit language")
   })
 
   it("prevents Enter key default in proficiency editable field", () => {
-    const onFieldChange = vi.fn()
-    render(<LanguagesSectionRenderer items={[buildItem()]} onFieldChange={onFieldChange} />)
-
-    const field = screen.getByLabelText("Edit proficiency")
-    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
-    const preventDefaultSpy = vi.spyOn(event, "preventDefault")
-    field.dispatchEvent(event)
-
-    expect(preventDefaultSpy).toHaveBeenCalled()
+    testEnterKeyPreventsDefault("Edit proficiency")
   })
 })

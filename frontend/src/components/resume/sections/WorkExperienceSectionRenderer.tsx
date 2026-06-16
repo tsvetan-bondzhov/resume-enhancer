@@ -1,7 +1,6 @@
 import React from "react"
-import { formatMonthYear } from "@/lib/dateUtils"
 import type { WorkExperienceItemDto, ResumeItemDto } from "@/types/api"
-import { SortableItemWrapper, AddItemButton, SectionDndWrapper, EditableField, EditableDateRange, EditableTitleField, EditableDescriptionField } from "./sectionRendererShared"
+import { SortableItemWrapper, AddItemButton, SectionDndWrapper, EditableField, EditableTitleField, EditableDescriptionField, DateRangeContent } from "./sectionRendererShared"
 
 interface WorkExperienceSectionRendererProps {
   readonly items: readonly WorkExperienceItemDto[]
@@ -34,21 +33,13 @@ export default function WorkExperienceSectionRenderer({
                     <span>{item.company}</span>
                   )}
                   {item.company && (item.startDate || item.endDate || item.isCurrent) && " · "}
-                  {onFieldChange ? (
-                    <EditableDateRange
-                      itemId={item.id}
-                      startDate={item.startDate}
-                      endDate={item.endDate}
-                      isCurrent={item.isCurrent}
-                      onFieldChange={onFieldChange}
-                    />
-                  ) : (
-                    <span>{(() => {
-                      const start = formatMonthYear(item.startDate)
-                      const end = !item.isCurrent && item.endDate ? formatMonthYear(item.endDate) : "Present"
-                      return start ? `${start} — ${end}` : end
-                    })()}</span>
-                  )}
+                  <DateRangeContent
+                    itemId={item.id}
+                    startDate={item.startDate}
+                    endDate={item.endDate}
+                    isCurrent={item.isCurrent}
+                    onFieldChange={onFieldChange}
+                  />
                 </p>
               )}
               <EditableDescriptionField itemId={item.id} value={item.description} onFieldChange={onFieldChange} />

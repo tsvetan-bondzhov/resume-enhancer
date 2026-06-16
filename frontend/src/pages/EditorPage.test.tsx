@@ -287,7 +287,7 @@ describe("EditorPage", () => {
     )
   })
 
-  it("handleDeleteFromSidebar removes resume from sidebar immediately (lines 199-206)", async () => {
+  async function setupSidebarDeleteScenario() {
     const sidebarResume = buildResume({ id: "sidebar-resume", name: "Sidebar Resume" })
     useResumeStore.setState({ resumes: [sidebarResume] })
     mockGetWithResume(buildResume())
@@ -295,6 +295,10 @@ describe("EditorPage", () => {
     await waitFor(() => screen.getByText("Sidebar Resume"))
     const deleteBtn = screen.getByRole("button", { name: /delete sidebar resume/i })
     fireEvent.click(deleteBtn)
+  }
+
+  it("handleDeleteFromSidebar removes resume from sidebar immediately (lines 199-206)", async () => {
+    await setupSidebarDeleteScenario()
     // Resume should be gone from sidebar immediately (optimistic removal)
     expect(screen.queryByText("Sidebar Resume")).not.toBeInTheDocument()
     // toast should be called with "Deleted. Undo?"
@@ -302,13 +306,7 @@ describe("EditorPage", () => {
   })
 
   it("handleDeleteFromSidebar undo restores resume (lines 212-217)", async () => {
-    const sidebarResume = buildResume({ id: "sidebar-resume", name: "Sidebar Resume" })
-    useResumeStore.setState({ resumes: [sidebarResume] })
-    mockGetWithResume(buildResume())
-    render(<EditorPage />)
-    await waitFor(() => screen.getByText("Sidebar Resume"))
-    const deleteBtn = screen.getByRole("button", { name: /delete sidebar resume/i })
-    fireEvent.click(deleteBtn)
+    await setupSidebarDeleteScenario()
     expect(screen.queryByText("Sidebar Resume")).not.toBeInTheDocument()
     // The toast was called with "Deleted. Undo?" — call the undo action
     const toastCall = vi.mocked(toast).mock.calls.find((call) => call[0] === "Deleted. Undo?")

@@ -1,8 +1,7 @@
 import React from "react"
 import { ExternalLink } from "lucide-react"
-import { formatMonthYear } from "@/lib/dateUtils"
 import type { ProjectItemDto, ResumeItemDto } from "@/types/api"
-import { SortableItemWrapper, AddItemButton, SectionDndWrapper, EditableField, EditableDateRange, EditableTitleField, EditableDescriptionField } from "./sectionRendererShared"
+import { SortableItemWrapper, AddItemButton, SectionDndWrapper, EditableField, EditableTitleField, EditableDescriptionField, DateRangeDisplay } from "./sectionRendererShared"
 
 interface ProjectsSectionRendererProps {
   readonly items: readonly ProjectItemDto[]
@@ -28,23 +27,13 @@ export default function ProjectsSectionRenderer({
             <div>
               <EditableTitleField itemId={item.id} field="name" value={item.name} onFieldChange={onFieldChange} />
               {(item.startDate != null || item.endDate != null || item.isCurrent) && (
-                <p className="text-muted-foreground italic text-sm">
-                  {onFieldChange ? (
-                    <EditableDateRange
-                      itemId={item.id}
-                      startDate={item.startDate}
-                      endDate={item.endDate}
-                      isCurrent={item.isCurrent}
-                      onFieldChange={onFieldChange}
-                    />
-                  ) : (
-                    <span>{(() => {
-                      const start = formatMonthYear(item.startDate)
-                      const end = !item.isCurrent && item.endDate ? formatMonthYear(item.endDate) : "Present"
-                      return start ? `${start} — ${end}` : end
-                    })()}</span>
-                  )}
-                </p>
+                <DateRangeDisplay
+                  itemId={item.id}
+                  startDate={item.startDate}
+                  endDate={item.endDate}
+                  isCurrent={item.isCurrent}
+                  onFieldChange={onFieldChange}
+                />
               )}
               {item.technologies != null && (
                 <div className="flex flex-wrap gap-1 mt-1">

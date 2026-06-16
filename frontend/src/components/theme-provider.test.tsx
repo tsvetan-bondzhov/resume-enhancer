@@ -29,6 +29,52 @@ function makeMatchMedia(matches: boolean) {
   })
 }
 
+function assertKeydownToggle(
+  localStorageMock: Record<string, string>,
+  initialTheme: string,
+  expectedTheme: string
+) {
+  localStorageMock["theme"] = initialTheme
+  render(
+    <ThemeProvider>
+      <ThemeConsumer />
+    </ThemeProvider>
+  )
+  expect(screen.getByTestId("theme").textContent).toBe(initialTheme)
+  act(() => {
+    globalThis.dispatchEvent(new KeyboardEvent("keydown", { key: "d", bubbles: true }))
+  })
+  expect(screen.getByTestId("theme").textContent).toBe(expectedTheme)
+}
+
+function assertKeydownNoToggle(
+  localStorageMock: Record<string, string>,
+  eventInit: KeyboardEventInit
+) {
+  localStorageMock["theme"] = "dark"
+  render(
+    <ThemeProvider>
+      <ThemeConsumer />
+    </ThemeProvider>
+  )
+  act(() => {
+    globalThis.dispatchEvent(new KeyboardEvent("keydown", eventInit))
+  })
+  expect(screen.getByTestId("theme").textContent).toBe("dark")
+}
+
+function assertStorageEventIgnored(eventInit: StorageEventInit) {
+  render(
+    <ThemeProvider defaultTheme="light">
+      <ThemeConsumer />
+    </ThemeProvider>
+  )
+  act(() => {
+    globalThis.dispatchEvent(new StorageEvent("storage", eventInit))
+  })
+  expect(screen.getByTestId("theme").textContent).toBe("light")
+}
+
 describe("ThemeProvider", () => {
   let localStorageMock: Record<string, string>
 
@@ -219,121 +265,43 @@ describe("ThemeProvider", () => {
   })
 
   it("ignores storage event from a different storageArea", () => {
-    render(
-      <ThemeProvider defaultTheme="light">
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-    act(() => {
-      globalThis.dispatchEvent(
-        new StorageEvent("storage", {
-          storageArea: sessionStorage,
-          key: "theme",
-          newValue: "dark",
-        })
-      )
+    assertStorageEventIgnored({
+      storageArea: sessionStorage,
+      key: "theme",
+      newValue: "dark",
     })
-    expect(screen.getByTestId("theme").textContent).toBe("light")
   })
 
   it("ignores storage event for a different key", () => {
-    render(
-      <ThemeProvider defaultTheme="light">
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-    act(() => {
-      globalThis.dispatchEvent(
-        new StorageEvent("storage", {
-          storageArea: localStorage,
-          key: "other-key",
-          newValue: "dark",
-        })
-      )
+    assertStorageEventIgnored({
+      storageArea: localStorage,
+      key: "other-key",
+      newValue: "dark",
     })
-    expect(screen.getByTestId("theme").textContent).toBe("light")
   })
 
   it("toggles from dark to light on 'd' keydown", () => {
-    localStorageMock["theme"] = "dark"
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-    expect(screen.getByTestId("theme").textContent).toBe("dark")
-
-    act(() => {
-      globalThis.dispatchEvent(new KeyboardEvent("keydown", { key: "d", bubbles: true }))
-    })
-    expect(screen.getByTestId("theme").textContent).toBe("light")
+    assertKeydownToggle(localStorageMock, "dark", "light")
   })
 
   it("toggles from light to dark on 'd' keydown", () => {
-    localStorageMock["theme"] = "light"
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-    expect(screen.getByTestId("theme").textContent).toBe("light")
-
-    act(() => {
-      globalThis.dispatchEvent(new KeyboardEvent("keydown", { key: "d", bubbles: true }))
-    })
-    expect(screen.getByTestId("theme").textContent).toBe("dark")
+    assertKeydownToggle(localStorageMock, "light", "dark")
   })
 
   it("does not toggle on 'd' keydown when repeat is true", () => {
-    localStorageMock["theme"] = "dark"
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-    act(() => {
-      globalThis.dispatchEvent(new KeyboardEvent("keydown", { key: "d", repeat: true }))
-    })
-    expect(screen.getByTestId("theme").textContent).toBe("dark")
+    assertKeydownNoToggle(localStorageMock, { key: "d", repeat: true })
   })
 
   it("does not toggle on 'd' keydown when ctrlKey is held", () => {
-    localStorageMock["theme"] = "dark"
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-    act(() => {
-      globalThis.dispatchEvent(new KeyboardEvent("keydown", { key: "d", ctrlKey: true }))
-    })
-    expect(screen.getByTestId("theme").textContent).toBe("dark")
+    assertKeydownNoToggle(localStorageMock, { key: "d", ctrlKey: true })
   })
 
   it("does not toggle on 'd' keydown when metaKey is held", () => {
-    localStorageMock["theme"] = "dark"
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-    act(() => {
-      globalThis.dispatchEvent(new KeyboardEvent("keydown", { key: "d", metaKey: true }))
-    })
-    expect(screen.getByTestId("theme").textContent).toBe("dark")
+    assertKeydownNoToggle(localStorageMock, { key: "d", metaKey: true })
   })
 
   it("does not toggle on non-d key", () => {
-    localStorageMock["theme"] = "dark"
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-    act(() => {
-      globalThis.dispatchEvent(new KeyboardEvent("keydown", { key: "x" }))
-    })
-    expect(screen.getByTestId("theme").textContent).toBe("dark")
+    assertKeydownNoToggle(localStorageMock, { key: "x" })
   })
 })
 

@@ -1,7 +1,56 @@
+import type { Dispatch, SetStateAction } from "react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+
+// ─── Generic submit helper ─────────────────────────────────────────────────────
+// Runs the standard validateAll → setEntries → hasErrors-guard →
+// buildPayload → onSaveAndContinue sequence shared by every profile step.
+
+export async function runSubmit<TState, TPayload>(
+  validateAll: () => TState[],
+  setEntries: Dispatch<SetStateAction<TState[]>>,
+  hasErrors: (validated: TState[]) => boolean,
+  buildPayload: (validated: TState[]) => TPayload,
+  onSaveAndContinue: (payload: TPayload) => Promise<void>,
+): Promise<void> {
+  const validated = validateAll()
+  setEntries(validated)
+  if (hasErrors(validated)) return
+  await onSaveAndContinue(buildPayload(validated))
+}
+
+// ─── Generic updateField factory ──────────────────────────────────────────────
+// Returns an updateField function that updates a single field on the draft at
+// the given index, and clears the corresponding error for any field listed in
+// `clearableErrorKeys`.  Supports both string and boolean field values.
+
+export function makeUpdateField<
+  TDraft extends { id: string },
+  TErrors extends Partial<Record<keyof Omit<TDraft, "id">, string>>,
+>(
+  setEntries: Dispatch<SetStateAction<Array<{ draft: TDraft; errors: TErrors }>>>,
+  clearableErrorKeys: ReadonlyArray<keyof TErrors>,
+) {
+  return function updateField(
+    index: number,
+    field: keyof Omit<TDraft, "id">,
+    value: string | boolean,
+  ) {
+    setEntries((prev) =>
+      prev.map((entry, i) => {
+        if (i !== index) return entry
+        const newDraft = { ...entry.draft, [field]: value }
+        const newErrors = { ...entry.errors }
+        if (clearableErrorKeys.includes(field)) {
+          delete newErrors[field as keyof TErrors]
+        }
+        return { draft: newDraft, errors: newErrors }
+      }),
+    )
+  }
+}
 
 // ─── Entry card header ─────────────────────────────────────────────────────────
 // Renders the "Entry N" label and the remove (×) button used by every profile step.
@@ -167,6 +216,63 @@ export function RequiredField({
       />
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
+  )
+}
+
+// ─── Date range + current-toggle + Description block ──────────────────────────
+// Combines DateRangeGrid and CurrentToggleAndDescription into one unit.
+// Used by steps that have start/end dates and an "isCurrent" toggle
+// (experience, volunteering, projects).
+
+interface EntryDateRangeAndActivityProps {
+  readonly entryId: string
+  readonly startValue: string
+  readonly endValue: string
+  readonly isCurrent: boolean
+  readonly currentLabel: string
+  readonly descriptionValue: string
+  readonly descriptionPlaceholder: string
+  readonly onStartChange: (v: string) => void
+  readonly onEndChange: (v: string) => void
+  readonly onCurrentChange: (checked: boolean) => void
+  readonly onDescriptionChange: (v: string) => void
+}
+
+export function EntryDateRangeAndActivity({
+  entryId,
+  startValue,
+  endValue,
+  isCurrent,
+  currentLabel,
+  descriptionValue,
+  descriptionPlaceholder,
+  onStartChange,
+  onEndChange,
+  onCurrentChange,
+  onDescriptionChange,
+}: EntryDateRangeAndActivityProps) {
+  return (
+    <>
+      <DateRangeGrid
+        startId={`startDate-${entryId}`}
+        endId={`endDate-${entryId}`}
+        startValue={startValue}
+        endValue={endValue}
+        endDateDisabled={isCurrent}
+        onStartChange={onStartChange}
+        onEndChange={onEndChange}
+      />
+
+      <CurrentToggleAndDescription
+        entryId={entryId}
+        isCurrentChecked={isCurrent}
+        currentLabel={currentLabel}
+        descriptionValue={descriptionValue}
+        descriptionPlaceholder={descriptionPlaceholder}
+        onCurrentChange={onCurrentChange}
+        onDescriptionChange={onDescriptionChange}
+      />
+    </>
   )
 }
 

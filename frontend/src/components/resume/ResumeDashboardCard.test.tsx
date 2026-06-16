@@ -86,8 +86,7 @@ describe("ResumeDashboardCard", () => {
     expect(outerWrapper?.classList.contains("pointer-events-none")).toBe(false)
   })
 
-  // Line 31: onKeyDown — pressing Enter triggers onOpen
-  it("pressing Enter on the card triggers onOpen", async () => {
+  async function pressKeyOnCard(key: string) {
     const user = userEvent.setup()
     const onOpen = vi.fn()
     const { container } = render(
@@ -98,28 +97,21 @@ describe("ResumeDashboardCard", () => {
         onDelete={vi.fn()}
       />,
     )
-    // The outermost role="button" div
     const outerCard = container.querySelector("[role='button'][tabindex='0']") as HTMLElement
     outerCard.focus()
-    await user.keyboard("{Enter}")
+    await user.keyboard(key)
+    return { onOpen }
+  }
+
+  // Line 31: onKeyDown — pressing Enter triggers onOpen
+  it("pressing Enter on the card triggers onOpen", async () => {
+    const { onOpen } = await pressKeyOnCard("{Enter}")
     expect(onOpen).toHaveBeenCalled()
   })
 
   // Line 31: onKeyDown — pressing Space triggers onOpen
   it("pressing Space on the card triggers onOpen", async () => {
-    const user = userEvent.setup()
-    const onOpen = vi.fn()
-    const { container } = render(
-      <ResumeDashboardCard
-        resume={buildResume()}
-        onOpen={onOpen}
-        onDuplicate={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    )
-    const outerCard = container.querySelector("[role='button'][tabindex='0']") as HTMLElement
-    outerCard.focus()
-    await user.keyboard(" ")
+    const { onOpen } = await pressKeyOnCard(" ")
     expect(onOpen).toHaveBeenCalled()
   })
 
@@ -135,19 +127,7 @@ describe("ResumeDashboardCard", () => {
 
   // Line 31: onKeyDown — pressing an unrelated key does NOT trigger onOpen
   it("pressing other keys on the card does not trigger onOpen", async () => {
-    const user = userEvent.setup()
-    const onOpen = vi.fn()
-    const { container } = render(
-      <ResumeDashboardCard
-        resume={buildResume()}
-        onOpen={onOpen}
-        onDuplicate={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    )
-    const outerCard = container.querySelector("[role='button'][tabindex='0']") as HTMLElement
-    outerCard.focus()
-    await user.keyboard("{Escape}")
+    const { onOpen } = await pressKeyOnCard("{Escape}")
     expect(onOpen).not.toHaveBeenCalled()
   })
 

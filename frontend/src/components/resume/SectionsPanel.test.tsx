@@ -117,14 +117,20 @@ describe("SectionsPanel", () => {
     expect(toggleSectionVisibility).toHaveBeenCalledWith("WORK_EXPERIENCE")
   })
 
+  // ── Reorder helpers ───────────────────────────────────────────────────────
+
+  function renderWithReorder() {
+    const reorderSections = vi.fn()
+    useResumeStore.setState({ reorderSections } as never)
+    render(<SectionsPanel sections={defaultSections} />)
+    fireEvent.click(screen.getByLabelText("Toggle sections panel"))
+    return { reorderSections }
+  }
+
   // ── Move up ───────────────────────────────────────────────────────────────
 
   it("calls reorderSections with new order when Move Up is clicked", () => {
-    const reorderSections = vi.fn()
-    useResumeStore.setState({ reorderSections } as never)
-
-    render(<SectionsPanel sections={defaultSections} />)
-    fireEvent.click(screen.getByLabelText("Toggle sections panel"))
+    const { reorderSections } = renderWithReorder()
 
     // Move "Education" (index 1) up → should swap with "Work Experience" (index 0)
     fireEvent.click(screen.getByLabelText("Move Education up"))
@@ -135,11 +141,7 @@ describe("SectionsPanel", () => {
   })
 
   it("does not call reorderSections when Move Up is clicked for the first section", () => {
-    const reorderSections = vi.fn()
-    useResumeStore.setState({ reorderSections } as never)
-
-    render(<SectionsPanel sections={defaultSections} />)
-    fireEvent.click(screen.getByLabelText("Toggle sections panel"))
+    const { reorderSections } = renderWithReorder()
 
     // "Work Experience" is at index 0 — moving it up is a no-op
     fireEvent.click(screen.getByLabelText("Move Work Experience up"))
@@ -149,11 +151,7 @@ describe("SectionsPanel", () => {
   // ── Move down ─────────────────────────────────────────────────────────────
 
   it("calls reorderSections with new order when Move Down is clicked", () => {
-    const reorderSections = vi.fn()
-    useResumeStore.setState({ reorderSections } as never)
-
-    render(<SectionsPanel sections={defaultSections} />)
-    fireEvent.click(screen.getByLabelText("Toggle sections panel"))
+    const { reorderSections } = renderWithReorder()
 
     // Move "Work Experience" (index 0) down → should swap with "Education" (index 1)
     fireEvent.click(screen.getByLabelText("Move Work Experience down"))
@@ -164,11 +162,7 @@ describe("SectionsPanel", () => {
   })
 
   it("does not call reorderSections when Move Down is clicked for the last section", () => {
-    const reorderSections = vi.fn()
-    useResumeStore.setState({ reorderSections } as never)
-
-    render(<SectionsPanel sections={defaultSections} />)
-    fireEvent.click(screen.getByLabelText("Toggle sections panel"))
+    const { reorderSections } = renderWithReorder()
 
     // "Skills" is the last section (index 2) — moving it down is a no-op
     fireEvent.click(screen.getByLabelText("Move Skills down"))
@@ -178,11 +172,7 @@ describe("SectionsPanel", () => {
   // ── Keyboard reorder (ArrowUp / ArrowDown) ────────────────────────────────
 
   it("moves section up on ArrowUp keydown on the move-up button", () => {
-    const reorderSections = vi.fn()
-    useResumeStore.setState({ reorderSections } as never)
-
-    render(<SectionsPanel sections={defaultSections} />)
-    fireEvent.click(screen.getByLabelText("Toggle sections panel"))
+    const { reorderSections } = renderWithReorder()
 
     const moveUpBtn = screen.getByLabelText("Move Education up")
     fireEvent.keyDown(moveUpBtn, { key: "ArrowUp" })
@@ -190,11 +180,7 @@ describe("SectionsPanel", () => {
   })
 
   it("moves section down on ArrowDown keydown on the move-down button", () => {
-    const reorderSections = vi.fn()
-    useResumeStore.setState({ reorderSections } as never)
-
-    render(<SectionsPanel sections={defaultSections} />)
-    fireEvent.click(screen.getByLabelText("Toggle sections panel"))
+    const { reorderSections } = renderWithReorder()
 
     const moveDownBtn = screen.getByLabelText("Move Work Experience down")
     fireEvent.keyDown(moveDownBtn, { key: "ArrowDown" })
@@ -202,11 +188,7 @@ describe("SectionsPanel", () => {
   })
 
   it("does not move on unrelated key press on the move-up button", () => {
-    const reorderSections = vi.fn()
-    useResumeStore.setState({ reorderSections } as never)
-
-    render(<SectionsPanel sections={defaultSections} />)
-    fireEvent.click(screen.getByLabelText("Toggle sections panel"))
+    const { reorderSections } = renderWithReorder()
 
     const moveUpBtn = screen.getByLabelText("Move Education up")
     fireEvent.keyDown(moveUpBtn, { key: "Enter" })
