@@ -148,7 +148,7 @@ describe("ProfilePage — clickable step navigation (AC1)", () => {
     setProfileStoreLoaded(0)
   })
 
-  it("clicking step label at index 3 (Certifications) sets currentStep to 3", async () => {
+  it("clicking step label at index 4 (Certifications) sets currentStep to 4", async () => {
     const user = userEvent.setup()
 
     render(
@@ -162,7 +162,7 @@ describe("ProfilePage — clickable step navigation (AC1)", () => {
     await user.click(certStep)
 
     await waitFor(() => {
-      expect(useProfileStore.getState().currentStep).toBe(3)
+      expect(useProfileStore.getState().currentStep).toBe(4)
     })
   })
 })
