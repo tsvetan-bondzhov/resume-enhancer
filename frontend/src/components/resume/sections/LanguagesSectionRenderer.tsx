@@ -1,6 +1,6 @@
 import React from "react"
 import type { LanguageItemDto, ResumeItemDto } from "@/types/api"
-import { SortableItemWrapper, AddItemButton, SectionDndWrapper } from "./sectionRendererShared"
+import { SortableItemWrapper, AddItemButton, SectionDndWrapper, EditableField } from "./sectionRendererShared"
 
 interface LanguagesSectionRendererProps {
   readonly items: readonly LanguageItemDto[]
@@ -24,53 +24,33 @@ export default function LanguagesSectionRenderer({
         <React.Fragment key={item.id}>
           <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
             <div className="flex items-center gap-2 text-sm">
-              {item.language != null && (
+              {(item.language != null || onFieldChange) && (
                 <>
                   {onFieldChange ? (
-                    <span
-                      role="textbox"
-                      tabIndex={0}
-                      contentEditable
-                      suppressContentEditableWarning
-                      onBlur={(e) =>
-                        onFieldChange(item.id, "language", e.currentTarget.textContent ?? "")
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                          e.preventDefault()
-                        }
-                      }}
-                      className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
-                      aria-label="Edit language"
-                    >
-                      {item.language}
-                    </span>
+                    <EditableField
+                      itemId={item.id}
+                      field="language"
+                      value={item.language}
+                      onFieldChange={onFieldChange}
+                      placeholder="Click to add language"
+                      ariaLabel="Edit language"
+                    />
                   ) : (
                     <span>{item.language}</span>
                   )}
                 </>
               )}
-              {item.proficiency != null && (
+              {(item.proficiency != null || onFieldChange) && (
                 <span className="inline-block bg-zinc-100 text-zinc-600 text-xs px-2 py-0.5 rounded-full">
                   {onFieldChange ? (
-                    <span
-                      role="textbox"
-                      tabIndex={0}
-                      contentEditable
-                      suppressContentEditableWarning
-                      onBlur={(e) =>
-                        onFieldChange(item.id, "proficiency", e.currentTarget.textContent ?? "")
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                          e.preventDefault()
-                        }
-                      }}
-                      className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
-                      aria-label="Edit proficiency"
-                    >
-                      {item.proficiency}
-                    </span>
+                    <EditableField
+                      itemId={item.id}
+                      field="proficiency"
+                      value={item.proficiency}
+                      onFieldChange={onFieldChange}
+                      placeholder="Proficiency"
+                      ariaLabel="Edit proficiency"
+                    />
                   ) : (
                     item.proficiency
                   )}

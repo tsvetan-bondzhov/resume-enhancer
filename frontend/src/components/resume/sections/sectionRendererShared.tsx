@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useRef } from "react"
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
@@ -15,6 +15,7 @@ interface EditableFieldProps {
   readonly onFieldChange: (itemId: string, field: string, value: string) => void
   readonly className?: string
   readonly ariaLabel?: string
+  readonly placeholder?: string
 }
 
 export function EditableField({
@@ -24,23 +25,49 @@ export function EditableField({
   onFieldChange,
   className = "outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block",
   ariaLabel,
+  placeholder,
 }: EditableFieldProps) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const isEmpty = !value
+
+  const handleFocus = () => {
+    // Clear placeholder text so user starts with a blank field
+    if (ref.current && ref.current.textContent === placeholder) {
+      ref.current.textContent = ""
+      ref.current.classList.remove("text-gray-300", "italic")
+    }
+  }
+
+  const handleBlur = (e: React.FocusEvent<HTMLSpanElement>) => {
+    const text = e.currentTarget.textContent ?? ""
+    onFieldChange(itemId, field, text)
+    // Restore placeholder if user left the field empty
+    if (!text && placeholder && ref.current) {
+      ref.current.textContent = placeholder
+      ref.current.classList.add("text-gray-300", "italic")
+    }
+  }
+
+  const showPlaceholder = isEmpty && !!placeholder
+
   return (
     <span
+      ref={ref}
       role="textbox"
       tabIndex={0}
       contentEditable
       suppressContentEditableWarning
-      onBlur={(e) => onFieldChange(itemId, field, e.currentTarget.textContent ?? "")}
+      onFocus={showPlaceholder ? handleFocus : undefined}
+      onBlur={handleBlur}
       onKeyDown={(e) => {
         if (e.key === "Enter" && !e.nativeEvent.isComposing) {
           e.preventDefault()
         }
       }}
-      className={className}
+      className={showPlaceholder ? `${className} text-gray-300 italic` : className}
       aria-label={ariaLabel ?? `Edit ${field}`}
     >
-      {value ?? ""}
+      {showPlaceholder ? placeholder : (value ?? "")}
     </span>
   )
 }
@@ -68,6 +95,7 @@ export function EditableDateRange({
         value={startDate}
         onFieldChange={onFieldChange}
         ariaLabel="Edit startDate"
+        placeholder="Start date"
       />
       {" — "}
       <EditableField
@@ -76,6 +104,7 @@ export function EditableDateRange({
         value={isCurrent ? "Present" : endDate}
         onFieldChange={onFieldChange}
         ariaLabel="Edit endDate"
+        placeholder="End date"
       />
     </>
   )
@@ -219,14 +248,16 @@ interface EditableTitleFieldProps {
   readonly field: string
   readonly value: string | null
   readonly onFieldChange?: (itemId: string, field: string, value: string) => void
+  readonly placeholder?: string
 }
 
-export function EditableTitleField({ itemId, field, value, onFieldChange }: EditableTitleFieldProps) {
-  if (value == null) return null
+export function EditableTitleField({ itemId, field, value, onFieldChange, placeholder }: EditableTitleFieldProps) {
+  // In read-only mode: skip null values entirely
+  if (!onFieldChange && value == null) return null
   return (
     <p className="font-semibold text-sm">
       {onFieldChange ? (
-        <EditableField itemId={itemId} field={field} value={value} onFieldChange={onFieldChange} />
+        <EditableField itemId={itemId} field={field} value={value} onFieldChange={onFieldChange} placeholder={placeholder} />
       ) : (
         <span>{value}</span>
       )}
@@ -238,14 +269,16 @@ interface EditableDescriptionFieldProps {
   readonly itemId: string
   readonly value: string | null
   readonly onFieldChange?: (itemId: string, field: string, value: string) => void
+  readonly placeholder?: string
 }
 
-export function EditableDescriptionField({ itemId, value, onFieldChange }: EditableDescriptionFieldProps) {
-  if (value == null) return null
+export function EditableDescriptionField({ itemId, value, onFieldChange, placeholder }: EditableDescriptionFieldProps) {
+  // In read-only mode: skip null values entirely
+  if (!onFieldChange && value == null) return null
   return (
     <p className="text-sm mt-1">
       {onFieldChange ? (
-        <EditableField itemId={itemId} field="description" value={value} onFieldChange={onFieldChange} />
+        <EditableField itemId={itemId} field="description" value={value} onFieldChange={onFieldChange} placeholder={placeholder} />
       ) : (
         <span>{value}</span>
       )}

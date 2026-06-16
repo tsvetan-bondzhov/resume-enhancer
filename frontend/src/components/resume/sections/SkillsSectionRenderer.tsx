@@ -1,6 +1,6 @@
 import React from "react"
 import type { SkillItemDto, ResumeItemDto } from "@/types/api"
-import { SortableItemWrapper, AddItemButton, SectionDndWrapper } from "./sectionRendererShared"
+import { SortableItemWrapper, AddItemButton, SectionDndWrapper, EditableField } from "./sectionRendererShared"
 
 interface SkillsSectionRendererProps {
   readonly items: readonly SkillItemDto[]
@@ -20,8 +20,10 @@ export default function SkillsSectionRenderer({
   const content = (
     <div className="flex flex-wrap gap-1 group/section">
       {onAddItem && <AddItemButton onClick={() => onAddItem(0)} />}
-      {items.map((item, index) =>
-        item.name == null ? null : (
+      {items.map((item, index) => {
+        // In read-only mode skip items with no name; in editor mode always render
+        if (item.name == null && !onFieldChange) return null
+        return (
           <React.Fragment key={item.id}>
             <SortableItemWrapper
               id={item.id}
@@ -32,24 +34,15 @@ export default function SkillsSectionRenderer({
             >
               <span className="inline-block bg-zinc-100 text-zinc-700 text-xs px-2 py-0.5 rounded-sm">
                 {onFieldChange ? (
-                  <span
-                    role="textbox"
-                    tabIndex={0}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onBlur={(e) =>
-                      onFieldChange(item.id, "name", e.currentTarget.textContent ?? "")
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                        e.preventDefault()
-                      }
-                    }}
+                  <EditableField
+                    itemId={item.id}
+                    field="name"
+                    value={item.name}
+                    onFieldChange={onFieldChange}
+                    placeholder="Click to add skill"
                     className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block"
-                    aria-label="Edit name"
-                  >
-                    {item.name}
-                  </span>
+                    ariaLabel="Edit name"
+                  />
                 ) : (
                   item.name
                 )}
@@ -58,7 +51,7 @@ export default function SkillsSectionRenderer({
             {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} />}
           </React.Fragment>
         )
-      )}
+      })}
     </div>
   )
 

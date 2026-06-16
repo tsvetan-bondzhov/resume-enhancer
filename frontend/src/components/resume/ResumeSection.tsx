@@ -1,3 +1,4 @@
+import React, { useRef } from "react"
 import type { ResumeSectionDto, ResumeItemDto } from "@/types/api"
 import WorkExperienceSectionRenderer from "@/components/resume/sections/WorkExperienceSectionRenderer"
 import EducationSectionRenderer from "@/components/resume/sections/EducationSectionRenderer"
@@ -150,6 +151,8 @@ function renderSectionContent(
   }
 }
 
+const SECTION_TITLE_PLACEHOLDER = "Click to add section title"
+
 export default function ResumeSection({
   section,
   onTitleChange,
@@ -158,18 +161,39 @@ export default function ResumeSection({
   onDeleteItem,
   onReorderItems,
 }: ResumeSectionProps) {
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const isTitleEmpty = !section.title
+
+  const handleTitleFocus = () => {
+    if (titleRef.current?.textContent === SECTION_TITLE_PLACEHOLDER) {
+      titleRef.current.textContent = ""
+      titleRef.current.classList.remove("text-gray-300", "italic")
+    }
+  }
+
+  const handleTitleBlur = (e: React.FocusEvent<HTMLHeadingElement>) => {
+    const text = e.currentTarget.textContent ?? ""
+    onTitleChange?.(text)
+    if (!text && titleRef.current) {
+      titleRef.current.textContent = SECTION_TITLE_PLACEHOLDER
+      titleRef.current.classList.add("text-gray-300", "italic")
+    }
+  }
+
   return (
     <section aria-labelledby={`section-title-${section.sectionType}`} className="mb-6">
       {onTitleChange ? (
         <h2
+          ref={titleRef}
           id={`section-title-${section.sectionType}`}
           contentEditable
           suppressContentEditableWarning
-          onBlur={(e) => onTitleChange(e.currentTarget.textContent ?? "")}
-          className="text-base font-semibold border-b-2 border-[var(--accent-color,theme(colors.zinc.200))] pb-1 mb-2 uppercase tracking-wide outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text"
+          onFocus={isTitleEmpty ? handleTitleFocus : undefined}
+          onBlur={handleTitleBlur}
+          className={`text-base font-semibold border-b-2 border-[var(--accent-color,theme(colors.zinc.200))] pb-1 mb-2 uppercase tracking-wide outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text${isTitleEmpty ? " text-gray-300 italic" : ""}`}
           aria-label={`Edit section title: ${section.title}`}
         >
-          {section.title}
+          {isTitleEmpty ? SECTION_TITLE_PLACEHOLDER : section.title}
         </h2>
       ) : (
         <h2

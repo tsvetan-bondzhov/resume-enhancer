@@ -24,11 +24,11 @@ export default function WorkExperienceSectionRenderer({
         <React.Fragment key={item.id}>
           <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
             <div>
-              <EditableTitleField itemId={item.id} field="jobTitle" value={item.jobTitle} onFieldChange={onFieldChange} />
-              {(item.company != null || item.startDate != null || item.endDate != null || item.isCurrent) && (
+              <EditableTitleField itemId={item.id} field="jobTitle" value={item.jobTitle} onFieldChange={onFieldChange} placeholder="Click to add job title" />
+              {(item.company != null || item.startDate != null || item.endDate != null || item.isCurrent || onFieldChange) && (
                 <p className="text-muted-foreground italic text-sm">
                   {onFieldChange ? (
-                    <EditableField itemId={item.id} field="company" value={item.company} onFieldChange={onFieldChange} />
+                    <EditableField itemId={item.id} field="company" value={item.company} onFieldChange={onFieldChange} placeholder="Click to add company" />
                   ) : (
                     <span>{item.company}</span>
                   )}
@@ -42,7 +42,7 @@ export default function WorkExperienceSectionRenderer({
                   />
                 </p>
               )}
-              <EditableDescriptionField itemId={item.id} value={item.description} onFieldChange={onFieldChange} />
+              <EditableDescriptionField itemId={item.id} value={item.description} onFieldChange={onFieldChange} placeholder="Click to add description" />
             </div>
           </SortableItemWrapper>
           {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} />}

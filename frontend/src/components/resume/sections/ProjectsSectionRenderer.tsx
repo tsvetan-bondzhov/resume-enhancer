@@ -25,7 +25,7 @@ export default function ProjectsSectionRenderer({
         <React.Fragment key={item.id}>
           <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
             <div>
-              <EditableTitleField itemId={item.id} field="name" value={item.name} onFieldChange={onFieldChange} />
+              <EditableTitleField itemId={item.id} field="name" value={item.name} onFieldChange={onFieldChange} placeholder="Click to add project name" />
               {(item.startDate != null || item.endDate != null || item.isCurrent) && (
                 <DateRangeDisplay
                   itemId={item.id}
@@ -35,7 +35,7 @@ export default function ProjectsSectionRenderer({
                   onFieldChange={onFieldChange}
                 />
               )}
-              {item.technologies != null && (
+              {(item.technologies != null || onFieldChange) && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {onFieldChange ? (
                     <EditableField
@@ -43,10 +43,11 @@ export default function ProjectsSectionRenderer({
                       field="technologies"
                       value={item.technologies}
                       onFieldChange={onFieldChange}
+                      placeholder="Click to add technologies (comma-separated)"
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block text-xs text-muted-foreground"
                     />
                   ) : (
-                    item.technologies.split(",").map((tech) => tech.trim()).filter(Boolean).map((tech) => (
+                    item.technologies!.split(",").map((tech) => tech.trim()).filter(Boolean).map((tech) => (
                       <span
                         key={tech}
                         className="inline-block bg-zinc-100 text-zinc-700 text-xs px-2 py-0.5 rounded-sm"
@@ -57,8 +58,8 @@ export default function ProjectsSectionRenderer({
                   )}
                 </div>
               )}
-              <EditableDescriptionField itemId={item.id} value={item.description} onFieldChange={onFieldChange} />
-              {item.link != null && (
+              <EditableDescriptionField itemId={item.id} value={item.description} onFieldChange={onFieldChange} placeholder="Click to add description" />
+              {(item.link != null || onFieldChange) && (
                 <div className="mt-1">
                   {onFieldChange ? (
                     <EditableField
@@ -66,11 +67,12 @@ export default function ProjectsSectionRenderer({
                       field="link"
                       value={item.link}
                       onFieldChange={onFieldChange}
+                      placeholder="Click to add link"
                       className="outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text inline-block text-xs text-primary"
                     />
                   ) : (
                     <a
-                      href={item.link}
+                      href={item.link!}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs text-primary"

@@ -24,20 +24,20 @@ export default function CertificationsSectionRenderer({
         <React.Fragment key={item.id}>
           <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
             <div className="text-sm">
-              {item.name != null && (
+              {(item.name != null || onFieldChange) && (
                 <p className="font-medium">
                   {onFieldChange ? (
-                    <EditableField itemId={item.id} field="name" value={item.name} onFieldChange={onFieldChange} />
+                    <EditableField itemId={item.id} field="name" value={item.name} onFieldChange={onFieldChange} placeholder="Click to add certification name" />
                   ) : (
                     <span>{item.name}</span>
                   )}
                 </p>
               )}
               <p className="text-muted-foreground text-xs">
-                {item.issuer != null && (
+                {(item.issuer != null || onFieldChange) && (
                   <>
                     {onFieldChange ? (
-                      <EditableField itemId={item.id} field="issuer" value={item.issuer} onFieldChange={onFieldChange} />
+                      <EditableField itemId={item.id} field="issuer" value={item.issuer} onFieldChange={onFieldChange} placeholder="Click to add issuer" />
                     ) : (
                       <span>{item.issuer}</span>
                     )}
@@ -45,13 +45,13 @@ export default function CertificationsSectionRenderer({
                   </>
                 )}
                 {onFieldChange ? (
-                  <EditableField itemId={item.id} field="issueDate" value={item.issueDate} onFieldChange={onFieldChange} />
+                  <EditableField itemId={item.id} field="issueDate" value={item.issueDate} onFieldChange={onFieldChange} placeholder="Issue date" />
                 ) : (
                   item.issueDate != null && <span>{item.issueDate}</span>
                 )}
                 {(item.expirationDate != null || onFieldChange) && " — "}
                 {onFieldChange ? (
-                  <EditableField itemId={item.id} field="expirationDate" value={item.expirationDate} onFieldChange={onFieldChange} />
+                  <EditableField itemId={item.id} field="expirationDate" value={item.expirationDate} onFieldChange={onFieldChange} placeholder="Expiration date" />
                 ) : (
                   item.expirationDate != null && <span>{item.expirationDate}</span>
                 )}
