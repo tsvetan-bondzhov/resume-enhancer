@@ -163,7 +163,7 @@ export function createHandleDragEnd<T extends { id: string }>(
     const oldIndex = items.findIndex((i) => i.id === active.id)
     const newIndex = items.findIndex((i) => i.id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
-    onReorderItems(arrayMove([...items], oldIndex, newIndex))
+    onReorderItems(arrayMove([...items], oldIndex, newIndex) as unknown as ResumeItemDto[])
   }
 }
 

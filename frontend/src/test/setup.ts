@@ -8,7 +8,7 @@ import "@testing-library/jest-dom"
 
 export interface ResizeObserverStubInstance {
   callback: ResizeObserverCallback
-  observe(): void
+  observe(target: Element): void
   unobserve(): void
   disconnect(): void
 }

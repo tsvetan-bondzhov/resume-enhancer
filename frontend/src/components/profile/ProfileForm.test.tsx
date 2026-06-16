@@ -4,7 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { MemoryRouter } from "react-router-dom"
 import { useProfileStore } from "@/stores/useProfileStore"
-import type { ProfileUpdateRequest } from "@/types/api"
+import type { ProfileUpdateRequest, ProfileDto } from "@/types/api"
 import ExperienceStep from "./ExperienceStep"
 import EducationStep from "./EducationStep"
 import SkillsStep from "./SkillsStep"
@@ -17,7 +17,7 @@ import VolunteeringStep from "./VolunteeringStep"
 // ── Test helpers ────────────────────────────────────────────────────────────
 
 async function testAddAnotherAppendsEntry(
-  Component: React.ComponentType<{ onSaveAndContinue: ReturnType<typeof vi.fn> }>,
+  Component: React.ComponentType<{ onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void> }>,
   placeholder: string,
 ) {
   const user = userEvent.setup()
@@ -38,7 +38,7 @@ async function testAddAnotherAppendsEntry(
 }
 
 async function testEmptySubmitDoesNotCall(
-  Component: React.ComponentType<{ onSaveAndContinue: ReturnType<typeof vi.fn> }>,
+  Component: React.ComponentType<{ onSaveAndContinue: (partial: Partial<ProfileUpdateRequest>) => Promise<void> }>,
   errorText: string,
   beforeSubmit?: (user: ReturnType<typeof userEvent.setup>) => Promise<void>,
 ) {
@@ -68,6 +68,12 @@ vi.mock("@/lib/apiClient", () => ({
   apiClient: {
     put: vi.fn().mockResolvedValue({
       summary: null,
+      linkedInUrl: null,
+      personalPageUrl: null,
+      blogUrl: null,
+      contactEmail: null,
+      locationCountry: null,
+      locationCity: null,
       workExperiences: [],
       education: [],
       skills: [],
@@ -78,6 +84,12 @@ vi.mock("@/lib/apiClient", () => ({
     }),
     get: vi.fn().mockResolvedValue({
       summary: null,
+      linkedInUrl: null,
+      personalPageUrl: null,
+      blogUrl: null,
+      contactEmail: null,
+      locationCountry: null,
+      locationCity: null,
       workExperiences: [],
       education: [],
       skills: [],
@@ -111,6 +123,12 @@ function resetProfileStore() {
   useProfileStore.setState({
     profile: {
       summary: null,
+      linkedInUrl: null,
+      personalPageUrl: null,
+      blogUrl: null,
+      contactEmail: null,
+      locationCountry: null,
+      locationCity: null,
       workExperiences: [],
       education: [],
       skills: [],
@@ -118,7 +136,7 @@ function resetProfileStore() {
       languages: [],
       projects: [],
       volunteering: [],
-    },
+    } satisfies ProfileDto,
     isSaving: false,
     isLoading: false,
     error: null,

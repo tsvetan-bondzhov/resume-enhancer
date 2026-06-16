@@ -307,6 +307,12 @@ describe("ResumeSection", () => {
       type: "SUMMARY",
       id: "summary-1",
       text: "A brief professional summary.",
+      linkedInUrl: null,
+      personalPageUrl: null,
+      blogUrl: null,
+      contactEmail: null,
+      locationCountry: null,
+      locationCity: null,
     }
     const section: ResumeSectionDto = {
       sectionType: "SUMMARY",

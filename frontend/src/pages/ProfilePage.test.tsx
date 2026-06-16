@@ -10,6 +10,12 @@ import type { ProfileDto, ProfileUpdateRequest } from "@/types/api"
 // Mock apiClient — GET returns a non-empty profile so the stepper renders
 const mockProfile: ProfileDto = {
   summary: "Experienced developer",
+  linkedInUrl: null,
+  personalPageUrl: null,
+  blogUrl: null,
+  contactEmail: null,
+  locationCountry: null,
+  locationCity: null,
   workExperiences: [
     {
       jobTitle: "Software Engineer",
@@ -32,6 +38,12 @@ vi.mock("@/lib/apiClient", () => ({
   apiClient: {
     get: vi.fn().mockResolvedValue({
       summary: "Experienced developer",
+      linkedInUrl: null,
+      personalPageUrl: null,
+      blogUrl: null,
+      contactEmail: null,
+      locationCountry: null,
+      locationCity: null,
       workExperiences: [
         {
           jobTitle: "Software Engineer",
@@ -51,6 +63,12 @@ vi.mock("@/lib/apiClient", () => ({
     }),
     put: vi.fn().mockResolvedValue({
       summary: "Experienced developer",
+      linkedInUrl: null,
+      personalPageUrl: null,
+      blogUrl: null,
+      contactEmail: null,
+      locationCountry: null,
+      locationCity: null,
       workExperiences: [
         {
           jobTitle: "Software Engineer",
@@ -196,7 +214,7 @@ describe("ExperienceStep — delete button on first item (AC4)", () => {
   })
 
   it("the first item (index 0) has a delete button with aria-label 'Remove entry 1'", () => {
-    const onSaveAndContinue = vi.fn<[Partial<ProfileUpdateRequest>], Promise<void>>()
+    const onSaveAndContinue = vi.fn<(partial: Partial<ProfileUpdateRequest>) => Promise<void>>()
 
     render(<ExperienceStep onSaveAndContinue={onSaveAndContinue} />)
 
