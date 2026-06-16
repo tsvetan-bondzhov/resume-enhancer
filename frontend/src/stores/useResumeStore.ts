@@ -9,6 +9,9 @@ interface ResumeState {
   isSaving: boolean
   isExporting: boolean
   setResumes: (resumes: ResumeDto[]) => void
+  addResume: (resume: ResumeDto) => void
+  removeResume: (id: string) => void
+  syncCurrentResumeName: () => void
   setCurrentResume: (resume: ResumeDto | null) => void
   setLastSavedDocument: (doc: ResumeDocumentDto | null) => void
   setSaving: (isSaving: boolean) => void
@@ -69,6 +72,27 @@ export const useResumeStore = create<ResumeState>((set) => ({
   isSaving: false,
   isExporting: false,
   setResumes: (resumes) => set((state) => ({ ...state, resumes })),
+  addResume: (resume) =>
+    set((state) => ({
+      ...state,
+      resumes: state.resumes.some((r) => r.id === resume.id)
+        ? state.resumes
+        : [resume, ...state.resumes],
+    })),
+  removeResume: (id) =>
+    set((state) => ({
+      ...state,
+      resumes: state.resumes.filter((r) => r.id !== id),
+    })),
+  syncCurrentResumeName: () =>
+    set((state) => {
+      if (!state.currentResume) return state
+      const { id, name } = state.currentResume
+      return {
+        ...state,
+        resumes: state.resumes.map((r) => (r.id === id ? { ...r, name } : r)),
+      }
+    }),
   setCurrentResume: (resume) =>
     set((state) => ({ ...state, currentResume: resume })),
   setLastSavedDocument: (doc) => set((state) => ({ ...state, lastSavedDocument: doc })),

@@ -21,11 +21,13 @@ function restoreResume(prev: ResumeDto[], resume: ResumeDto): ResumeDto[] {
 async function executeDeleteResume(
   resume: ResumeDto,
   pendingDeletes: Map<string, ReturnType<typeof setTimeout>>,
-  setSidebarResumes: React.Dispatch<React.SetStateAction<ResumeDto[]>>
+  setSidebarResumes: React.Dispatch<React.SetStateAction<ResumeDto[]>>,
+  removeResume: (id: string) => void
 ): Promise<void> {
   pendingDeletes.delete(resume.id)
   try {
     await apiClient.delete(`/api/v1/resumes/${resume.id}`)
+    removeResume(resume.id)
   } catch {
     setSidebarResumes((prev) => {
       if (prev.some((r) => r.id === resume.id)) return prev
@@ -58,10 +60,18 @@ export default function EditorPage() {
   const deleteItem = useResumeStore((state) => state.deleteItem)
   const reorderItems = useResumeStore((state) => state.reorderItems)
   const resumes = useResumeStore((state) => state.resumes)
+  const addResume = useResumeStore((state) => state.addResume)
+  const removeResume = useResumeStore((state) => state.removeResume)
+  const syncCurrentResumeName = useResumeStore((state) => state.syncCurrentResumeName)
 
   const [sidebarResumes, setSidebarResumes] = useState<ResumeDto[]>(() => resumes)
   const [duplicatingSidebarId, setDuplicatingSidebarId] = useState<string | null>(null)
   const pendingSidebarDeletes = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  // Keep sidebar in sync with the Zustand resumes list (updated by add/remove/sync actions)
+  useEffect(() => {
+    setSidebarResumes(resumes)
+  }, [resumes])
 
   const currentTemplateId = useResumeStore((state) => state.currentResume?.templateId ?? null)
 
@@ -127,9 +137,10 @@ export default function EditorPage() {
   const handleNameChange = useCallback(
     (name: string) => {
       updateResumeName(name)
+      syncCurrentResumeName()
       // useAutosave will pick up the currentResume change and debounce the PUT
     },
-    [updateResumeName]
+    [updateResumeName, syncCurrentResumeName]
   )
 
   const handleSaveAs = useCallback(
@@ -141,6 +152,7 @@ export default function EditorPage() {
           `/api/v1/resumes/${id}/clone`,
           { name }
         )
+        addResume(newResume)
         setIsSaveAsOpen(false)
         toast.success(`Resume saved as '${name}'`)
         navigate(`/resumes/${newResume.id}`)
@@ -150,7 +162,7 @@ export default function EditorPage() {
         setIsSavingAs(false)
       }
     },
-    [id, navigate]
+    [id, navigate, addResume]
   )
 
   const handleApplyTemplate = useCallback(
@@ -185,27 +197,37 @@ export default function EditorPage() {
         `/api/v1/resumes/${resume.id}/clone`,
         { name: `${resume.name} (copy)` },
       )
-      setSidebarResumes((prev) => [newResume, ...prev])
+      addResume(newResume)
       toast.success("Resume duplicated")
     } catch {
       toast.error("Failed to duplicate resume")
     } finally {
       setDuplicatingSidebarId(null)
     }
-  }, [])
+  }, [addResume])
 
   const handleDeleteFromSidebar = useCallback((resume: ResumeDto) => {
     // 1. Remove from sidebar list immediately (optimistic)
     setSidebarResumes((prev) => prev.filter((r) => r.id !== resume.id))
 
-    // 2. Schedule actual API delete after 5s
+    // 2. If deleting the currently open resume, navigate away immediately
+    if (resume.id === id) {
+      const remaining = resumes.filter((r) => r.id !== resume.id)
+      if (remaining.length > 0) {
+        navigate(`/resumes/${remaining[0].id}`)
+      } else {
+        navigate("/")
+      }
+    }
+
+    // 3. Schedule actual API delete after 5s
     const timeoutId = setTimeout(async () => {
-      await executeDeleteResume(resume, pendingSidebarDeletes.current, setSidebarResumes)
+      await executeDeleteResume(resume, pendingSidebarDeletes.current, setSidebarResumes, removeResume)
     }, 5000)
 
     pendingSidebarDeletes.current.set(resume.id, timeoutId)
 
-    // 3. Show undo toast
+    // 4. Show undo toast
     toast("Deleted. Undo?", {
       action: {
         label: "Undo",
@@ -218,7 +240,7 @@ export default function EditorPage() {
       },
       duration: 5000,
     })
-  }, [])
+  }, [id, resumes, navigate, removeResume])
 
   return (
     <>
