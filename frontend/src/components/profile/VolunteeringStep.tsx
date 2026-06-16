@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
-import { CurrentToggleAndDescription, DateRangeGrid, EmptyState, EntryCardHeader, RequiredField, StepFooter } from "./profileStepShared"
+import { EntryDateRangeAndActivity, EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit, makeUpdateField } from "./profileStepShared"
 import type { VolunteeringRequest, ProfileUpdateRequest } from "@/types/api"
 
 interface VolunteeringDraft {
@@ -64,23 +64,7 @@ export default function VolunteeringStep({
     }))
   })
 
-  function updateField(
-    index: number,
-    field: keyof Omit<VolunteeringDraft, "id">,
-    value: string | boolean,
-  ) {
-    setEntries((prev) =>
-      prev.map((entry, i) => {
-        if (i !== index) return entry
-        const newDraft = { ...entry.draft, [field]: value }
-        const newErrors = { ...entry.errors }
-        if (field === "role" || field === "organization") {
-          delete newErrors[field]
-        }
-        return { draft: newDraft, errors: newErrors }
-      }),
-    )
-  }
+  const updateField = makeUpdateField<VolunteeringDraft, FieldErrors>(setEntries, ["role", "organization"])
 
   function handleBlur(index: number, field: "role" | "organization") {
     setEntries((prev) =>
@@ -118,23 +102,22 @@ export default function VolunteeringStep({
   }
 
   async function handleSubmit() {
-    const validated = validateAll()
-    setEntries(validated)
-    const hasErrors = validated.some(
-      (e) => e.errors.role || e.errors.organization,
+    await runSubmit(
+      validateAll,
+      setEntries,
+      (validated) => validated.some((e) => e.errors.role || e.errors.organization),
+      (validated) => ({
+        volunteering: validated.map((e): VolunteeringRequest => ({
+          role: e.draft.role,
+          organization: e.draft.organization,
+          description: e.draft.description || null,
+          startDate: e.draft.startDate || null,
+          endDate: e.draft.isCurrent ? null : e.draft.endDate || null,
+          isCurrent: e.draft.isCurrent,
+        })),
+      }),
+      onSaveAndContinue,
     )
-    if (hasErrors) return
-
-    const volunteering: VolunteeringRequest[] = validated.map((e) => ({
-      role: e.draft.role,
-      organization: e.draft.organization,
-      description: e.draft.description || null,
-      startDate: e.draft.startDate || null,
-      endDate: e.draft.isCurrent ? null : e.draft.endDate || null,
-      isCurrent: e.draft.isCurrent,
-    }))
-
-    await onSaveAndContinue({ volunteering })
   }
 
   return (
@@ -173,22 +156,16 @@ export default function VolunteeringStep({
             onBlur={() => handleBlur(index, "organization")}
           />
 
-          <DateRangeGrid
-            startId={`startDate-${entry.draft.id}`}
-            endId={`endDate-${entry.draft.id}`}
+          <EntryDateRangeAndActivity
+            entryId={entry.draft.id}
             startValue={entry.draft.startDate}
             endValue={entry.draft.endDate}
-            endDateDisabled={entry.draft.isCurrent}
-            onStartChange={(v) => updateField(index, "startDate", v)}
-            onEndChange={(v) => updateField(index, "endDate", v)}
-          />
-
-          <CurrentToggleAndDescription
-            entryId={entry.draft.id}
-            isCurrentChecked={entry.draft.isCurrent}
+            isCurrent={entry.draft.isCurrent}
             currentLabel="I currently volunteer here"
             descriptionValue={entry.draft.description}
             descriptionPlaceholder="Describe your volunteering responsibilities and impact..."
+            onStartChange={(v) => updateField(index, "startDate", v)}
+            onEndChange={(v) => updateField(index, "endDate", v)}
             onCurrentChange={(checked) => updateField(index, "isCurrent", checked)}
             onDescriptionChange={(v) => updateField(index, "description", v)}
           />

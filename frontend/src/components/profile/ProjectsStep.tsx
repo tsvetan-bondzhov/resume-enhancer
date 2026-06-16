@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
 import { Input } from "@/components/ui/input"
-import { CurrentToggleAndDescription, DateRangeGrid, EmptyState, EntryCardHeader, RequiredField, StepFooter } from "./profileStepShared"
+import { EntryDateRangeAndActivity, EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit, makeUpdateField } from "./profileStepShared"
 import type { ProjectRequest, ProfileUpdateRequest } from "@/types/api"
 
 interface ProjectDraft {
@@ -65,23 +65,7 @@ export default function ProjectsStep({ onSaveAndContinue }: ProjectsStepProps) {
     }))
   })
 
-  function updateField(
-    index: number,
-    field: keyof Omit<ProjectDraft, "id">,
-    value: string | boolean,
-  ) {
-    setEntries((prev) =>
-      prev.map((entry, i) => {
-        if (i !== index) return entry
-        const newDraft = { ...entry.draft, [field]: value }
-        const newErrors = { ...entry.errors }
-        if (field === "name") {
-          delete newErrors.name
-        }
-        return { draft: newDraft, errors: newErrors }
-      }),
-    )
-  }
+  const updateField = makeUpdateField<ProjectDraft, FieldErrors>(setEntries, ["name"])
 
   function handleBlur(index: number, field: "name") {
     setEntries((prev) =>
@@ -116,22 +100,23 @@ export default function ProjectsStep({ onSaveAndContinue }: ProjectsStepProps) {
   }
 
   async function handleSubmit() {
-    const validated = validateAll()
-    setEntries(validated)
-    const hasErrors = validated.some((e) => e.errors.name)
-    if (hasErrors) return
-
-    const projects: ProjectRequest[] = validated.map((e) => ({
-      name: e.draft.name,
-      description: e.draft.description || null,
-      technologies: e.draft.technologies || null,
-      link: e.draft.link || null,
-      startDate: e.draft.startDate || null,
-      endDate: e.draft.isCurrent ? null : e.draft.endDate || null,
-      isCurrent: e.draft.isCurrent,
-    }))
-
-    await onSaveAndContinue({ projects })
+    await runSubmit(
+      validateAll,
+      setEntries,
+      (validated) => validated.some((e) => e.errors.name),
+      (validated) => ({
+        projects: validated.map((e): ProjectRequest => ({
+          name: e.draft.name,
+          description: e.draft.description || null,
+          technologies: e.draft.technologies || null,
+          link: e.draft.link || null,
+          startDate: e.draft.startDate || null,
+          endDate: e.draft.isCurrent ? null : e.draft.endDate || null,
+          isCurrent: e.draft.isCurrent,
+        })),
+      }),
+      onSaveAndContinue,
+    )
   }
 
   return (
@@ -192,22 +177,16 @@ export default function ProjectsStep({ onSaveAndContinue }: ProjectsStepProps) {
             />
           </div>
 
-          <DateRangeGrid
-            startId={`startDate-${entry.draft.id}`}
-            endId={`endDate-${entry.draft.id}`}
+          <EntryDateRangeAndActivity
+            entryId={entry.draft.id}
             startValue={entry.draft.startDate}
             endValue={entry.draft.endDate}
-            endDateDisabled={entry.draft.isCurrent}
-            onStartChange={(v) => updateField(index, "startDate", v)}
-            onEndChange={(v) => updateField(index, "endDate", v)}
-          />
-
-          <CurrentToggleAndDescription
-            entryId={entry.draft.id}
-            isCurrentChecked={entry.draft.isCurrent}
+            isCurrent={entry.draft.isCurrent}
             currentLabel="This is an ongoing project"
             descriptionValue={entry.draft.description}
             descriptionPlaceholder="Describe the project, your role, and impact..."
+            onStartChange={(v) => updateField(index, "startDate", v)}
+            onEndChange={(v) => updateField(index, "endDate", v)}
             onCurrentChange={(checked) => updateField(index, "isCurrent", checked)}
             onDescriptionChange={(v) => updateField(index, "description", v)}
           />

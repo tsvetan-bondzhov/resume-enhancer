@@ -617,6 +617,121 @@ describe("ProjectsStep", () => {
     expect(capturedPayload.current?.projects).toBeDefined()
     expect(capturedPayload.current?.projects![0].name).toBe("My Portfolio Site")
   })
+
+  it("initialises entries from existing profile projects (lines 53-61)", () => {
+    // Seed the store with pre-existing projects so the else-branch is exercised
+    useProfileStore.setState((s) => ({
+      ...s,
+      profile: {
+        ...s.profile!,
+        projects: [
+          {
+            name: "Seeded Project",
+            description: "Desc",
+            technologies: "React",
+            link: "https://github.com/x",
+            startDate: "2022-01-01",
+            endDate: "2022-12-01",
+            isCurrent: false,
+          },
+        ],
+      },
+    }))
+
+    const onSaveAndContinue = vi.fn()
+    render(<ProjectsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    // The pre-existing project name should appear as the input value
+    const nameInput = screen.getByPlaceholderText("e.g. Resume Enhancer") as HTMLInputElement
+    expect(nameInput.value).toBe("Seeded Project")
+  })
+
+  it("removes an entry when the remove button is clicked (line 107)", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<ProjectsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    // Add a second entry so we have two to work with
+    const addButton = screen.getByRole("button", { name: /add another/i })
+    await user.click(addButton)
+
+    await waitFor(() => {
+      expect(screen.getAllByPlaceholderText("e.g. Resume Enhancer")).toHaveLength(2)
+    })
+
+    // Click the first "Remove entry" button (EntryCardHeader renders one per entry)
+    const removeButtons = screen.getAllByRole("button", { name: /remove entry/i })
+    await user.click(removeButtons[0])
+
+    await waitFor(() => {
+      expect(screen.getAllByPlaceholderText("e.g. Resume Enhancer")).toHaveLength(1)
+    })
+  })
+
+  it("updates technologies field via updateField (line 174)", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<ProjectsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const techInput = screen.getByPlaceholderText("e.g. Java, React, PostgreSQL") as HTMLInputElement
+    await user.type(techInput, "TypeScript")
+
+    expect(techInput.value).toBe("TypeScript")
+  })
+
+  it("updates link field via updateField (line 190)", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<ProjectsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const linkInput = screen.getByPlaceholderText("e.g. https://github.com/user/project") as HTMLInputElement
+    await user.type(linkInput, "https://example.com")
+
+    expect(linkInput.value).toBe("https://example.com")
+  })
+
+  it("does not call onSaveAndContinue when project name is empty on submit", async () => {
+    await testEmptySubmitDoesNotCall(ProjectsStep, "Project name is required")
+  })
+
+  it("isCurrent toggle and description change update the draft (lines 201-202, 211-212)", async () => {
+    const user = userEvent.setup()
+    const capturedPayload = { current: null as Partial<ProfileUpdateRequest> | null }
+    const onSaveAndContinue = vi
+      .fn()
+      .mockImplementation(async (partial: Partial<ProfileUpdateRequest>) => {
+        capturedPayload.current = partial
+      })
+
+    render(<ProjectsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    // Fill required project name
+    const nameInput = screen.getByPlaceholderText("e.g. Resume Enhancer")
+    await user.type(nameInput, "Toggle Project")
+
+    // Toggle the "ongoing project" checkbox (CurrentToggleAndDescription)
+    const ongoingCheckbox = screen.getByRole("checkbox", { name: /ongoing project/i })
+    await user.click(ongoingCheckbox)
+    expect(ongoingCheckbox).toBeChecked()
+
+    // Fill description
+    const descTextarea = screen.getByPlaceholderText("Describe the project, your role, and impact...")
+    await user.type(descTextarea, "Great project description")
+
+    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    await user.click(saveButton)
+
+    await waitFor(() => {
+      expect(onSaveAndContinue).toHaveBeenCalledTimes(1)
+    })
+
+    expect(capturedPayload.current?.projects![0].isCurrent).toBe(true)
+    expect(capturedPayload.current?.projects![0].endDate).toBeNull()
+    expect(capturedPayload.current?.projects![0].description).toBe("Great project description")
+  })
 })
 
 describe("VolunteeringStep", () => {

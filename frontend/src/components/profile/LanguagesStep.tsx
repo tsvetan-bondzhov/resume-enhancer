@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
-import { EmptyState, EntryCardHeader, RequiredField, StepFooter } from "./profileStepShared"
+import { EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit } from "./profileStepShared"
 import type { LanguageProficiencyLevel, LanguageRequest, ProfileUpdateRequest } from "@/types/api"
 
 const PROFICIENCY_LEVELS: LanguageProficiencyLevel[] = [
@@ -122,19 +122,18 @@ export default function LanguagesStep({
   }
 
   async function handleSubmit() {
-    const validated = validateAll()
-    setEntries(validated)
-    const hasErrors = validated.some(
-      (e) => e.errors.name || e.errors.proficiencyLevel,
+    await runSubmit(
+      validateAll,
+      setEntries,
+      (validated) => validated.some((e) => e.errors.name || e.errors.proficiencyLevel),
+      (validated) => ({
+        languages: validated.map((e): LanguageRequest => ({
+          name: e.draft.name,
+          proficiencyLevel: e.draft.proficiencyLevel as LanguageProficiencyLevel,
+        })),
+      }),
+      onSaveAndContinue,
     )
-    if (hasErrors) return
-
-    const languages: LanguageRequest[] = validated.map((e) => ({
-      name: e.draft.name,
-      proficiencyLevel: e.draft.proficiencyLevel as LanguageProficiencyLevel,
-    }))
-
-    await onSaveAndContinue({ languages })
   }
 
   return (

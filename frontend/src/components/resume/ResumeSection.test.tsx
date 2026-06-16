@@ -4,7 +4,19 @@ import { useResumeStore } from "@/stores/useResumeStore"
 import { useAutosave } from "@/hooks/useAutosave"
 import { apiClient } from "@/lib/apiClient"
 import ResumeSection from "./ResumeSection"
-import type { ResumeSectionDto, ResumeDto, WorkExperienceItemDto, SummaryItemDto, GenericItemDto } from "@/types/api"
+import type {
+  ResumeSectionDto,
+  ResumeDto,
+  WorkExperienceItemDto,
+  SummaryItemDto,
+  GenericItemDto,
+  EducationItemDto,
+  SkillItemDto,
+  CertificationItemDto,
+  LanguageItemDto,
+  ProjectItemDto,
+  VolunteeringItemDto,
+} from "@/types/api"
 
 vi.mock("@/lib/apiClient", () => ({
   apiClient: {
@@ -355,5 +367,173 @@ describe("ResumeSection", () => {
     )
     expect(screen.getByText("TypeScript")).toBeInTheDocument()
     expect(screen.getByText("Vite")).toBeInTheDocument()
+  })
+
+  // ─── Additional section type dispatches ──────────────────────────────────
+
+  it("sectionType EDUCATION dispatches to EducationSectionRenderer", () => {
+    const item: EducationItemDto = {
+      type: "EDUCATION",
+      id: "edu-1",
+      institution: "MIT",
+      degree: "B.Sc.",
+      fieldOfStudy: "Computer Science",
+      startDate: "2018-09-01",
+      endDate: "2022-06-01",
+    }
+    const section: ResumeSectionDto = {
+      sectionType: "EDUCATION",
+      title: "Education",
+      visible: true,
+      items: [item],
+    }
+    render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    expect(screen.getByText("MIT")).toBeInTheDocument()
+  })
+
+  it("sectionType SKILLS dispatches to SkillsSectionRenderer", () => {
+    const item: SkillItemDto = {
+      type: "SKILLS",
+      id: "skill-1",
+      name: "TypeScript",
+    }
+    const section: ResumeSectionDto = {
+      sectionType: "SKILLS",
+      title: "Skills",
+      visible: true,
+      items: [item],
+    }
+    render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    expect(screen.getByText("TypeScript")).toBeInTheDocument()
+  })
+
+  it("sectionType CERTIFICATIONS dispatches to CertificationsSectionRenderer", () => {
+    const item: CertificationItemDto = {
+      type: "CERTIFICATIONS",
+      id: "cert-1",
+      name: "AWS Certified",
+      issuer: "Amazon",
+      issueDate: "2023-01-01",
+      expirationDate: null,
+    }
+    const section: ResumeSectionDto = {
+      sectionType: "CERTIFICATIONS",
+      title: "Certifications",
+      visible: true,
+      items: [item],
+    }
+    render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    expect(screen.getByText("AWS Certified")).toBeInTheDocument()
+  })
+
+  it("sectionType LANGUAGES dispatches to LanguagesSectionRenderer", () => {
+    const item: LanguageItemDto = {
+      type: "LANGUAGES",
+      id: "lang-1",
+      language: "English",
+      proficiency: "Native",
+    }
+    const section: ResumeSectionDto = {
+      sectionType: "LANGUAGES",
+      title: "Languages",
+      visible: true,
+      items: [item],
+    }
+    render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    expect(screen.getByText("English")).toBeInTheDocument()
+  })
+
+  it("sectionType PROJECTS dispatches to ProjectsSectionRenderer", () => {
+    const item: ProjectItemDto = {
+      type: "PROJECTS",
+      id: "proj-1",
+      name: "My Portfolio",
+      description: "A personal site",
+      technologies: "React",
+      link: null,
+      startDate: "2022-01-01",
+      endDate: "2022-06-01",
+      isCurrent: false,
+    }
+    const section: ResumeSectionDto = {
+      sectionType: "PROJECTS",
+      title: "Projects",
+      visible: true,
+      items: [item],
+    }
+    render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    expect(screen.getByText("My Portfolio")).toBeInTheDocument()
+  })
+
+  it("sectionType VOLUNTEERING dispatches to VolunteeringSectionRenderer", () => {
+    const item: VolunteeringItemDto = {
+      type: "VOLUNTEERING",
+      id: "vol-1",
+      role: "Mentor",
+      organization: "Code Club",
+      description: null,
+      startDate: "2021-01-01",
+      endDate: "2022-06-01",
+      isCurrent: false,
+    }
+    const section: ResumeSectionDto = {
+      sectionType: "VOLUNTEERING",
+      title: "Volunteering",
+      visible: true,
+      items: [item],
+    }
+    render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    expect(screen.getByText("Mentor")).toBeInTheDocument()
+  })
+
+  it("renders read-only title heading when onTitleChange is not provided", () => {
+    const section = buildSection()
+    const { container } = render(
+      <ResumeSection
+        section={section}
+        onTitleChange={undefined as unknown as (title: string) => void}
+        onFieldChange={vi.fn()}
+      />
+    )
+    // The heading should NOT have contentEditable when onTitleChange is falsy
+    const heading = container.querySelector("h2")
+    expect(heading).toBeInTheDocument()
+    expect(heading?.getAttribute("contenteditable")).toBeNull()
   })
 })
