@@ -27,7 +27,7 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-    private static final String BAD_REQUEST = BAD_REQUEST;
+    private static final String BAD_REQUEST = "Bad Request";
 
     @ExceptionHandler(InvalidCurrentPasswordException.class)
     public ProblemDetail handleInvalidCurrentPassword(InvalidCurrentPasswordException ex) {
