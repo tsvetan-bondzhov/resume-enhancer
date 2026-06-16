@@ -158,7 +158,7 @@ export function ThemeProvider({
       }
 
       setThemeState((currentTheme) => {
-        let nextTheme: string
+        let nextTheme: Theme
         if (currentTheme === "dark") {
           nextTheme = "light"
         } else if (currentTheme === "light") {

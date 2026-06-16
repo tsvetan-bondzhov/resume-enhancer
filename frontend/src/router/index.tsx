@@ -18,7 +18,7 @@ import NotFoundPage from "@/pages/NotFoundPage"
 
 const AdminPage = lazy(() => import("@/pages/AdminPage"))
 
-function ProtectedRoute({ requireAdmin = false }: { requireAdmin?: boolean }) {
+function ProtectedRoute({ requireAdmin = false }: Readonly<{ requireAdmin?: boolean }>) {
   const { token, user } = useAuthStore()
   if (!token) return <Navigate to="/login" replace />
   if (requireAdmin && user?.role !== "ADMIN") return <Navigate to="/" replace />

@@ -1,9 +1,6 @@
 import { useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
+import { CurrentToggleAndDescription, DateRangeGrid, EmptyState, EntryCardHeader, RequiredField, StepFooter } from "./profileStepShared"
 import type { VolunteeringRequest, ProfileUpdateRequest } from "@/types/api"
 
 interface VolunteeringDraft {
@@ -78,7 +75,7 @@ export default function VolunteeringStep({
         const newDraft = { ...entry.draft, [field]: value }
         const newErrors = { ...entry.errors }
         if (field === "role" || field === "organization") {
-          delete newErrors[field as keyof FieldErrors]
+          delete newErrors[field]
         }
         return { draft: newDraft, errors: newErrors }
       }),
@@ -145,150 +142,60 @@ export default function VolunteeringStep({
       <h2 className="text-xl font-semibold">Volunteering</h2>
 
       {entries.length === 0 && (
-        <div className="rounded-md border border-dashed p-6 text-center text-sm text-zinc-500">
-          No volunteering added yet.{" "}
-          <button type="button" onClick={addAnother} className="text-blue-600 underline">
-            Add volunteering
-          </button>
-        </div>
+        <EmptyState
+          message="No volunteering added yet."
+          addLabel="Add volunteering"
+          onAdd={addAnother}
+        />
       )}
 
       {entries.map((entry, index) => (
         <div key={entry.draft.id} className="rounded-md border p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-zinc-600">
-              Entry {index + 1}
-            </span>
-            <button
-              type="button"
-              aria-label={`Remove entry ${index + 1}`}
-              onClick={() => removeEntry(index)}
-              className="text-sm text-red-500 hover:text-red-700"
-            >
-              ×
-            </button>
-          </div>
+          <EntryCardHeader index={index} onRemove={() => removeEntry(index)} />
 
-          <div className="space-y-2">
-            <label
-              htmlFor={`role-${entry.draft.id}`}
-              className="text-sm font-medium"
-            >
-              Role <span className="text-red-500">*</span>
-            </label>
-            <Input
-              id={`role-${entry.draft.id}`}
-              value={entry.draft.role}
-              onChange={(e) => updateField(index, "role", e.target.value)}
-              onBlur={() => handleBlur(index, "role")}
-              placeholder="e.g. Mentor"
-            />
-            {entry.errors.role && (
-              <p className="text-sm text-red-600">{entry.errors.role}</p>
-            )}
-          </div>
+          <RequiredField
+            id={`role-${entry.draft.id}`}
+            label="Role"
+            value={entry.draft.role}
+            placeholder="e.g. Mentor"
+            error={entry.errors.role}
+            onChange={(v) => updateField(index, "role", v)}
+            onBlur={() => handleBlur(index, "role")}
+          />
 
-          <div className="space-y-2">
-            <label
-              htmlFor={`organization-${entry.draft.id}`}
-              className="text-sm font-medium"
-            >
-              Organization <span className="text-red-500">*</span>
-            </label>
-            <Input
-              id={`organization-${entry.draft.id}`}
-              value={entry.draft.organization}
-              onChange={(e) =>
-                updateField(index, "organization", e.target.value)
-              }
-              onBlur={() => handleBlur(index, "organization")}
-              placeholder="e.g. Code.org"
-            />
-            {entry.errors.organization && (
-              <p className="text-sm text-red-600">{entry.errors.organization}</p>
-            )}
-          </div>
+          <RequiredField
+            id={`organization-${entry.draft.id}`}
+            label="Organization"
+            value={entry.draft.organization}
+            placeholder="e.g. Code.org"
+            error={entry.errors.organization}
+            onChange={(v) => updateField(index, "organization", v)}
+            onBlur={() => handleBlur(index, "organization")}
+          />
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label
-                htmlFor={`startDate-${entry.draft.id}`}
-                className="text-sm font-medium"
-              >
-                Start Date
-              </label>
-              <Input
-                id={`startDate-${entry.draft.id}`}
-                type="date"
-                value={entry.draft.startDate}
-                onChange={(e) =>
-                  updateField(index, "startDate", e.target.value)
-                }
-              />
-            </div>
+          <DateRangeGrid
+            startId={`startDate-${entry.draft.id}`}
+            endId={`endDate-${entry.draft.id}`}
+            startValue={entry.draft.startDate}
+            endValue={entry.draft.endDate}
+            endDateDisabled={entry.draft.isCurrent}
+            onStartChange={(v) => updateField(index, "startDate", v)}
+            onEndChange={(v) => updateField(index, "endDate", v)}
+          />
 
-            <div className="space-y-2">
-              <label
-                htmlFor={`endDate-${entry.draft.id}`}
-                className="text-sm font-medium"
-              >
-                End Date
-              </label>
-              <Input
-                id={`endDate-${entry.draft.id}`}
-                type="date"
-                value={entry.draft.endDate}
-                disabled={entry.draft.isCurrent}
-                onChange={(e) => updateField(index, "endDate", e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id={`isCurrent-${entry.draft.id}`}
-              checked={entry.draft.isCurrent}
-              onCheckedChange={(checked) =>
-                updateField(index, "isCurrent", checked === true)
-              }
-            />
-            <label
-              htmlFor={`isCurrent-${entry.draft.id}`}
-              className="text-sm font-medium"
-            >
-              I currently volunteer here
-            </label>
-          </div>
-
-          <div className="space-y-2">
-            <label
-              htmlFor={`description-${entry.draft.id}`}
-              className="text-sm font-medium"
-            >
-              Description
-            </label>
-            <Textarea
-              id={`description-${entry.draft.id}`}
-              value={entry.draft.description}
-              onChange={(e) =>
-                updateField(index, "description", e.target.value)
-              }
-              placeholder="Describe your volunteering responsibilities and impact..."
-              rows={3}
-            />
-          </div>
+          <CurrentToggleAndDescription
+            entryId={entry.draft.id}
+            isCurrentChecked={entry.draft.isCurrent}
+            currentLabel="I currently volunteer here"
+            descriptionValue={entry.draft.description}
+            descriptionPlaceholder="Describe your volunteering responsibilities and impact..."
+            onCurrentChange={(checked) => updateField(index, "isCurrent", checked)}
+            onDescriptionChange={(v) => updateField(index, "description", v)}
+          />
         </div>
       ))}
 
-      <Button type="button" variant="outline" onClick={addAnother}>
-        + Add another
-      </Button>
-
-      <div className="flex justify-end">
-        <Button onClick={handleSubmit} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save & Continue"}
-        </Button>
-      </div>
+      <StepFooter isSaving={isSaving} onAddAnother={addAnother} onSubmit={handleSubmit} />
     </div>
   )
 }

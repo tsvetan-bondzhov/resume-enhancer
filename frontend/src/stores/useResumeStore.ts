@@ -36,7 +36,7 @@ function updateItem(
   field: string,
   value: string
 ): ResumeItemDto {
-  return item.id !== itemId ? item : { ...item, [field]: value }
+  return item.id === itemId ? { ...item, [field]: value } : item
 }
 
 function updateSectionItems(
@@ -165,9 +165,8 @@ export const useResumeStore = create<ResumeState>((set) => ({
           content: {
             ...state.currentResume.content,
             sections: state.currentResume.content.sections.map((s) =>
-              s.sectionType !== sectionType
-                ? s
-                : {
+              s.sectionType === sectionType
+                ? {
                     ...s,
                     items: [
                       ...s.items.slice(0, position),
@@ -175,6 +174,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
                       ...s.items.slice(position),
                     ],
                   }
+                : s
             ),
           },
         },
@@ -206,7 +206,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
           content: {
             ...state.currentResume.content,
             sections: state.currentResume.content.sections.map((s) =>
-              s.sectionType !== sectionType ? s : { ...s, items: newItems }
+              s.sectionType === sectionType ? { ...s, items: newItems } : s
             ),
           },
         },

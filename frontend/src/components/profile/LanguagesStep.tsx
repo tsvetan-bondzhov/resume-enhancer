@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { EmptyState, EntryCardHeader, RequiredField, StepFooter } from "./profileStepShared"
 import type { LanguageProficiencyLevel, LanguageRequest, ProfileUpdateRequest } from "@/types/api"
 
 const PROFICIENCY_LEVELS: LanguageProficiencyLevel[] = [
@@ -143,48 +142,26 @@ export default function LanguagesStep({
       <h2 className="text-xl font-semibold">Languages</h2>
 
       {entries.length === 0 && (
-        <div className="rounded-md border border-dashed p-6 text-center text-sm text-zinc-500">
-          No languages added yet.{" "}
-          <button type="button" onClick={addAnother} className="text-blue-600 underline">
-            Add language
-          </button>
-        </div>
+        <EmptyState
+          message="No languages added yet."
+          addLabel="Add language"
+          onAdd={addAnother}
+        />
       )}
 
       {entries.map((entry, index) => (
         <div key={entry.draft.id} className="rounded-md border p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-zinc-600">
-              Entry {index + 1}
-            </span>
-            <button
-              type="button"
-              aria-label={`Remove entry ${index + 1}`}
-              onClick={() => removeEntry(index)}
-              className="text-sm text-red-500 hover:text-red-700"
-            >
-              ×
-            </button>
-          </div>
+          <EntryCardHeader index={index} onRemove={() => removeEntry(index)} />
 
-          <div className="space-y-2">
-            <label
-              htmlFor={`name-${entry.draft.id}`}
-              className="text-sm font-medium"
-            >
-              Language <span className="text-red-500">*</span>
-            </label>
-            <Input
-              id={`name-${entry.draft.id}`}
-              value={entry.draft.name}
-              onChange={(e) => updateField(index, "name", e.target.value)}
-              onBlur={() => handleBlur(index, "name")}
-              placeholder="e.g. English"
-            />
-            {entry.errors.name && (
-              <p className="text-sm text-red-600">{entry.errors.name}</p>
-            )}
-          </div>
+          <RequiredField
+            id={`name-${entry.draft.id}`}
+            label="Language"
+            value={entry.draft.name}
+            placeholder="e.g. English"
+            error={entry.errors.name}
+            onChange={(v) => updateField(index, "name", v)}
+            onBlur={() => handleBlur(index, "name")}
+          />
 
           <div className="space-y-2">
             <label
@@ -217,15 +194,7 @@ export default function LanguagesStep({
         </div>
       ))}
 
-      <Button type="button" variant="outline" onClick={addAnother}>
-        + Add another
-      </Button>
-
-      <div className="flex justify-end">
-        <Button onClick={handleSubmit} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save & Continue"}
-        </Button>
-      </div>
+      <StepFooter isSaving={isSaving} onAddAnother={addAnother} onSubmit={handleSubmit} />
     </div>
   )
 }

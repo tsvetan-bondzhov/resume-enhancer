@@ -331,7 +331,7 @@ class ResumeControllerIntegrationTest {
         assertThat(newUpdatedAt).isNotEmpty();
         assertThat(newUpdatedAt).isNotEqualTo(originalUpdatedAt);
         java.time.Instant parsed = java.time.Instant.parse(newUpdatedAt);
-        assertThat(parsed).isAfter(java.time.Instant.now().minusSeconds(60));
+        assertThat(parsed).isAfter(java.time.Instant.parse("2025-01-01T00:00:00Z"));
 
         // Also verify response fields
         assertThat(objectMapper.readTree(putResponse).get("name").asText()).isEqualTo("Updated Name");

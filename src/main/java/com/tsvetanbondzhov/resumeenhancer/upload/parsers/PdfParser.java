@@ -8,7 +8,6 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 
 @Component
 public class PdfParser {
@@ -21,8 +20,6 @@ public class PdfParser {
                 String rawText = stripper.getText(document);
                 return SectionExtractor.extract(rawText != null ? rawText : "");
             }
-        } catch (IOException e) {
-            throw new FileValidationException("Failed to read PDF file. The file may be corrupted or password-protected.");
         } catch (Exception e) {
             throw new FileValidationException("Failed to read PDF file. The file may be corrupted or password-protected.");
         }

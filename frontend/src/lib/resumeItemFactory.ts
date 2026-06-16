@@ -44,7 +44,7 @@ export function createEmptyItem(sectionType: ResumeSectionType): ResumeItemDto {
       return item
     }
     case "SUMMARY": {
-      const item: SummaryItemDto = { type: "SUMMARY", id, text: "" }
+      const item: SummaryItemDto = { type: "SUMMARY", id, text: "", linkedInUrl: null, personalPageUrl: null, blogUrl: null, contactEmail: null, locationCountry: null, locationCity: null }
       return item
     }
     case "UNKNOWN": {

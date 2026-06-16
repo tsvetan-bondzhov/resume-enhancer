@@ -8,7 +8,7 @@ import "@testing-library/jest-dom"
 
 export interface ResizeObserverStubInstance {
   callback: ResizeObserverCallback
-  observe(): void
+  observe(target: Element): void
   unobserve(): void
   disconnect(): void
 }
@@ -28,4 +28,4 @@ class ResizeObserverStub implements ResizeObserverStubInstance {
   disconnect() { /* no-op */ }
 }
 
-globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver
+globalThis.ResizeObserver = ResizeObserverStub

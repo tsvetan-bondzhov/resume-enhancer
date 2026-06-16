@@ -40,15 +40,15 @@ function mergeProfilePayload(
   current: ProfileDto
 ): ProfileUpdateRequest {
   return {
-    // String fields: use !== undefined so an explicit null (field cleared by user) passes through.
+    // String fields: use === undefined so an explicit null (field cleared by user) passes through.
     // ?? would treat null as missing and fall back to the current value, silently refusing to clear.
-    summary: partial.summary !== undefined ? partial.summary : current.summary,
-    contactEmail: partial.contactEmail !== undefined ? partial.contactEmail : current.contactEmail,
-    linkedInUrl: partial.linkedInUrl !== undefined ? partial.linkedInUrl : current.linkedInUrl,
-    personalPageUrl: partial.personalPageUrl !== undefined ? partial.personalPageUrl : current.personalPageUrl,
-    blogUrl: partial.blogUrl !== undefined ? partial.blogUrl : current.blogUrl,
-    locationCity: partial.locationCity !== undefined ? partial.locationCity : current.locationCity,
-    locationCountry: partial.locationCountry !== undefined ? partial.locationCountry : current.locationCountry,
+    summary: partial.summary === undefined ? current.summary : partial.summary,
+    contactEmail: partial.contactEmail === undefined ? current.contactEmail : partial.contactEmail,
+    linkedInUrl: partial.linkedInUrl === undefined ? current.linkedInUrl : partial.linkedInUrl,
+    personalPageUrl: partial.personalPageUrl === undefined ? current.personalPageUrl : partial.personalPageUrl,
+    blogUrl: partial.blogUrl === undefined ? current.blogUrl : partial.blogUrl,
+    locationCity: partial.locationCity === undefined ? current.locationCity : partial.locationCity,
+    locationCountry: partial.locationCountry === undefined ? current.locationCountry : partial.locationCountry,
     // Array fields: ?? is safe — step components never pass null for these, only undefined (omitted).
     workExperiences: partial.workExperiences ?? current.workExperiences,
     education: partial.education ?? current.education,

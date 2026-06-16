@@ -92,7 +92,7 @@ describe("useAutosave", () => {
       content: {
         sections: [
           {
-            id: "section-1",
+            sectionType: "WORK_EXPERIENCE" as const,
             title: "Professional Experience",
             visible: true,
             items: [],
@@ -150,7 +150,7 @@ describe("useAutosave", () => {
           content: {
             sections: [
               {
-                id: "section-1",
+                sectionType: "WORK_EXPERIENCE" as const,
                 title: "Updated Title",
                 visible: true,
                 items: [],
@@ -172,7 +172,7 @@ describe("useAutosave", () => {
     const originalContent = {
       sections: [
         {
-          id: "section-1",
+          sectionType: "WORK_EXPERIENCE" as const,
           title: "Original Title",
           visible: true,
           items: [],
@@ -182,7 +182,7 @@ describe("useAutosave", () => {
     const modifiedContent = {
       sections: [
         {
-          id: "section-1",
+          sectionType: "WORK_EXPERIENCE" as const,
           title: "Modified Title",
           visible: true,
           items: [],

@@ -78,7 +78,7 @@ describe("ResumeSidebarItem", () => {
         onDelete={vi.fn()}
       />
     )
-    fireEvent.click(screen.getByRole("button", { name: /open my resume/i }))
+    fireEvent.click(screen.getByRole("button", { name: "My Resume" }))
     expect(onOpen).toHaveBeenCalledOnce()
   })
 

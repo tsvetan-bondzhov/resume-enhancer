@@ -7,7 +7,6 @@ import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.stream.Collectors;
 
 @Component
@@ -19,8 +18,6 @@ public class DocxParser {
                     .map(XWPFParagraph::getText)
                     .collect(Collectors.joining("\n"));
             return SectionExtractor.extract(rawText);
-        } catch (IOException e) {
-            throw new FileValidationException("Failed to read DOCX file. The file may be corrupted or invalid.");
         } catch (Exception e) {
             throw new FileValidationException("Failed to read DOCX file. The file may be corrupted or invalid.");
         }

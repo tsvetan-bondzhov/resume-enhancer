@@ -5,6 +5,7 @@
 - This step is **read-only** — do not modify any files.
 - If the SonarQube MCP is unreachable or returns an error, HALT and tell the user with the error details.
 - Security hotspots (a separate SonarQube concept) are **not** handled by this skill; only regular issues are fetched.
+- If `{duplications_only}` is true, skip sections 2 and 3 (issue fetching); jump directly to section 4b (duplication fetching).
 
 ## INSTRUCTIONS
 
@@ -53,7 +54,7 @@ CRITICAL:
     - { key, rule, message, line, rule_details }
 ```
 
-### 5. Build Batch Plan
+### 5. Build Issue Batch Plan
 
 For each severity in `{active_severities}` (in order), split its files into batches of **at most 5 files each**:
 
@@ -70,6 +71,65 @@ for severity in active_severities:
       issues:      { file: issues_by_severity[severity][file] for file in chunk }
     })
     batch_num += 1
+```
+
+### 4b. Fetch Duplicated Code (skip if `{process_duplications}` is false)
+
+**Step 4b-1 — Find duplicated files:**
+
+Call:
+```
+mcp__sonarqube__search_duplicated_files
+  projectKey: {project_key}
+```
+
+Collect all returned files. Each entry contains a file path and a duplication percentage. Discard files with duplication percentage below 5% (noise threshold).
+
+**Step 4b-2 — Fetch duplication blocks per file:**
+
+For each duplicated file returned above, call:
+```
+mcp__sonarqube__get_duplications
+  key: {file_component_key}
+```
+
+This returns the duplicated blocks within that file and references to the other files they duplicate. Collect all blocks.
+
+**Step 4b-3 — Cluster files by shared duplication:**
+
+Group files into clusters where every file in a cluster shares at least one duplicated block with another file in the cluster. Use a union-find or simple flood-fill approach:
+
+```
+clusters = {}
+for each file F with blocks:
+  for each block B in F:
+    for each duplicate reference D in B:
+      merge cluster(F) with cluster(D.file)
+
+{duplication_clusters} = [
+  { cluster_id: N, files: [...], blocks: { file: [blocks] } }
+  for each connected component
+]
+```
+
+Sort clusters by total duplicated lines descending (largest impact first).
+
+**Step 4b-4 — Build duplication batch plan:**
+
+Split clusters into batches of **at most 4 files each** (smaller than issue batches because refactoring is more complex):
+
+```
+{duplication_batches} = []
+dup_batch_num = 1
+for cluster in duplication_clusters:
+  for chunk of up to 4 files from cluster.files:
+    duplication_batches.append({
+      batch_num:  dup_batch_num,
+      cluster_id: cluster.cluster_id,
+      files:      chunk,
+      blocks:     { file: cluster.blocks[file] for file in chunk }
+    })
+    dup_batch_num += 1
 ```
 
 ### 6. Present Analysis Summary
@@ -90,17 +150,26 @@ Issues found:
 
 Total: N issues across M files in X batch(es)
 
+Duplicated code: (shown only if {process_duplications} is true)
+  Files with duplications : M files in K cluster(s) → X batch(es)
+  Largest cluster         : N files sharing ~L duplicated lines
+
 Execution plan:
-  Batch 1  [BLOCKER]  — file1.java, file2.java, …
-  Batch 2  [BLOCKER]  — file6.java, …
-  Batch 3  [CRITICAL] — file10.java, …
+  Batch 1  [BLOCKER]     — file1.java, file2.java, …
+  Batch 2  [BLOCKER]     — file6.java, …
+  Batch 3  [CRITICAL]    — file10.java, …
+  …
+  Dup-1    [DUPLICATION] — fileA.java, fileB.java (cluster 1)
+  Dup-2    [DUPLICATION] — fileC.java, fileD.java (cluster 2)
   …
 
 Build tool : {build_tool}
 Scan cmd   : {scan_command}
 ```
 
-If zero issues are found for all severities, HALT and tell the user: "No open SonarQube issues found for severities: {active_severities}. Nothing to fix."
+If zero issues are found for all severities AND no duplications are found (or duplications are skipped), HALT and tell the user: "No open SonarQube issues or duplicated code found. Nothing to fix."
+
+If only issues or only duplications are found, continue with what is available — do not halt.
 
 ## NEXT
 

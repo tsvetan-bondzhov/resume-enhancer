@@ -12,8 +12,6 @@ class ResumeEnhancerApplicationTests {
 
 	@Test
 	void contextLoads() {
-		// TODO: Add meaningful Spring context assertions, e.g. verifying that critical beans
-		//       (ResumeService, ProfileService, AiService) are present in the application context.
 		assertTrue(true); // Context loads without throwing — verified by @SpringBootTest itself
 	}
 
