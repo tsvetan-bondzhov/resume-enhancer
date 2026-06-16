@@ -2,5 +2,5 @@ projectKey=Resume-Enhancer
 serverUrl=http://localhost:9000
 serverVersion=26.6.0.123539
 dashboardUrl=http://localhost:9000/dashboard?id=Resume-Enhancer
-ceTaskId=9ee0028b-7145-42c7-892f-2d8a1a7fc551
-ceTaskUrl=http://localhost:9000/api/ce/task?id=9ee0028b-7145-42c7-892f-2d8a1a7fc551
+ceTaskId=887a779d-5a4d-4922-aba7-2a75e6834c4a
+ceTaskUrl=http://localhost:9000/api/ce/task?id=887a779d-5a4d-4922-aba7-2a75e6834c4a
