@@ -45,3 +45,33 @@ export function formatYear(date: string | null): string {
   if (!date) return ""
   return String(new Date(date).getUTCFullYear())
 }
+
+/**
+ * Converts a date string from storage/backend format to an editable "MM/YYYY" string
+ * suitable for display in resume editor fields.
+ *
+ * Accepted input formats:
+ *   - "YYYY-MM-DD" → "MM/YYYY"  (ISO full date)
+ *   - "YYYY-MM"    → "MM/YYYY"  (ISO year-month)
+ *   - "MM/YYYY"    → "MM/YYYY"  (already correct, passed through)
+ *   - "Present"    → "Present"  (passed through)
+ *   - null / ""    → ""
+ *
+ * @param date Date string from a DTO field, or null
+ * @returns Display-ready string for an editable date field
+ */
+export function toEditableDate(date: string | null): string {
+  if (!date) return ""
+  if (date === "Present") return "Present"
+  // Already MM/YYYY
+  if (/^\d{2}\/\d{4}$/.test(date)) return date
+  // YYYY-MM-DD or YYYY-MM
+  const isoMatch = /^(\d{4})-(\d{2})/.exec(date)
+  if (isoMatch) {
+    const year = isoMatch[1]
+    const month = isoMatch[2]
+    return `${month}/${year}`
+  }
+  // Unrecognized format — return as-is so the user can correct it
+  return date
+}

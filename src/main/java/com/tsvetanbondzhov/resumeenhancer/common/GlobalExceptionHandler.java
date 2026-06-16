@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -26,11 +27,12 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final String BAD_REQUEST = BAD_REQUEST;
 
     @ExceptionHandler(InvalidCurrentPasswordException.class)
     public ProblemDetail handleInvalidCurrentPassword(InvalidCurrentPasswordException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
-        problem.setTitle("Bad Request");
+        problem.setTitle(BAD_REQUEST);
         return problem;
     }
 
@@ -65,7 +67,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST,
                 "Request validation failed"
         );
-        problem.setTitle("Bad Request");
+        problem.setTitle(BAD_REQUEST);
         problem.setProperty("errors", errors);
         return problem;
     }
@@ -110,6 +112,40 @@ public class GlobalExceptionHandler {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
         pd.setInstance(URI.create(request.getRequestURI()));
         return pd;
+    }
+
+    /**
+     * Handles date strings that do not match any accepted format.
+     * {@link DateParseException} is thrown by {@link FlexibleLocalDateDeserializer} and wrapped
+     * by Jackson inside {@link HttpMessageNotReadableException} with an {@link InvalidFormatException}
+     * as the cause.  Both paths are caught here and surfaced as HTTP 400 with a user-friendly message.
+     */
+    @ExceptionHandler(DateParseException.class)
+    public ProblemDetail handleDateParse(DateParseException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle(BAD_REQUEST);
+        return problem;
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail handleNotReadable(HttpMessageNotReadableException ex) {
+        // Walk the cause chain to surface DateParseException with a user-friendly message.
+        // Jackson wraps RuntimeExceptions from deserializers in JsonMappingException, which
+        // Spring wraps in HttpMessageNotReadableException.
+        Throwable t = ex.getCause();
+        while (t != null) {
+            if (t instanceof DateParseException dpe) {
+                ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, dpe.getMessage());
+                problem.setTitle(BAD_REQUEST);
+                return problem;
+            }
+            t = t.getCause();
+        }
+        log.warn("Unreadable HTTP message", ex);
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "Malformed request body.");
+        problem.setTitle(BAD_REQUEST);
+        return problem;
     }
 
     /**
