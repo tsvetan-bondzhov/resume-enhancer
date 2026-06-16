@@ -133,7 +133,7 @@ export default function EditorToolbar({
         {isSavingAs ? "Saving…" : "Save As"}
       </Button>
 
-      {/* Save button — enabled only when there are unsaved changes */}
+      {/* Save button — always enabled */}
       <Button
         type="button"
         variant="default"
@@ -141,7 +141,6 @@ export default function EditorToolbar({
         className="gap-1.5 relative whitespace-nowrap"
         aria-label={isDirty ? "Save unsaved changes" : saveButtonLabel}
         onClick={onSave}
-        disabled={!isDirty || autosaveStatus === "saving"}
       >
         <Save className="size-4 shrink-0" />
         {saveButtonLabel}
