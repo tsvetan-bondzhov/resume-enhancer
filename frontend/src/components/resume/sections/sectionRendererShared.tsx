@@ -210,16 +210,18 @@ export function SortableItemWrapper({
 
 export function AddItemButton({ onClick }: Readonly<{ onClick: () => void }>) {
   return (
-    <button
-      type="button"
-      className="flex items-center justify-center w-full h-4 opacity-0 group-hover/section:opacity-100 transition-opacity hover:opacity-100"
-      aria-label="Add item here"
-      onClick={onClick}
-    >
-      <div className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <Plus className="h-3 w-3" />
-      </div>
-    </button>
+    <div className="relative h-0 overflow-visible">
+      <button
+        type="button"
+        className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-full h-4 invisible group-hover/section:visible opacity-0 group-hover/section:opacity-100 transition-opacity hover:opacity-100"
+        aria-label="Add item here"
+        onClick={onClick}
+      >
+        <div className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <Plus className="h-3 w-3" />
+        </div>
+      </button>
+    </div>
   )
 }
 
