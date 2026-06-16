@@ -77,6 +77,14 @@ describe("ResumeDashboardCard", () => {
     expect(spans).toHaveLength(0)
   })
 
+  // AC: preview wrapper has inert attribute to block keyboard focus and interaction
+  it("preview wrapper has inert attribute", () => {
+    const { container } = renderCard()
+    const previewWrapper = container.querySelector("[style*='height: 200px']")
+    expect(previewWrapper).toBeInTheDocument()
+    expect(previewWrapper).toHaveAttribute("inert")
+  })
+
   // AC4: outer clipping wrapper does not carry pointer-events-none (parent onClick must fire)
   it("outer preview wrapper does not have pointer-events-none", () => {
     const { container } = renderCard()

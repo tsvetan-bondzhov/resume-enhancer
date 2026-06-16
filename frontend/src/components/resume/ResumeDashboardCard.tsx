@@ -32,8 +32,10 @@ export default function ResumeDashboardCard({
     >
       {/* Mini preview area — scaled-down live ResumeCanvas */}
       {/* aria-hidden: preview is decorative — screen readers see the info bar instead */}
+      {/* inert: excludes all descendants from tab order and pointer interaction */}
       <div
         aria-hidden="true"
+        inert
         className="relative w-full overflow-hidden rounded-t-xl bg-card"
         style={{ height: "200px" }}
       >
