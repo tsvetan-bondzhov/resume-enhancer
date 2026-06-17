@@ -19,7 +19,6 @@ export default function LanguagesSectionRenderer({
 }: LanguagesSectionRendererProps) {
   const content = (
     <div className="space-y-1 group/section">
-      {onAddItem && <AddItemButton onClick={() => onAddItem(0)} />}
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
           <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
@@ -58,9 +57,9 @@ export default function LanguagesSectionRenderer({
               )}
             </div>
           </SortableItemWrapper>
-          {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} />}
         </React.Fragment>
       ))}
+      {onAddItem && <AddItemButton onClick={() => onAddItem(items.length)} isLast />}
     </div>
   )
 

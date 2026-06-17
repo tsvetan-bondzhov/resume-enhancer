@@ -66,8 +66,7 @@ export default function SummarySectionRenderer({
 }: SummarySectionRendererProps) {
   const content = (
     <div className="group/section">
-      {onAddItem && <AddItemButton onClick={() => onAddItem(0)} />}
-      {items.map((item, index) => {
+      {items.map((item) => {
         // In read-only mode skip items with no text; in editor mode always render so user can click to add
         if (item.text == null && !onFieldChange) return null
         return (
@@ -122,10 +121,10 @@ export default function SummarySectionRenderer({
                 )
               })()}
             </SortableItemWrapper>
-            {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} />}
           </React.Fragment>
         )
       })}
+      {onAddItem && <AddItemButton onClick={() => onAddItem(items.length)} isLast />}
     </div>
   )
 

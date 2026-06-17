@@ -20,7 +20,7 @@ export default function VolunteeringSectionRenderer({
 }: VolunteeringSectionRendererProps) {
   const content = (
     <div className="space-y-3 group/section">
-      {onAddItem && <AddItemButton onClick={() => onAddItem(0)} />}
+      {onAddItem && <AddItemButton onClick={() => onAddItem(0)} isLast={items.length === 0} />}
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
           <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
@@ -50,7 +50,7 @@ export default function VolunteeringSectionRenderer({
               <EditableDescriptionField itemId={item.id} value={item.description} onFieldChange={onFieldChange} placeholder="Click to add description" />
             </div>
           </SortableItemWrapper>
-          {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} />}
+          {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} isLast={index === items.length - 1} />}
         </React.Fragment>
       ))}
     </div>

@@ -19,7 +19,7 @@ export default function GenericSectionRenderer({
 }: GenericSectionRendererProps) {
   const content = (
     <div className="group/section">
-      {onAddItem && <AddItemButton onClick={() => onAddItem(0)} />}
+      {onAddItem && <AddItemButton onClick={() => onAddItem(0)} isLast={items.length === 0} />}
       {items.map((item, index) => {
         const visibleEntries = Object.entries(item.fields).filter(([, v]) => Boolean(v))
         return (
@@ -58,7 +58,7 @@ export default function GenericSectionRenderer({
                 ))}
               </ul>
             </SortableItemWrapper>
-            {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} />}
+            {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} isLast={index === items.length - 1} />}
           </React.Fragment>
         )
       })}

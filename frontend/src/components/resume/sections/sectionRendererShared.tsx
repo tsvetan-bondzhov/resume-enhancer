@@ -198,17 +198,17 @@ export function SortableItemWrapper({
   )
 }
 
-export function AddItemButton({ onClick }: Readonly<{ onClick: () => void }>) {
+export function AddItemButton({ onClick, isLast = false }: Readonly<{ onClick: () => void; isLast?: boolean }>) {
   return (
     <div className="relative h-0 overflow-visible">
       <button
         type="button"
-        className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-full h-4 invisible group-hover/section:visible opacity-0 group-hover/section:opacity-100 transition-opacity hover:opacity-100 cursor-pointer"
+        className={`absolute left-1/2 -translate-x-1/2 z-20 flex items-center justify-center w-full h-4 cursor-pointer group/btn${isLast ? "-translate-y-1" : " -translate-y-1/2 invisible group-hover/section:visible opacity-0 group-hover/section:opacity-100 transition-opacity"}`}
         aria-label="Add item here"
         title="Add item"
         onClick={onClick}
       >
-        <div className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-background border border-border text-muted-foreground group-hover/btn:text-foreground group-hover/btn:border-foreground transition-colors shadow-sm">
           <Plus className="h-3 w-3" />
         </div>
       </button>

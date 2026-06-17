@@ -18,7 +18,7 @@ function InlineAddButton({ onClick }: Readonly<{ onClick: () => void }>) {
       onClick={onClick}
       aria-label="Add skill"
       title="Add skill"
-      className="inline-flex items-center justify-center h-5 w-5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover/section:opacity-100 transition-opacity cursor-pointer"
+      className="inline-flex items-center justify-center h-5 w-5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
     >
       <Plus className="h-3 w-3" />
     </button>
