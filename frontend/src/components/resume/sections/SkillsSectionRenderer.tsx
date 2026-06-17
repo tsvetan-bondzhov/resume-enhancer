@@ -42,8 +42,9 @@ export default function SkillsSectionRenderer({
             key={item.id}
             id={item.id}
             onDeleteItem={onDeleteItem}
+            className = "absolute left-[-8px] top-0 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab touch-none"
             containerClassName="relative group/item inline-flex break-inside-avoid"
-            deleteButtonClassName="absolute right-[-14px] top-[-6px] opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted hover:text-red-500"
+            deleteButtonClassName="absolute z-10 right-[-8px] top-[-6px] opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted hover:text-red-500"
             deleteIconClassName="h-3 w-3"
           >
             <span className="inline-block bg-zinc-100 text-zinc-700 text-xs px-2 py-0.5 rounded-sm">

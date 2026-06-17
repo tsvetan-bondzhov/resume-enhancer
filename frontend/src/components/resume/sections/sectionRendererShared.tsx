@@ -157,6 +157,7 @@ interface SortableItemWrapperProps {
   readonly containerClassName?: string
   readonly deleteButtonClassName?: string
   readonly deleteIconClassName?: string
+  readonly className?: string
 }
 
 export function SortableItemWrapper({
@@ -166,6 +167,7 @@ export function SortableItemWrapper({
   containerClassName = "relative group/item break-inside-avoid",
   deleteButtonClassName = "absolute right-0 top-0 opacity-0 group-hover/item:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted hover:text-red-500 cursor-pointer",
   deleteIconClassName = "h-3.5 w-3.5",
+  className = "absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab touch-none",
 }: SortableItemWrapperProps) {
   const {
     attributes,
@@ -186,7 +188,7 @@ export function SortableItemWrapper({
     <div ref={setNodeRef} style={style} className={containerClassName}>
       <button
         type="button"
-        className="absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab touch-none"
+        className={className}
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
