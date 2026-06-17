@@ -19,7 +19,7 @@ export default function LanguagesSectionRenderer({
 }: LanguagesSectionRendererProps) {
   const content = (
     <div className="space-y-1 group/section">
-      {items.map((item, index) => (
+      {items.map((item) => (
         <React.Fragment key={item.id}>
           <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
             <div className="flex items-center gap-2 text-sm">

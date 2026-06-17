@@ -1,6 +1,7 @@
 import React from "react"
 import type { CertificationItemDto, ResumeItemDto } from "@/types/api"
 import { SortableItemWrapper, AddItemButton, SectionDndWrapper, EditableField } from "./sectionRendererShared"
+import {parseDateInput, toEditableFullDate} from "@/lib/dateUtils.ts";
 
 interface CertificationsSectionRendererProps {
   readonly items: readonly CertificationItemDto[]
@@ -17,6 +18,12 @@ export default function CertificationsSectionRenderer({
   onDeleteItem,
   onReorderItems,
 }: CertificationsSectionRendererProps) {
+  const handleDateFieldChange = (id: string, field: string, raw: string) => {
+    if (!onFieldChange) return
+    const parsed = parseDateInput(raw)
+    onFieldChange(id, field, parsed ?? "")
+  }
+
   const content = (
     <div className="space-y-2 group/section">
       {onAddItem && <AddItemButton onClick={() => onAddItem(0)} isLast={items.length === 0} />}
@@ -45,13 +52,13 @@ export default function CertificationsSectionRenderer({
                   </>
                 )}
                 {onFieldChange ? (
-                  <EditableField itemId={item.id} field="issueDate" value={item.issueDate} onFieldChange={onFieldChange} placeholder="Issue date" />
+                  <EditableField itemId={item.id} field="issueDate" value={toEditableFullDate(item.issueDate)} onFieldChange={handleDateFieldChange} placeholder="Issue date" />
                 ) : (
                   item.issueDate != null && <span>{item.issueDate}</span>
                 )}
                 {(item.expirationDate != null || onFieldChange) && " — "}
                 {onFieldChange ? (
-                  <EditableField itemId={item.id} field="expirationDate" value={item.expirationDate} onFieldChange={onFieldChange} placeholder="Expiration date" />
+                  <EditableField itemId={item.id} field="expirationDate" value={toEditableFullDate(item.expirationDate)} onFieldChange={handleDateFieldChange} placeholder="Expiration date" />
                 ) : (
                   item.expirationDate != null && <span>{item.expirationDate}</span>
                 )}

@@ -4,7 +4,7 @@ import { SortableContext, verticalListSortingStrategy, rectSortingStrategy, useS
 import { CSS } from "@dnd-kit/utilities"
 import { Trash2, GripVertical, Plus } from "lucide-react"
 import type { ResumeItemDto } from "@/types/api"
-import { formatMonthYear, toEditableDate } from "@/lib/dateUtils"
+import { formatMonthYear, toEditableDate, parseDateInput } from "@/lib/dateUtils"
 
 // ─── Shared editable field primitives ────────────────────────────────────────
 
@@ -74,13 +74,21 @@ export function EditableDateRange({
   isCurrent,
   onFieldChange,
 }: EditableDateRangeProps) {
+  const handleDateFieldChange = (id: string, field: string, raw: string) => {
+    const parsed = parseDateInput(raw)
+    onFieldChange(id, field, parsed ?? "")
+    if (field === "endDate" && parsed === null) {
+      onFieldChange(id, "isCurrent", "true")
+    }
+  }
+
   return (
     <>
       <EditableField
         itemId={itemId}
         field="startDate"
         value={toEditableDate(startDate)}
-        onFieldChange={onFieldChange}
+        onFieldChange={handleDateFieldChange}
         ariaLabel="Edit startDate"
         placeholder="Start date"
       />
@@ -89,7 +97,7 @@ export function EditableDateRange({
         itemId={itemId}
         field="endDate"
         value={isCurrent ? "Present" : toEditableDate(endDate)}
-        onFieldChange={onFieldChange}
+        onFieldChange={handleDateFieldChange}
         ariaLabel="Edit endDate"
         placeholder="End date"
       />
