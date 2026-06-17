@@ -1,4 +1,4 @@
-import React, { useRef } from "react"
+﻿import React from "react"
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy, rectSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
@@ -27,47 +27,30 @@ export function EditableField({
   ariaLabel,
   placeholder,
 }: EditableFieldProps) {
-  const ref = useRef<HTMLSpanElement>(null)
   const isEmpty = !value
-
-  const handleFocus = () => {
-    // Clear placeholder text so user starts with a blank field
-    if (ref.current && ref.current.textContent === placeholder) {
-      ref.current.textContent = ""
-      ref.current.classList.remove("text-gray-300", "italic")
-    }
-  }
 
   const handleBlur = (e: React.FocusEvent<HTMLSpanElement>) => {
     const text = e.currentTarget.textContent ?? ""
     onFieldChange(itemId, field, text)
-    // Restore placeholder if user left the field empty
-    if (!text && placeholder && ref.current) {
-      ref.current.textContent = placeholder
-      ref.current.classList.add("text-gray-300", "italic")
-    }
   }
-
-  const showPlaceholder = isEmpty && !!placeholder
 
   return (
     <span
-      ref={ref}
       role="textbox"
       tabIndex={0}
       contentEditable
       suppressContentEditableWarning
-      onFocus={showPlaceholder ? handleFocus : undefined}
+      data-placeholder={isEmpty && placeholder ? placeholder : undefined}
       onBlur={handleBlur}
       onKeyDown={(e) => {
         if (e.key === "Enter" && !e.nativeEvent.isComposing) {
           e.preventDefault()
         }
       }}
-      className={showPlaceholder ? `${className} text-gray-300 italic` : className}
+      className={`editable-field ${className}`}
       aria-label={ariaLabel ?? `Edit ${field}`}
     >
-      {showPlaceholder ? placeholder : (value ?? "")}
+      {value ?? ""}
     </span>
   )
 }
