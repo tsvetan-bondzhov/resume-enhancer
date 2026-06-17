@@ -30,8 +30,12 @@ export function EditableField({
   const isEmpty = !value
 
   const handleBlur = (e: React.FocusEvent<HTMLSpanElement>) => {
-    const text = e.currentTarget.textContent ?? ""
+    const el = e.currentTarget
+    const text = el.textContent ?? ""
     onFieldChange(itemId, field, text)
+    // Remove stray <br> the browser inserts when all text is deleted,
+    // otherwise the :empty CSS selector won't match and the placeholder won't reappear.
+    if (!text) el.innerHTML = ""
   }
 
   return (
