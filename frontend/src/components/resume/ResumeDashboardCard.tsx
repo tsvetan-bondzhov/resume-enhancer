@@ -32,8 +32,10 @@ export default function ResumeDashboardCard({
     >
       {/* Mini preview area — scaled-down live ResumeCanvas */}
       {/* aria-hidden: preview is decorative — screen readers see the info bar instead */}
+      {/* inert: excludes all descendants from tab order and pointer interaction */}
       <div
         aria-hidden="true"
+        inert
         className="relative w-full overflow-hidden rounded-t-xl bg-card"
         style={{ height: "200px" }}
       >
@@ -74,7 +76,8 @@ export default function ResumeDashboardCard({
                 onOpen()
               }}
               aria-label="Open resume"
-              className="p-1 rounded hover:bg-muted"
+              title="Open resume"
+              className="p-1 rounded hover:bg-muted cursor-pointer"
             >
               <ExternalLink className="size-4" />
             </button>
@@ -84,8 +87,9 @@ export default function ResumeDashboardCard({
                 e.stopPropagation()
                 toast("Export coming soon")
               }}
-              aria-label="Export resume"
-              className="p-1 rounded hover:bg-muted"
+              aria-label="Download resume"
+              title="Download resume"
+              className="p-1 rounded hover:bg-muted cursor-pointer"
             >
               <Download className="size-4" />
             </button>
@@ -96,7 +100,8 @@ export default function ResumeDashboardCard({
                 onDuplicate()
               }}
               aria-label="Duplicate resume"
-              className="p-1 rounded hover:bg-muted"
+              title="Duplicate resume"
+              className="p-1 rounded hover:bg-muted cursor-pointer"
               disabled={isDuplicating}
             >
               {isDuplicating ? (
@@ -112,7 +117,8 @@ export default function ResumeDashboardCard({
                 onDelete()
               }}
               aria-label="Delete resume"
-              className="p-1 rounded hover:bg-muted hover:text-red-500"
+              title="Delete resume"
+              className="p-1 rounded hover:bg-muted hover:text-red-500 cursor-pointer"
             >
               <Trash2 className="size-4" />
             </button>

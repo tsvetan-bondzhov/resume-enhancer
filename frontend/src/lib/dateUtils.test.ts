@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { formatDateRange, formatMonthYear, formatYear } from "./dateUtils"
+import { formatDateRange, formatMonthYear, formatYear, parseDateInput, toEditableFullDate } from "./dateUtils"
 
 describe("formatDateRange", () => {
   it("returns empty string when both startDate and endDate are null", () => {
@@ -64,5 +64,101 @@ describe("formatYear", () => {
 
   it("formats a date as year only", () => {
     expect(formatYear("2018-09-01")).toBe("2018")
+  })
+})
+
+describe("parseDateInput", () => {
+  it("returns null for null input", () => {
+    expect(parseDateInput(null)).toBeNull()
+  })
+
+  it("returns null for undefined input", () => {
+    expect(parseDateInput(undefined)).toBeNull()
+  })
+
+  it("returns null for empty string", () => {
+    expect(parseDateInput("")).toBeNull()
+  })
+
+  it("returns null for whitespace-only string", () => {
+    expect(parseDateInput("   ")).toBeNull()
+  })
+
+  it("passes through YYYY-MM-DD unchanged", () => {
+    expect(parseDateInput("2023-06-15")).toBe("2023-06-15")
+  })
+
+  it("converts YYYY-MM to YYYY-MM-01", () => {
+    expect(parseDateInput("2023-06")).toBe("2023-06-01")
+  })
+
+  it("converts MM/YYYY to YYYY-MM-01", () => {
+    expect(parseDateInput("06/2023")).toBe("2023-06-01")
+  })
+
+  it("converts MM/DD/YYYY to YYYY-MM-DD", () => {
+    expect(parseDateInput("06/15/2023")).toBe("2023-06-15")
+  })
+
+  it("converts MM.YYYY to YYYY-MM-01", () => {
+    expect(parseDateInput("06.2023")).toBe("2023-06-01")
+  })
+
+  it("converts YYYY.MM to YYYY-MM-01", () => {
+    expect(parseDateInput("2023.06")).toBe("2023-06-01")
+  })
+
+  it("converts DD.MM.YYYY to YYYY-MM-DD", () => {
+    expect(parseDateInput("15.06.2023")).toBe("2023-06-15")
+  })
+
+  it("returns null for unrecognized format", () => {
+    expect(parseDateInput("June 2023")).toBeNull()
+  })
+
+  it("returns null for partial input", () => {
+    expect(parseDateInput("06/23")).toBeNull()
+  })
+
+  it("trims whitespace before parsing", () => {
+    expect(parseDateInput("  06/2023  ")).toBe("2023-06-01")
+  })
+})
+
+describe("toEditableFullDate", () => {
+  it("returns empty string for null input", () => {
+    expect(toEditableFullDate(null)).toBe("")
+  })
+
+  it("returns empty string for empty string input", () => {
+    expect(toEditableFullDate("")).toBe("")
+  })
+
+  it("passes through 'Present' unchanged", () => {
+    expect(toEditableFullDate("Present")).toBe("Present")
+  })
+
+  it("passes through already-formatted MM/DD/YYYY unchanged", () => {
+    expect(toEditableFullDate("06/15/2023")).toBe("06/15/2023")
+  })
+
+  it("converts YYYY-MM-DD to MM/DD/YYYY", () => {
+    expect(toEditableFullDate("2023-06-15")).toBe("06/15/2023")
+  })
+
+  it("converts YYYY-MM-DD with zero-padded month and day", () => {
+    expect(toEditableFullDate("2020-01-05")).toBe("01/05/2020")
+  })
+
+  it("converts YYYY-MM (no day) to MM/01/YYYY", () => {
+    expect(toEditableFullDate("2023-06")).toBe("06/01/2023")
+  })
+
+  it("converts YYYY-MM with zero-padded month to MM/01/YYYY", () => {
+    expect(toEditableFullDate("2020-01")).toBe("01/01/2020")
+  })
+
+  it("returns unrecognized format as-is", () => {
+    expect(toEditableFullDate("June 2023")).toBe("June 2023")
   })
 })

@@ -88,7 +88,7 @@ describe("LanguagesSectionRenderer", () => {
     expect(onDeleteItem).toHaveBeenCalledWith("lang-1")
   })
 
-  it("renders add buttons when onAddItem is provided", () => {
+  it("renders one add button when onAddItem is provided", () => {
     const onAddItem = vi.fn()
     render(
       <LanguagesSectionRenderer
@@ -97,7 +97,7 @@ describe("LanguagesSectionRenderer", () => {
       />,
     )
     const addButtons = screen.getAllByLabelText("Add item here")
-    expect(addButtons.length).toBeGreaterThanOrEqual(2)
+    expect(addButtons.length).toBe(1)
   })
 
   it("does not render add buttons when onAddItem is not provided", () => {

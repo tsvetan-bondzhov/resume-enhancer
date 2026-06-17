@@ -47,9 +47,6 @@ export default function VolunteeringStep({
 
   const [entries, setEntries] = useState<EntryState[]>(() => {
     const existing = profile?.volunteering ?? []
-    if (existing.length === 0) {
-      return [{ draft: emptyDraft(), errors: {} }]
-    }
     return existing.map((vol) => ({
       draft: {
         id: crypto.randomUUID(),

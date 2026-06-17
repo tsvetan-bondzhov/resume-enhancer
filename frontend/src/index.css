@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource/inter";
@@ -127,4 +127,11 @@
   html {
     @apply font-sans;
     }
+}
+/* CSS-based placeholder for contenteditable spans */
+.editable-field[data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: oklch(0.75 0 0);
+  font-style: italic;
+  pointer-events: none;
 }

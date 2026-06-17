@@ -20,16 +20,16 @@ export default function VolunteeringSectionRenderer({
 }: VolunteeringSectionRendererProps) {
   const content = (
     <div className="space-y-3 group/section">
-      {onAddItem && <AddItemButton onClick={() => onAddItem(0)} />}
+      {onAddItem && <AddItemButton onClick={() => onAddItem(0)} isLast={items.length === 0} />}
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
           <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
             <div>
-              <EditableTitleField itemId={item.id} field="role" value={item.role} onFieldChange={onFieldChange} />
-              {(item.organization != null || item.startDate != null || item.endDate != null || item.isCurrent) && (
+              <EditableTitleField itemId={item.id} field="role" value={item.role} onFieldChange={onFieldChange} placeholder="Click to add role" />
+              {(item.organization != null || item.startDate != null || item.endDate != null || item.isCurrent || onFieldChange) && (
                 <p className="text-muted-foreground italic text-sm">
                   {onFieldChange ? (
-                    <EditableField itemId={item.id} field="organization" value={item.organization} onFieldChange={onFieldChange} />
+                    <EditableField itemId={item.id} field="organization" value={item.organization} onFieldChange={onFieldChange} placeholder="Click to add organization" />
                   ) : (
                     <span>{item.organization}</span>
                   )}
@@ -47,10 +47,10 @@ export default function VolunteeringSectionRenderer({
                   )}
                 </p>
               )}
-              <EditableDescriptionField itemId={item.id} value={item.description} onFieldChange={onFieldChange} />
+              <EditableDescriptionField itemId={item.id} value={item.description} onFieldChange={onFieldChange} placeholder="Click to add description" />
             </div>
           </SortableItemWrapper>
-          {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} />}
+          {onAddItem && <AddItemButton onClick={() => onAddItem(index + 1)} isLast={index === items.length - 1} />}
         </React.Fragment>
       ))}
     </div>

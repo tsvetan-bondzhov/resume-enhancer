@@ -376,6 +376,48 @@ describe("SkillsStep", () => {
       expect(screen.getByText("Skill name is required")).toBeInTheDocument()
     })
   })
+
+  it("pressing Enter on the last skill input adds a new entry and focuses it", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<SkillsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const firstInput = screen.getByPlaceholderText("e.g. TypeScript")
+    await user.type(firstInput, "React")
+
+    // Press Enter on the last (currently only) skill input
+    await user.keyboard("{Enter}")
+
+    await waitFor(() => {
+      const inputs = screen.getAllByPlaceholderText("e.g. TypeScript")
+      expect(inputs).toHaveLength(2)
+      expect(inputs[1]).toHaveFocus()
+    })
+  })
+
+  it("pressing Enter on a non-last skill input does not add a new entry", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<SkillsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    // Add a second skill via the button so there are two entries
+    const addButton = screen.getByRole("button", { name: /add another/i })
+    await user.click(addButton)
+
+    await waitFor(() => {
+      expect(screen.getAllByPlaceholderText("e.g. TypeScript")).toHaveLength(2)
+    })
+
+    // Focus and press Enter on the FIRST input (not the last)
+    const inputs = screen.getAllByPlaceholderText("e.g. TypeScript")
+    await user.click(inputs[0])
+    await user.keyboard("{Enter}")
+
+    // Should still be 2 inputs (no new one added)
+    expect(screen.getAllByPlaceholderText("e.g. TypeScript")).toHaveLength(2)
+  })
 })
 
 describe("SummaryStep", () => {
@@ -740,13 +782,40 @@ describe("VolunteeringStep", () => {
     vi.clearAllMocks()
   })
 
+  it("renders empty state with no entries when no volunteering data exists", () => {
+    const onSaveAndContinue = vi.fn()
+
+    render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
+
+    expect(screen.queryByPlaceholderText("e.g. Mentor")).not.toBeInTheDocument()
+    expect(screen.getByText(/no volunteering added yet/i)).toBeInTheDocument()
+  })
+
+  it("clicking 'Add volunteering' in empty state adds a first entry", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const addLink = screen.getByRole("button", { name: /add volunteering/i })
+    await user.click(addLink)
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("e.g. Mentor")).toBeInTheDocument()
+    })
+  })
+
   it("blur on empty role renders text-red-600 error below the field", async () => {
     const user = userEvent.setup()
     const onSaveAndContinue = vi.fn()
 
     render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
 
-    const roleInput = screen.getByPlaceholderText("e.g. Mentor")
+    // Add an entry first since the step starts empty
+    const addLink = screen.getByRole("button", { name: /add volunteering/i })
+    await user.click(addLink)
+
+    const roleInput = await screen.findByPlaceholderText("e.g. Mentor")
     await user.click(roleInput)
     await user.tab() // blur
 
@@ -757,8 +826,22 @@ describe("VolunteeringStep", () => {
     })
   })
 
-  it("clicking 'Add another' appends a new volunteering entry", async () => {
-    await testAddAnotherAppendsEntry(VolunteeringStep, "e.g. Mentor")
+  it("clicking '+ Add another' appends a second volunteering entry", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
+
+    // Add the first entry via the empty-state link
+    await user.click(screen.getByRole("button", { name: /add volunteering/i }))
+    await screen.findByPlaceholderText("e.g. Mentor")
+
+    // Now use the footer "Add another" button to add a second entry
+    await user.click(screen.getByRole("button", { name: /add another/i }))
+
+    await waitFor(() => {
+      expect(screen.getAllByPlaceholderText("e.g. Mentor")).toHaveLength(2)
+    })
   })
 
   it("filling valid role and organization and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {
@@ -773,7 +856,10 @@ describe("VolunteeringStep", () => {
 
     render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
 
-    const roleInput = screen.getByPlaceholderText("e.g. Mentor")
+    // Add an entry first since the step starts empty
+    await user.click(screen.getByRole("button", { name: /add volunteering/i }))
+
+    const roleInput = await screen.findByPlaceholderText("e.g. Mentor")
     await user.type(roleInput, "Code Instructor")
 
     const orgInput = screen.getByPlaceholderText("e.g. Code.org")
@@ -792,11 +878,36 @@ describe("VolunteeringStep", () => {
     expect(capturedPayload.current?.volunteering![0].organization).toBe("Local School")
   })
 
-  it("does not call onSaveAndContinue when required fields are empty on submit", async () => {
+  it("Save & Continue with no entries calls onSaveAndContinue with an empty volunteering array", async () => {
+    const user = userEvent.setup()
+    const capturedPayload = { current: null as Partial<ProfileUpdateRequest> | null }
+    const onSaveAndContinue = vi
+      .fn()
+      .mockImplementation(async (partial: Partial<ProfileUpdateRequest>) => {
+        capturedPayload.current = partial
+      })
+
+    render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    await user.click(saveButton)
+
+    await waitFor(() => {
+      expect(onSaveAndContinue).toHaveBeenCalledTimes(1)
+    })
+
+    expect(capturedPayload.current?.volunteering).toEqual([])
+  })
+
+  it("does not call onSaveAndContinue when required fields are empty on submit (with an entry added)", async () => {
     const user = userEvent.setup()
     const onSaveAndContinue = vi.fn()
 
     render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
+
+    // Add an entry so there's a blank entry to fail validation
+    await user.click(screen.getByRole("button", { name: /add volunteering/i }))
+    await screen.findByPlaceholderText("e.g. Mentor")
 
     const saveButton = screen.getByRole("button", { name: /save & continue/i })
     await user.click(saveButton)
@@ -807,5 +918,32 @@ describe("VolunteeringStep", () => {
       expect(screen.getByText("Role is required")).toBeInTheDocument()
       expect(screen.getByText("Organization is required")).toBeInTheDocument()
     })
+  })
+
+  it("initialises entries from existing profile volunteering data", () => {
+    useProfileStore.setState((s) => ({
+      ...s,
+      profile: {
+        ...s.profile!,
+        volunteering: [
+          {
+            role: "Mentor",
+            organization: "Code.org",
+            description: "Helped students",
+            startDate: "2023-01-01",
+            endDate: null,
+            isCurrent: true,
+          },
+        ],
+      },
+    }))
+
+    const onSaveAndContinue = vi.fn()
+    render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const roleInput = screen.getByPlaceholderText("e.g. Mentor") as HTMLInputElement
+    expect(roleInput.value).toBe("Mentor")
+    const orgInput = screen.getByPlaceholderText("e.g. Code.org") as HTMLInputElement
+    expect(orgInput.value).toBe("Code.org")
   })
 })

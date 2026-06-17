@@ -45,3 +45,122 @@ export function formatYear(date: string | null): string {
   if (!date) return ""
   return String(new Date(date).getUTCFullYear())
 }
+
+/**
+ * Parses a user-typed date string into the canonical "YYYY-MM-DD" model format.
+ *
+ * Supported input formats:
+ *   - "MM/YYYY"     → "YYYY-MM-01"
+ *   - "YYYY-MM"     → "YYYY-MM-01"
+ *   - "MM/DD/YYYY"  → "YYYY-MM-DD"
+ *   - "YYYY-MM-DD"  → "YYYY-MM-DD"  (pass-through)
+ *   - "MM.YYYY"     → "YYYY-MM-01"
+ *   - "YYYY.MM"     → "YYYY-MM-01"
+ *   - "DD.MM.YYYY"  → "YYYY-MM-DD"
+ *   - ""            → null
+ *   - unrecognized  → null
+ *
+ * @param value Raw string from an editable date field
+ * @returns Canonical "YYYY-MM-DD" string, or null
+ */
+export function parseDateInput(value: string | null | undefined): string | null {
+  if (!value || value.trim() === "") return null
+  const v = value.trim()
+
+  // YYYY-MM-DD (already canonical)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v
+
+  // YYYY-MM
+  const yyyyMm = /^(\d{4})-(\d{2})$/.exec(v)
+  if (yyyyMm) return `${yyyyMm[1]}-${yyyyMm[2]}-01`
+
+  // MM/YYYY
+  const mmYyyySlash = /^(\d{2})\/(\d{4})$/.exec(v)
+  if (mmYyyySlash) return `${mmYyyySlash[2]}-${mmYyyySlash[1]}-01`
+
+  // MM/DD/YYYY
+  const mmDdYyyy = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v)
+  if (mmDdYyyy) return `${mmDdYyyy[3]}-${mmDdYyyy[1]}-${mmDdYyyy[2]}`
+
+  // MM.YYYY
+  const mmYyyyDot = /^(\d{2})\.(\d{4})$/.exec(v)
+  if (mmYyyyDot) return `${mmYyyyDot[2]}-${mmYyyyDot[1]}-01`
+
+  // YYYY.MM
+  const yyyyMmDot = /^(\d{4})\.(\d{2})$/.exec(v)
+  if (yyyyMmDot) return `${yyyyMmDot[1]}-${yyyyMmDot[2]}-01`
+
+  // DD.MM.YYYY
+  const ddMmYyyy = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(v)
+  if (ddMmYyyy) return `${ddMmYyyy[3]}-${ddMmYyyy[2]}-${ddMmYyyy[1]}`
+
+  return null
+}
+
+/**
+ * Converts a date string from storage/backend format to an editable "MM/YYYY" string
+ * suitable for display in resume editor fields.
+ *
+ * Accepted input formats:
+ *   - "YYYY-MM-DD" → "MM/YYYY"  (ISO full date)
+ *   - "YYYY-MM"    → "MM/YYYY"  (ISO year-month)
+ *   - "MM/YYYY"    → "MM/YYYY"  (already correct, passed through)
+ *   - "Present"    → "Present"  (passed through)
+ *   - null / ""    → ""
+ *
+ * @param date Date string from a DTO field, or null
+ * @returns Display-ready string for an editable date field
+ */
+export function toEditableDate(date: string | null): string {
+  if (!date) return ""
+  if (date === "Present") return "Present"
+  // Already MM/YYYY
+  if (/^\d{2}\/\d{4}$/.test(date)) return date
+  // YYYY-MM-DD or YYYY-MM
+  const isoMatch = /^(\d{4})-(\d{2})/.exec(date)
+  if (isoMatch) {
+    const year = isoMatch[1]
+    const month = isoMatch[2]
+    return `${month}/${year}`
+  }
+  // Unrecognized format — return as-is so the user can correct it
+  return date
+}
+
+/**
+ * Converts a date string from storage/backend format to an editable "MM/DD/YYYY" string
+ * suitable for display in resume editor fields that require a full date.
+ *
+ * Accepted input formats:
+ *   - "YYYY-MM-DD" → "MM/DD/YYYY"  (ISO full date)
+ *   - "YYYY-MM"    → "MM/DD/YYYY"  (ISO year-month, day defaults to "01")
+ *   - "MM/DD/YYYY" → "MM/DD/YYYY"  (already correct, passed through)
+ *   - "Present"    → "Present"     (passed through)
+ *   - null / ""    → ""
+ *
+ * @param date Date string from a DTO field, or null
+ * @returns Display-ready string for an editable full date field
+ */
+export function toEditableFullDate(date: string | null): string {
+  if (!date) return ""
+  if (date === "Present") return "Present"
+  // Already MM/DD/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) return date
+  // YYYY-MM-DD
+  const isoFullMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(date)
+  if (isoFullMatch) {
+    const year = isoFullMatch[1]
+    const month = isoFullMatch[2]
+    const day = isoFullMatch[3]
+    return `${month}/${day}/${year}`
+  }
+  // YYYY-MM (no day — default to "01")
+  const isoMonthMatch = /^(\d{4})-(\d{2})$/.exec(date)
+  if (isoMonthMatch) {
+    const year = isoMonthMatch[1]
+    const month = isoMonthMatch[2]
+    return `${month}/01/${year}`
+  }
+  // Unrecognized format — return as-is so the user can correct it
+  return date
+}

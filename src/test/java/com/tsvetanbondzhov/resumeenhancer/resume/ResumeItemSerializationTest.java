@@ -33,7 +33,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ResumeItemSerializationTest {
 
-    // Must match JacksonConfig.objectMapper() — JavaTimeModule + no timestamp dates.
+    // Must match JacksonConfig.objectMapper() — JavaTimeModule + FlexibleLocalDate + no timestamp dates.
+    // The FlexibleLocalDateDeserializer is omitted here because these tests only round-trip ISO
+    // full dates ("YYYY-MM-DD"), which the default JavaTimeModule also handles correctly.
     // See class-level javadoc for divergence risk note.
     private final ObjectMapper mapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())

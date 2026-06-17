@@ -15,8 +15,8 @@ import VolunteeringStep from "@/components/profile/VolunteeringStep"
 import SummaryStep from "@/components/profile/SummaryStep"
 import { useResumeUpload } from "@/hooks/useResumeUpload"
 
-const STEPS = ["Experience", "Education", "Skills", "Certifications", "Languages", "Projects", "Volunteering", "Summary"]
-const LAST_STEP = STEPS.length - 1 // 7 — SummaryStep handles its own navigation
+const STEPS = ["Summary", "Experience", "Education", "Skills", "Certifications", "Languages", "Projects", "Volunteering"]
+const LAST_STEP = STEPS.length - 1 // 7 — VolunteeringStep is now last
 
 const EMPTY_PROFILE: ProfileDto = {
   summary: null,
@@ -143,13 +143,13 @@ export default function ProfilePage() {
       const payload = mergeProfilePayload(partial, current)
       const updated = await apiClient.put<ProfileDto>("/api/v1/profile", payload)
       setProfile(updated)
-      // Fix 1: suppress generic "Profile saved" toast on the last step —
-      // SummaryStep.handleSaveAndFinish shows its own "Profile complete!" toast,
-      // so firing both would stack two toasts on the user.
-      if (currentStep < LAST_STEP) {
+      // Suppress generic "Profile saved" toast and step advance for SummaryStep
+      // (index 0) and the last step (index LAST_STEP) — SummaryStep.handleSaveAndFinish
+      // shows its own "Profile complete!" toast and navigates itself, so firing
+      // both would stack two toasts and double-advance.
+      const SUMMARY_STEP = 0
+      if (currentStep !== SUMMARY_STEP && currentStep < LAST_STEP) {
         toast.success("Profile saved")
-        // Only advance step when NOT on the last step — SummaryStep navigates
-        // itself; incrementing here would push currentStep to 4 (broken limbo).
         setStep(currentStep + 1)
       }
     } catch {
@@ -263,28 +263,28 @@ export default function ProfilePage() {
 
           {/* Active step */}
           {currentStep === 0 && (
-            <ExperienceStep onSaveAndContinue={handleSaveAndContinue} />
+            <SummaryStep onSaveAndContinue={handleSaveAndContinue} />
           )}
           {currentStep === 1 && (
-            <EducationStep onSaveAndContinue={handleSaveAndContinue} />
+            <ExperienceStep onSaveAndContinue={handleSaveAndContinue} />
           )}
           {currentStep === 2 && (
-            <SkillsStep onSaveAndContinue={handleSaveAndContinue} />
+            <EducationStep onSaveAndContinue={handleSaveAndContinue} />
           )}
           {currentStep === 3 && (
-            <CertificationsStep onSaveAndContinue={handleSaveAndContinue} />
+            <SkillsStep onSaveAndContinue={handleSaveAndContinue} />
           )}
           {currentStep === 4 && (
-            <LanguagesStep onSaveAndContinue={handleSaveAndContinue} />
+            <CertificationsStep onSaveAndContinue={handleSaveAndContinue} />
           )}
           {currentStep === 5 && (
-            <ProjectsStep onSaveAndContinue={handleSaveAndContinue} />
+            <LanguagesStep onSaveAndContinue={handleSaveAndContinue} />
           )}
           {currentStep === 6 && (
-            <VolunteeringStep onSaveAndContinue={handleSaveAndContinue} />
+            <ProjectsStep onSaveAndContinue={handleSaveAndContinue} />
           )}
           {currentStep === 7 && (
-            <SummaryStep onSaveAndContinue={handleSaveAndContinue} />
+            <VolunteeringStep onSaveAndContinue={handleSaveAndContinue} />
           )}
         </>
       )}
