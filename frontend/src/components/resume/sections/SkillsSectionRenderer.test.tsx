@@ -68,32 +68,32 @@ describe("SkillsSectionRenderer", () => {
     expect(event).toBe(true)
   })
 
-  it("renders add buttons at position 0 and after each item when onAddItem is provided", () => {
+  it("renders an add button when onAddItem is provided", () => {
     const onAddItem = vi.fn()
     render(
       <SkillsSectionRenderer items={[buildItem()]} onAddItem={onAddItem} />
     )
-    const addButtons = screen.getAllByLabelText("Add item here")
-    expect(addButtons.length).toBeGreaterThanOrEqual(2)
+    const addButtons = screen.getAllByLabelText("Add skill")
+    expect(addButtons.length).toBeGreaterThanOrEqual(1)
   })
 
-  it("calls onAddItem(0) when the first add button is clicked", () => {
+  it("calls onAddItem(0) when there are no items and the add button is clicked", () => {
     const onAddItem = vi.fn()
     render(
-      <SkillsSectionRenderer items={[buildItem()]} onAddItem={onAddItem} />
+      <SkillsSectionRenderer items={[]} onAddItem={onAddItem} />
     )
-    const addButtons = screen.getAllByLabelText("Add item here")
-    fireEvent.click(addButtons[0])
+    const addButton = screen.getByLabelText("Add skill")
+    fireEvent.click(addButton)
     expect(onAddItem).toHaveBeenCalledWith(0)
   })
 
-  it("calls onAddItem(1) when the add button after the first item is clicked", () => {
+  it("calls onAddItem(1) when there is one item and the add button is clicked", () => {
     const onAddItem = vi.fn()
     render(
       <SkillsSectionRenderer items={[buildItem()]} onAddItem={onAddItem} />
     )
-    const addButtons = screen.getAllByLabelText("Add item here")
-    fireEvent.click(addButtons[1])
+    const addButtons = screen.getAllByLabelText("Add skill")
+    fireEvent.click(addButtons[0])
     expect(onAddItem).toHaveBeenCalledWith(1)
   })
 

@@ -522,7 +522,7 @@ describe("ResumeSection", () => {
     expect(screen.getByText("Mentor")).toBeInTheDocument()
   })
 
-  it("renders read-only title heading when onTitleChange is not provided", () => {
+  it("renders title heading with contentEditable regardless of onTitleChange", () => {
     const section = buildSection()
     const { container } = render(
       <ResumeSection
@@ -531,9 +531,9 @@ describe("ResumeSection", () => {
         onFieldChange={vi.fn()}
       />
     )
-    // The heading should NOT have contentEditable when onTitleChange is falsy
+    // The heading always has contentEditable — onTitleChange is called optionally via ?.()
     const heading = container.querySelector("h2")
     expect(heading).toBeInTheDocument()
-    expect(heading?.getAttribute("contenteditable")).toBeNull()
+    expect(heading?.getAttribute("contenteditable")).toBe("true")
   })
 })

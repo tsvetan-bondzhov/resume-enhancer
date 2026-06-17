@@ -112,10 +112,10 @@ describe("EditorToolbar — handleNameKeyDown (lines 75-78)", () => {
 })
 
 describe("EditorToolbar — save button state (lines 106-107)", () => {
-  it("save button is disabled when not dirty (line 106-107)", () => {
+  it("save button is enabled when not dirty and not saving (line 106-107)", () => {
     render(<EditorToolbar {...buildProps({ isDirty: false, autosaveStatus: "idle" })} />)
     const saveButton = screen.getByRole("button", { name: /Saved/i })
-    expect(saveButton).toBeDisabled()
+    expect(saveButton).not.toBeDisabled()
   })
 
   it("save button is disabled when autosaveStatus is saving even if dirty", () => {

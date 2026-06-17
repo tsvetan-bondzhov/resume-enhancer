@@ -409,8 +409,8 @@ describe("ProfilePage — handleSaveAndContinue (lines 136-159)", () => {
       </MemoryRouter>,
     )
 
-    // Wait for the stepper and Save & Continue button to appear
-    const saveBtn = await screen.findByRole("button", { name: /Save & Continue/i })
+    // Wait for the stepper and Save & Finish button to appear (SummaryStep is rendered at step 0)
+    const saveBtn = await screen.findByRole("button", { name: /Save & Finish/i })
 
     await userEvent.setup().click(saveBtn)
     await waitFor(() => {

@@ -128,7 +128,7 @@ describe("ResumeDashboardCard", () => {
     const { toast } = await import("sonner")
     const user = userEvent.setup()
     renderCard()
-    const exportButton = screen.getByLabelText("Export resume")
+    const exportButton = screen.getByLabelText("Download resume")
     await user.click(exportButton)
     expect(toast).toHaveBeenCalledWith("Export coming soon")
   })
