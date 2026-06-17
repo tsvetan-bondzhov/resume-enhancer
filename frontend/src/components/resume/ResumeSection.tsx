@@ -182,7 +182,6 @@ export default function ResumeSection({
 
   return (
     <section aria-labelledby={`section-title-${section.sectionType}`} className="mb-6">
-      {onTitleChange ? (
         <h2
           ref={titleRef}
           id={`section-title-${section.sectionType}`}
@@ -195,14 +194,6 @@ export default function ResumeSection({
         >
           {isTitleEmpty ? SECTION_TITLE_PLACEHOLDER : section.title}
         </h2>
-      ) : (
-        <h2
-          id={`section-title-${section.sectionType}`}
-          className="text-base font-semibold border-b-2 border-[var(--accent-color,theme(colors.zinc.200))] pb-1 mb-2 uppercase tracking-wide"
-        >
-          {section.title}
-        </h2>
-      )}
       {renderSectionContent(section, onFieldChange, onAddItem, onDeleteItem, onReorderItems)}
     </section>
   )

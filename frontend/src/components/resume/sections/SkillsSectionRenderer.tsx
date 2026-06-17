@@ -1,4 +1,3 @@
-import React from "react"
 import type { SkillItemDto, ResumeItemDto } from "@/types/api"
 import { SortableItemWrapper, SectionDndWrapper, EditableField } from "./sectionRendererShared"
 import { Plus } from "lucide-react"
