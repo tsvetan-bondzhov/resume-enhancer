@@ -83,6 +83,59 @@ public class AiService {
         }
     }
 
+    /**
+     * Streams AI-generated tailoring suggestions aligned to the provided job description.
+     * The AI is instructed to emit one DocumentPatchEvent JSON object per line —
+     * the controller parses each line into a patch SSE event.
+     *
+     * AiService is the ONLY class in the codebase that calls ChatClient directly.
+     */
+    public Flux<String> streamTailor(ResumeDocument document, String jobDescription) {
+        try {
+            String prompt = buildTailorPrompt(document, jobDescription);
+            return chatClient.prompt()
+                    .user(prompt)
+                    .stream()
+                    .content()
+                    .onErrorMap(e -> new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e));
+        } catch (Exception e) {
+            log.warn("Ollama tailor call failed: {}", e.getMessage());
+            throw new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e);
+        }
+    }
+
+    String buildTailorPrompt(ResumeDocument document, String jobDescription) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("""
+                You are an expert resume coach. Rewrite the resume below to align with the job description.
+                For each change, output exactly ONE JSON object on its own line in this format:
+                {"sectionId":"<sectionType>","itemIndex":<0-based index>,"field":"<field name>","newValue":"<tailored text>"}
+
+                Rules:
+                - Output ONLY the JSON objects, one per line — no prose, no markdown, no explanations
+                - sectionId must be the exact sectionType value (e.g. WORK_EXPERIENCE, SUMMARY, SKILLS)
+                - itemIndex is the 0-based position of the item within that section's items array
+                - field is the exact field name to rewrite (e.g. description, jobTitle, name, text)
+                - newValue is the tailored text — aligned with the job's keywords and requirements
+                - Only suggest changes for fields that have existing non-empty text
+                - Limit to the most impactful changes (max 8 total)
+                - Preserve factual accuracy — do not invent experience or qualifications
+
+                Job Description:
+                """);
+        sb.append(jobDescription).append("\n\n");
+        sb.append("Resume:\n");
+        for (var section : document.sections()) {
+            if (!section.visible()) continue;
+            sb.append("Section: ").append(section.sectionType()).append("\n");
+            var items = section.items();
+            for (int i = 0; i < items.size(); i++) {
+                sb.append("  Item ").append(i).append(": ").append(items.get(i)).append("\n");
+            }
+        }
+        return sb.toString();
+    }
+
     String buildEnhancePrompt(ResumeDocument document) {
         StringBuilder sb = new StringBuilder();
         sb.append("""

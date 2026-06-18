@@ -7,9 +7,11 @@ import com.tsvetanbondzhov.resumeenhancer.resume.dto.UpdateResumeRequest;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -70,5 +72,13 @@ public class ResumeController {
                                   @PathVariable UUID resumeId,
                                   @Valid @RequestBody UpdateResumeRequest request) {
         return resumeService.updateResume(authentication.getName(), resumeId, request);
+    }
+
+    @PatchMapping("/{resumeId}/tailor")
+    public ResponseEntity<ResumeDto> markAsTailored(
+            @PathVariable UUID resumeId,
+            Authentication authentication) {
+        ResumeDto dto = resumeService.markAsTailored(authentication.getName(), resumeId);
+        return ResponseEntity.ok(dto);
     }
 }

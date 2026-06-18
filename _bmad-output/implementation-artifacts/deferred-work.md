@@ -133,6 +133,13 @@
 - **F10** `ChatPanel.tsx` `MessageBubble` not memoized — every token event triggers a full re-render of the message list because `useChatStore` subscription fires for each `messages` array update. Performance optimization; not an AC violation; acceptable at 288px panel width for v1. Address with `React.memo` + content-address selector if token throughput causes visual jank.
 - **F14** No EditorPage test for `clearMessages()` on unmount — the `useChatStore.clearMessages()` call in the EditorPage unmount cleanup is not test-covered. Low priority; `clearMessages` is covered by `useChatStore.test.ts`; add EditorPage unmount test in a future test quality pass.
 
+## Deferred from: code review of 5-5-ai-job-description-tailoring (2026-06-18)
+
+- `resumeId` UUID format not validated in `AiController.tailor` — `UUID.fromString` throws 500 on non-UUID string; `@NotBlank` only validates non-emptiness; pre-existing pattern documented in story dev notes; same deferred issue as `/enhance` and all `ResumeController` endpoints.
+- `buildTailorPrompt` serializes null item fields as `"null"` literal string via `toString()` — LLM prompt mitigates with "skip empty non-empty fields" instruction; same gap exists in `buildEnhancePrompt`; acceptable for v1.
+- Dispose race in `AiController.tailor`: `emitter.onCompletion(disposable::dispose)` registered after `buildEnhanceDisposable` starts subscription; pre-existing pattern identical to `enhance` endpoint; not introduced by story 5-5.
+- `markResumeAsTailored` async PATCH fetch has no cancellation token — can write `setCurrentResumeTailored(true)` to store after user navigates away; cosmetic badge write; acceptable v1 limitation matching existing enhance behavior.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

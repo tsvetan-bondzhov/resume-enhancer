@@ -113,6 +113,36 @@ public class AiController {
         return ResponseEntity.ok(emitter);
     }
 
+    @PostMapping(value = "/tailor", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public ResponseEntity<?> tailor(@Valid @RequestBody TailorRequest request,
+                                    Authentication authentication) {
+        if (!healthGuard.isAvailable()) {
+            return unavailableResponse();
+        }
+
+        UUID resumeId = UUID.fromString(request.resumeId());
+        ResumeDocument document = resumeService.getResume(authentication.getName(), resumeId).content();
+
+        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
+        Context otelContext = Context.current();
+
+        executor.execute(() -> {
+            try (var ignored = otelContext.makeCurrent()) {
+                Flux<String> tokenFlux = aiService.streamTailor(document, request.jobDescription());
+                Disposable disposable = buildEnhanceDisposable(tokenFlux, emitter);
+
+                emitter.onCompletion(disposable::dispose);
+                emitter.onTimeout(disposable::dispose);
+                emitter.onError(e -> disposable.dispose());
+            } catch (Exception e) {
+                log.error("SSE tailor emitter setup failed", e);
+                emitter.completeWithError(e);
+            }
+        });
+
+        return ResponseEntity.ok(emitter);
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private ResponseEntity<?> unavailableResponse() {

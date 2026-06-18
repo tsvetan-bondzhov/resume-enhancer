@@ -236,6 +236,67 @@ class AiServiceTest {
         assertThat(prompt).contains("newValue");
     }
 
+    // ─── streamTailor — success path ────────────────────────────────────────
+
+    @Test
+    void streamTailor_returnsPatchFlux() {
+        ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.StreamResponseSpec streamSpec = mock(ChatClient.StreamResponseSpec.class);
+
+        when(chatClient.prompt()).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(userSpec);
+        when(userSpec.stream()).thenReturn(streamSpec);
+        when(streamSpec.content()).thenReturn(
+                Flux.just(
+                        "{\"sectionId\":\"WORK_EXPERIENCE\",",
+                        "\"itemIndex\":0,\"field\":\"description\",\"newValue\":\"Led cloud-native backend development\"}\n"
+                )
+        );
+
+        ResumeDocument document = new ResumeDocument(List.of());
+        Flux<String> result = aiService.streamTailor(document, "Software Engineer at Google");
+
+        StepVerifier.create(result)
+                .expectNext("{\"sectionId\":\"WORK_EXPERIENCE\",")
+                .expectNext("\"itemIndex\":0,\"field\":\"description\",\"newValue\":\"Led cloud-native backend development\"}\n")
+                .verifyComplete();
+    }
+
+    // ─── streamTailor — exception path ──────────────────────────────────────
+
+    @Test
+    void streamTailor_ollamaUnavailable_throwsOllamaUnavailableException() {
+        ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
+
+        when(chatClient.prompt()).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(userSpec);
+        when(userSpec.stream()).thenThrow(new RuntimeException("Connection refused"));
+
+        ResumeDocument document = new ResumeDocument(List.of());
+
+        assertThatThrownBy(() -> aiService.streamTailor(document, "Software Engineer at Google"))
+                .isInstanceOf(OllamaUnavailableException.class)
+                .hasMessageContaining("Ollama is unavailable");
+    }
+
+    // ─── buildTailorPrompt — content verification ───────────────────────────
+
+    @Test
+    void buildTailorPrompt_containsJobDescriptionAndResumeData() {
+        ResumeDocument document = new ResumeDocument(List.of());
+        String jobDescription = "Looking for a Java backend developer with Spring Boot expertise";
+        String prompt = aiService.buildTailorPrompt(document, jobDescription);
+
+        assertThat(prompt).contains("resume coach");
+        assertThat(prompt).contains(jobDescription);
+        assertThat(prompt).contains("sectionId");
+        assertThat(prompt).contains("itemIndex");
+        assertThat(prompt).contains("newValue");
+        assertThat(prompt).contains("Job Description:");
+    }
+
     // ─── helper ──────────────────────────────────────────────────────────────
 
     private void stubChatClient(String returnValue) {

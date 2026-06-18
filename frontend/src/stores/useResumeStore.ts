@@ -22,6 +22,7 @@ interface ResumeState {
   reorderSections: (newSections: ResumeSectionDto[]) => void
   updateResumeName: (name: string) => void
   setCurrentResumeTemplateId: (templateId: string | null) => void
+  setCurrentResumeTailored: (value: boolean, resumeId?: string) => void
   applyPatch: (patch: {
     sectionId: string
     itemIndex: number
@@ -172,6 +173,21 @@ export const useResumeStore = create<ResumeState>((set) => ({
       return {
         ...state,
         currentResume: { ...state.currentResume, templateId },
+      }
+    }),
+  setCurrentResumeTailored: (value, resumeId) =>
+    set((state) => {
+      // Resolve the target ID: prefer explicit resumeId arg, fall back to currentResume
+      const targetId = resumeId ?? state.currentResume?.id
+      return {
+        ...state,
+        currentResume:
+          state.currentResume && (!targetId || state.currentResume.id === targetId)
+            ? { ...state.currentResume, isTailored: value }
+            : state.currentResume,
+        resumes: targetId
+          ? state.resumes.map((r) => (r.id === targetId ? { ...r, isTailored: value } : r))
+          : state.resumes,
       }
     }),
   applyPatch: (patch) =>

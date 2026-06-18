@@ -3,6 +3,8 @@ import { useResumeStore } from "@/stores/useResumeStore"
 import { useChatStore } from "@/stores/useChatStore"
 import { useAuthStore } from "@/stores/useAuthStore"
 import { useDiffStore } from "@/stores/useDiffStore"
+import { apiClient } from "@/lib/apiClient"
+import type { ResumeDto } from "@/types/api"
 
 export interface UseStreamingChatOptions {
   onDone?: (summary: string) => void
@@ -383,5 +385,91 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
     return makeStreamCleanup(ref, () => setStreaming(false))
   }
 
-  return { startStream, startStreamWithPost, startEnhanceStream }
+  async function markResumeAsTailored(resumeId: string): Promise<void> {
+    try {
+      await apiClient.patch<ResumeDto>(`/api/v1/resumes/${resumeId}/tailor`)
+      useResumeStore.getState().setCurrentResumeTailored(true, resumeId)
+    } catch (err) {
+      // Non-critical — badge is cosmetic; log for visibility but do not surface to user
+      console.warn("markResumeAsTailored: PATCH failed", err)
+    }
+  }
+
+  function startTailorStream(resumeId: string, jobDescription: string): () => void {
+    setStreaming(true)
+
+    const assistantMsgId = crypto.randomUUID()
+    addMessage({
+      id: assistantMsgId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date().toISOString(),
+    })
+
+    const authToken = useAuthStore.getState().token
+    const ref: CancelRef = { cancelled: false, reader: null }
+    // F4: track whether a successful `done` SSE event was received
+    let tailorDoneReceived = false
+    const tailorOptions: UseStreamingChatOptions = {
+      ...options,
+      onDone: (summary) => {
+        tailorDoneReceived = true
+        options.onDone?.(summary)
+      },
+    }
+
+    fetch("/api/v1/ai/tailor", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
+      body: JSON.stringify({ resumeId, jobDescription }),
+    })
+      .then(async (res) => {
+        if (!res.ok || !res.body) {
+          setStreaming(false)
+          // F6: match AC7 error message text exactly
+          options.onError?.("AI features are temporarily unavailable — try again later")
+          return
+        }
+        const reader = res.body.getReader()
+        ref.reader = reader
+        const decoder = new TextDecoder()
+        let buffer = ""
+        let sseState = { eventName: "", dataLine: "" }
+
+        while (!ref.cancelled) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value, { stream: true })
+          const result = processEnhanceBuffer(
+            buffer, chunk, assistantMsgId, applyPatch, setStreaming, tailorOptions, sseState
+          )
+          buffer = result.remaining
+          sseState = { eventName: result.eventName, dataLine: result.dataLine }
+        }
+
+        // Flush remaining buffer content when stream ends without trailing newline
+        if (!ref.cancelled && buffer.trim()) {
+          const { eventName: en, dataLine: dl } = parseSseLine(buffer.trim(), sseState.eventName, sseState.dataLine)
+          dispatchEnhanceEvent(en, dl, assistantMsgId, applyPatch, setStreaming, tailorOptions)
+        }
+        // F4: only mark as tailored when the SSE `done` event was received (not on `error`)
+        if (!ref.cancelled && tailorDoneReceived) {
+          await markResumeAsTailored(resumeId)
+        }
+        if (!ref.cancelled) setStreaming(false)
+      })
+      .catch(() => {
+        if (!ref.cancelled) {
+          setStreaming(false)
+          options.onError?.("AI streaming error — please try again")
+        }
+      })
+
+    return makeStreamCleanup(ref, () => setStreaming(false))
+  }
+
+  return { startStream, startStreamWithPost, startEnhanceStream, startTailorStream }
 }
