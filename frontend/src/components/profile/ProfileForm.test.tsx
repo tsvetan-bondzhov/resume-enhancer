@@ -470,6 +470,47 @@ describe("SummaryStep", () => {
 
     expect(screen.queryByRole("button", { name: /skip/i })).not.toBeInTheDocument()
   })
+
+  it("syncs form fields when the profile store is updated externally (e.g. resume upload while on this step)", async () => {
+    const onSaveAndContinue = vi.fn()
+
+    render(
+      <MemoryRouter>
+        <SummaryStep onSaveAndContinue={onSaveAndContinue} />
+      </MemoryRouter>,
+    )
+
+    const textarea = screen.getByPlaceholderText(/Experienced software engineer/i) as HTMLTextAreaElement
+    expect(textarea.value).toBe("")
+
+    // Simulate what useResumeUpload does: replace the entire profile in the store
+    const { act } = await import("@testing-library/react")
+    await act(async () => {
+      useProfileStore.setState((s) => ({
+        ...s,
+        profile: {
+          ...s.profile!,
+          summary: "Uploaded summary text",
+          contactEmail: "uploaded@example.com",
+          locationCity: "Berlin",
+          locationCountry: "Germany",
+        },
+      }))
+    })
+
+    await waitFor(() => {
+      expect(textarea.value).toBe("Uploaded summary text")
+    })
+
+    const emailInput = screen.getByLabelText(/contact email/i) as HTMLInputElement
+    expect(emailInput.value).toBe("uploaded@example.com")
+
+    const cityInput = screen.getByLabelText(/city/i) as HTMLInputElement
+    expect(cityInput.value).toBe("Berlin")
+
+    const countryInput = screen.getByLabelText(/country/i) as HTMLInputElement
+    expect(countryInput.value).toBe("Germany")
+  })
 })
 
 describe("CertificationsStep", () => {

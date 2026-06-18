@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
 import { useAuthStore } from "@/stores/useAuthStore"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,18 @@ export default function SummaryStep({ onSaveAndContinue }: SummaryStepProps) {
   const [blogUrl, setBlogUrl] = useState(profile?.blogUrl ?? "")
   const [locationCity, setLocationCity] = useState(profile?.locationCity ?? "")
   const [locationCountry, setLocationCountry] = useState(profile?.locationCountry ?? "")
+
+  // Sync local form state when profile is replaced externally (e.g. resume upload
+  // while already on this step — setProfile fires but the component isn't remounted).
+  useEffect(() => {
+    setSummary(profile?.summary ?? "")
+    setContactEmail(profile?.contactEmail ?? user?.email ?? "")
+    setLinkedInUrl(profile?.linkedInUrl ?? "")
+    setPersonalPageUrl(profile?.personalPageUrl ?? "")
+    setBlogUrl(profile?.blogUrl ?? "")
+    setLocationCity(profile?.locationCity ?? "")
+    setLocationCountry(profile?.locationCountry ?? "")
+  }, [profile, user?.email])
 
   async function handleSaveAndContinue() {
     await onSaveAndContinue({
