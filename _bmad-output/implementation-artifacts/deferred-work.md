@@ -140,6 +140,20 @@
 - Dispose race in `AiController.tailor`: `emitter.onCompletion(disposable::dispose)` registered after `buildEnhanceDisposable` starts subscription; pre-existing pattern identical to `enhance` endpoint; not introduced by story 5-5.
 - `markResumeAsTailored` async PATCH fetch has no cancellation token — can write `setCurrentResumeTailored(true)` to store after user navigates away; cosmetic badge write; acceptable v1 limitation matching existing enhance behavior.
 
+## Deferred from: code review of 5-6-ai-qa-chat-without-document-edits (2026-06-18)
+
+- **F1** `AiConfig.java` / `MessageWindowChatMemory` — Unbounded `conversationId` map in singleton bean; no eviction, TTL, or maximum-conversations limit. Spring AI 2.0.0-M6 limitation; `maxMessages(20)` caps per-conversation depth only. Address when Spring AI provides eviction API or swap to a bounded cache (Caffeine) in a future memory management pass.
+- **F2** `AiController.java` — Client-supplied `conversationId` not bound to authenticated principal; cross-user memory access possible if a UUID is guessed or leaked. Security hardening not in scope for this story (spec explicitly accepts in-memory ephemeral store); add principal-scoped key or ownership validation in a future AI security hardening pass.
+- **F6** `AiControllerTest.java` — `Thread.sleep(100)` timing hack pre-existing from prior stories; replace with `CountDownLatch` or emitter completion callback in a future test quality pass.
+
+## Deferred from: code review of 5-6-ai-qa-chat-without-document-edits round 2 (2026-06-18)
+
+- **R2-D1** `AiController.java:46` — `ExecutorService executor` not shut down on app context close; pre-existing identical pattern in enhance/tailor endpoints. Add `@PreDestroy` shutdown in a future lifecycle hardening pass.
+- **R2-D2** `AiController.java:78-83` — `onCompletion`/`onTimeout` registered after `buildChatDisposable().subscribe()` (race if Flux completes synchronously); pre-existing pattern in enhance/tailor. Address in a future SSE lifecycle hardening pass.
+- **R2-D3** `ChatRequest.java` — `resumeId` accepted but silently dropped; no resume context enrichment in AI prompt. Intentional per spec for story 5-6; wire resume context into the system prompt in a future conversational context enrichment story.
+- **R2-D4** `ChatPanel.test.tsx` — "patch event dispatches to useResumeStore.applyPatch (AC4, AC8)" test mislabels AC tags (tests patch behavior that AC6 forbids for the chat path). Fix label/remove test in a future test quality pass.
+- **R2-D5** `AiController.java` / `buildChatDisposable` — `done` event sends hardcoded `"Stream complete"` summary; produces a duplicate assistant bubble after the token-accumulated bubble. Pre-existing from story 5-3. Address in a future UX polish pass (send accumulated token content as summary or use empty string to suppress the second bubble).
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

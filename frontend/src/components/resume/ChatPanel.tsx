@@ -44,6 +44,8 @@ export default function ChatPanel({ resumeId }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
+  // AC3: session-scoped conversationId — stable across re-renders, new on each component mount (AC4)
+  const conversationIdRef = useRef<string>(crypto.randomUUID())
 
   const { startStreamWithPost } = useStreamingChat({
     onDone: (summary) => {
@@ -96,6 +98,7 @@ export default function ChatPanel({ resumeId }: ChatPanelProps) {
     const cleanup = startStreamWithPost("/api/v1/ai/chat", {
       prompt,
       resumeId: resumeId ?? null,
+      conversationId: conversationIdRef.current,  // AC3: consistent per session
     })
     cleanupRef.current = cleanup
   }
@@ -120,6 +123,7 @@ export default function ChatPanel({ resumeId }: ChatPanelProps) {
     const cleanup = startStreamWithPost("/api/v1/ai/chat", {
       prompt: lastPrompt,
       resumeId: resumeId ?? null,
+      conversationId: conversationIdRef.current,  // AC3: consistent per session
     })
     cleanupRef.current = cleanup
   }

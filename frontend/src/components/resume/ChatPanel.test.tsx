@@ -76,10 +76,13 @@ describe("ChatPanel", () => {
     const textarea = screen.getByRole("textbox", { name: /chat message input/i })
     fireEvent.change(textarea, { target: { value: "Improve my summary" } })
     fireEvent.click(screen.getByRole("button", { name: /send/i }))
-    expect(mockStartStreamWithPost).toHaveBeenCalledWith("/api/v1/ai/chat", {
-      prompt: "Improve my summary",
-      resumeId: "resume-abc",
-    })
+    expect(mockStartStreamWithPost).toHaveBeenCalledWith(
+      "/api/v1/ai/chat",
+      expect.objectContaining({
+        prompt: "Improve my summary",
+        resumeId: "resume-abc",
+      })
+    )
   })
 
   it("input is cleared after submission (AC2)", () => {
@@ -163,10 +166,13 @@ describe("ChatPanel", () => {
     const retryBtn = screen.getByRole("button", { name: /retry/i })
     fireEvent.click(retryBtn)
     expect(mockStartStreamWithPost).toHaveBeenCalledTimes(2)
-    expect(mockStartStreamWithPost).toHaveBeenLastCalledWith("/api/v1/ai/chat", {
-      prompt: "Make it better",
-      resumeId: "test-resume-id",
-    })
+    expect(mockStartStreamWithPost).toHaveBeenLastCalledWith(
+      "/api/v1/ai/chat",
+      expect.objectContaining({
+        prompt: "Make it better",
+        resumeId: "test-resume-id",
+      })
+    )
   })
 
   it("Send button is disabled when input is empty", () => {
@@ -196,6 +202,42 @@ describe("ChatPanel", () => {
     // Plain Enter should submit
     fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false })
     expect(mockStartStreamWithPost).toHaveBeenCalledTimes(1)
+  })
+
+  it("chat_submission_includes_conversationId_in_body (AC3 — session-scoped memory)", () => {
+    render(<ChatPanel resumeId="resume-abc" />)
+    const textarea = screen.getByRole("textbox", { name: /chat message input/i })
+    fireEvent.change(textarea, { target: { value: "What is a good summary?" } })
+    fireEvent.click(screen.getByRole("button", { name: /send/i }))
+    // conversationId is included and is a non-empty UUID string
+    expect(mockStartStreamWithPost).toHaveBeenCalledWith(
+      "/api/v1/ai/chat",
+      expect.objectContaining({ conversationId: expect.any(String) })
+    )
+    const [, body] = mockStartStreamWithPost.mock.calls[0] as [string, Record<string, unknown>]
+    expect(body.conversationId).toBeTruthy()
+    expect(body.conversationId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/) // UUID v4 format
+  })
+
+  it("uses the same conversationId for all messages in a session (AC3)", () => {
+    render(<ChatPanel resumeId="resume-abc" />)
+    const textarea = screen.getByRole("textbox", { name: /chat message input/i })
+
+    // First message
+    fireEvent.change(textarea, { target: { value: "Question 1" } })
+    fireEvent.click(screen.getByRole("button", { name: /send/i }))
+    const [, body1] = mockStartStreamWithPost.mock.calls[0] as [string, Record<string, unknown>]
+
+    // Simulate completion so we can send a second message
+    act(() => { capturedOptions.onDone?.("") })
+    useChatStore.setState({ isStreaming: false })
+
+    // Second message
+    fireEvent.change(textarea, { target: { value: "Question 2" } })
+    fireEvent.click(screen.getByRole("button", { name: /send/i }))
+    const [, body2] = mockStartStreamWithPost.mock.calls[1] as [string, Record<string, unknown>]
+
+    expect(body1.conversationId).toBe(body2.conversationId)
   })
 
   it("patch event dispatches to useResumeStore.applyPatch (AC4, AC8)", () => {

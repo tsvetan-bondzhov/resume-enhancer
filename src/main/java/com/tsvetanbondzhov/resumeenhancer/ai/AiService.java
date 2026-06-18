@@ -4,12 +4,16 @@ import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class AiService {
@@ -48,7 +52,9 @@ public class AiService {
      * Throws OllamaUnavailableException if Ollama is unreachable.
      *
      * AiService is the ONLY class in the codebase that calls ChatClient directly.
+     * @deprecated prefer {@link #streamChat(String, String, ChatMemory)} for session-aware chat
      */
+    @Deprecated
     public Flux<String> streamChat(String prompt) {
         try {
             return chatClient.prompt()
@@ -61,6 +67,41 @@ public class AiService {
             log.warn("Ollama streaming call failed: {}", e.getMessage());
             throw new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Streams a chat response with MessageWindowChatMemory for multi-turn Q&A.
+     * The conversationId scopes the memory so each session keeps its own history.
+     * Memory is ephemeral (in-memory only, not persisted to DB — AC4).
+     *
+     * AiService is the ONLY class in the codebase that calls ChatClient directly.
+     */
+    public Flux<String> streamChat(String prompt, String conversationId, ChatMemory chatMemory) {
+        try {
+            return chatClient.prompt()
+                    .user(prompt)
+                    .advisors(a -> a
+                            .param(ChatMemory.CONVERSATION_ID, conversationId)
+                            .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build()))
+                    .stream()
+                    .content()
+                    .onErrorMap(e -> new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e));
+        } catch (Exception e) {
+            log.warn("Ollama streaming call failed: {}", e.getMessage());
+            throw new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Backward-compatible no-memory overload delegate.
+     * Creates a fresh ephemeral memory window that is never reused — effectively no chat history.
+     * Used by the single-arg public API and legacy callers.
+     * @deprecated prefer {@link #streamChat(String, String, ChatMemory)} for session-aware chat
+     */
+    @Deprecated
+    Flux<String> streamChatNoMemory(String prompt) {
+        return streamChat(prompt, UUID.randomUUID().toString(),
+                MessageWindowChatMemory.builder().maxMessages(1).build());
     }
 
     /**

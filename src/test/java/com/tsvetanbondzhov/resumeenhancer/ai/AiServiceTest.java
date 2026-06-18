@@ -9,6 +9,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.ai.chat.client.ChatClient;
 import reactor.core.publisher.Flux;
@@ -155,6 +156,31 @@ class AiServiceTest {
         when(streamSpec.content()).thenReturn(Flux.just("Hello", " world"));
 
         Flux<String> result = aiService.streamChat("test prompt");
+
+        StepVerifier.create(result)
+                .expectNext("Hello")
+                .expectNext(" world")
+                .verifyComplete();
+    }
+
+    // ─── streamChat(prompt, conversationId, chatMemory) — success path ───────
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void streamChat_withConversationId_returns_flux_of_tokens() {
+        ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.StreamResponseSpec streamSpec = mock(ChatClient.StreamResponseSpec.class);
+
+        when(chatClient.prompt()).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(userSpec);
+        // advisors(Consumer<AdvisorSpec>) is called on userSpec — return userSpec so .stream() can chain
+        when(userSpec.advisors(any(Consumer.class))).thenReturn(userSpec);
+        when(userSpec.stream()).thenReturn(streamSpec);
+        when(streamSpec.content()).thenReturn(Flux.just("Hello", " world"));
+
+        MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
+        Flux<String> result = aiService.streamChat("test prompt", "conv-123", memory);
 
         StepVerifier.create(result)
                 .expectNext("Hello")

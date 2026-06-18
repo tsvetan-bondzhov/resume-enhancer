@@ -8,6 +8,7 @@ import io.opentelemetry.context.Context;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -41,34 +42,42 @@ public class AiController {
     private final OllamaHealthGuard healthGuard;
     private final ObjectMapper objectMapper;
     private final ResumeService resumeService;
+    private final MessageWindowChatMemory chatMemory;
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
     public AiController(AiService aiService, OllamaHealthGuard healthGuard,
-                        ObjectMapper objectMapper, ResumeService resumeService) {
+                        ObjectMapper objectMapper, ResumeService resumeService,
+                        MessageWindowChatMemory chatMemory) {
         this.aiService = aiService;
         this.healthGuard = healthGuard;
         this.objectMapper = objectMapper;
         this.resumeService = resumeService;
+        this.chatMemory = chatMemory;
     }
 
     @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<?> chat(@Valid @RequestBody ChatRequest request) {
-        // AC2: OllamaHealthGuard checked first — before any AiService call
+        // AC8: OllamaHealthGuard checked first — before any AiService call
         if (!healthGuard.isAvailable()) {
             return unavailableResponse();
         }
 
+        // AC7: Generate or reuse conversationId for memory scoping (AC4: new session = new UUID)
+        String conversationId = request.conversationId() != null
+                ? request.conversationId()
+                : UUID.randomUUID().toString();
+
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
-        // AC3: Capture OTel context in the request thread for propagation into async thread
+        // Capture OTel context in the request thread for propagation into async thread
         Context otelContext = Context.current();
 
         executor.execute(() -> {
-            // AC3: Explicit OTel context propagation — does NOT auto-propagate across async boundary
+            // Explicit OTel context propagation — does NOT auto-propagate across async boundary
             try (var ignored = otelContext.makeCurrent()) {
-                Flux<String> tokenFlux = aiService.streamChat(request.prompt());
+                Flux<String> tokenFlux = aiService.streamChat(request.prompt(), conversationId, chatMemory);
                 Disposable disposable = buildChatDisposable(tokenFlux, emitter);
 
-                // F1: Register emitter lifecycle callbacks to cancel the Flux on client disconnect / timeout
+                // Register emitter lifecycle callbacks to cancel the Flux on client disconnect / timeout
                 emitter.onCompletion(disposable::dispose);
                 emitter.onTimeout(disposable::dispose);
                 emitter.onError(e -> disposable.dispose());
