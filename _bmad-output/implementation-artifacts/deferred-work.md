@@ -127,6 +127,12 @@
 - **F10** `DocumentPatchService.java` — `UNKNOWN` section type is patchable via `GenericItem` branch. Intentional design; address with an explicit reject path if AI should not patch unrecognised sections.
 - **F11** `DocumentPatchService.java` — `@NotBlank` / `@Min(0)` on `DocumentPatchEvent` are only enforced via `@Valid` at the controller level; service is not self-validating. Address when `DocumentPatchService.apply()` is first called from a non-web context (messaging consumer, scheduled task).
 
+## Deferred from: code review of 5-3-ai-chat-panel-and-sse-streaming-integration (2026-06-18)
+
+- **F7** `useStreamingChat.ts` `startStreamWithPost` — `applyPatch` errors not caught in the SSE parsing try/catch; an exception thrown by `applyPatch` would propagate out of the loop. Pre-existing `applyPatch` contract from Story 5.2 (lenient no-op on bad patch fields); address in a future streaming robustness pass.
+- **F10** `ChatPanel.tsx` `MessageBubble` not memoized — every token event triggers a full re-render of the message list because `useChatStore` subscription fires for each `messages` array update. Performance optimization; not an AC violation; acceptable at 288px panel width for v1. Address with `React.memo` + content-address selector if token throughput causes visual jank.
+- **F14** No EditorPage test for `clearMessages()` on unmount — the `useChatStore.clearMessages()` call in the EditorPage unmount cleanup is not test-covered. Low priority; `clearMessages` is covered by `useChatStore.test.ts`; add EditorPage unmount test in a future test quality pass.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

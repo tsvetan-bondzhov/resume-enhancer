@@ -6,6 +6,12 @@ import type { ResumeDto } from "@/types/api"
 import { useResumeStore } from "@/stores/useResumeStore"
 import EditorPage from "./EditorPage"
 
+vi.mock("@/components/resume/ChatPanel", () => ({
+  default: ({ resumeId }: { resumeId: string | undefined }) => (
+    <div data-testid="chat-panel" data-resume-id={resumeId ?? ""} />
+  ),
+}))
+
 vi.mock("@/lib/apiClient", () => ({
   apiClient: {
     get: vi.fn(),
@@ -315,6 +321,15 @@ describe("EditorPage", () => {
     act(() => { options.action.onClick() })
     // Resume should be restored
     expect(screen.getByText("Sidebar Resume")).toBeInTheDocument()
+  })
+
+  it("renders ChatPanel with resumeId from route params", async () => {
+    mockGetWithResume(buildResume())
+    render(<EditorPage />)
+    await waitFor(() =>
+      expect(screen.getByTestId("chat-panel")).toBeInTheDocument()
+    )
+    expect(screen.getByTestId("chat-panel")).toHaveAttribute("data-resume-id", "test-resume-id")
   })
 
   it("handleApplyTemplate — optimistic update sets templateId on store (lines 160-167)", async () => {

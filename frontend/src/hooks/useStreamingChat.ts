@@ -1,6 +1,7 @@
 import { createSseConnection } from "@/lib/sseClient"
 import { useResumeStore } from "@/stores/useResumeStore"
 import { useChatStore } from "@/stores/useChatStore"
+import { useAuthStore } from "@/stores/useAuthStore"
 
 export interface UseStreamingChatOptions {
   onDone?: (summary: string) => void
@@ -57,5 +58,137 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
     return cleanup
   }
 
-  return { startStream }
+  function startStreamWithPost(url: string, body: Record<string, unknown>): () => void {
+    setStreaming(true)
+
+    const assistantMsgId = crypto.randomUUID()
+    addMessage({
+      id: assistantMsgId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date().toISOString(),
+    })
+
+    const token = useAuthStore.getState().token
+    let cancelled = false
+    let activeReader: ReadableStreamDefaultReader<Uint8Array> | null = null
+
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    })
+      .then(async (res) => {
+        if (!res.ok || !res.body) {
+          setStreaming(false)
+          options.onError?.("AI features are temporarily unavailable")
+          return
+        }
+        const reader = res.body.getReader()
+        activeReader = reader
+        const decoder = new TextDecoder()
+        let buffer = ""
+        let eventName = ""
+        let dataLine = ""
+
+        while (!cancelled) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split("\n")
+          buffer = lines.pop() ?? ""
+
+          for (const line of lines) {
+            if (line.startsWith("event:")) {
+              eventName = line.slice(6).trim()
+            } else if (line.startsWith("data:")) {
+              dataLine = line.slice(5).trim()
+            } else if (line === "") {
+              if (eventName && dataLine) {
+                try {
+                  const parsed = JSON.parse(dataLine) as Record<string, unknown>
+                  if (eventName === "token") {
+                    useChatStore.setState((state) => ({
+                      ...state,
+                      messages: state.messages.map((m) =>
+                        m.id === assistantMsgId
+                          ? { ...m, content: m.content + (parsed.token as string) }
+                          : m
+                      ),
+                    }))
+                  } else if (eventName === "patch") {
+                    applyPatch(parsed as { sectionId: string; itemIndex: number; field: string; newValue: string })
+                  } else if (eventName === "done") {
+                    setStreaming(false)
+                    options.onDone?.((parsed.summary as string) ?? "")
+                  } else if (eventName === "error") {
+                    setStreaming(false)
+                    options.onError?.((parsed.detail as string) ?? "AI streaming error — please try again")
+                  }
+                } catch {
+                  // malformed JSON — ignore
+                }
+              }
+              // F4: always reset on blank line to prevent stale field bleed-through
+              eventName = ""
+              dataLine = ""
+            }
+          }
+        }
+        // F3: flush remaining buffer content when stream ends without a trailing newline
+        if (!cancelled && buffer.trim()) {
+          const line = buffer.trim()
+          if (line.startsWith("event:")) {
+            eventName = line.slice(6).trim()
+          } else if (line.startsWith("data:")) {
+            dataLine = line.slice(5).trim()
+          }
+          if (eventName && dataLine) {
+            try {
+              const parsed = JSON.parse(dataLine) as Record<string, unknown>
+              if (eventName === "token") {
+                useChatStore.setState((state) => ({
+                  ...state,
+                  messages: state.messages.map((m) =>
+                    m.id === assistantMsgId
+                      ? { ...m, content: m.content + (parsed.token as string) }
+                      : m
+                  ),
+                }))
+              } else if (eventName === "patch") {
+                applyPatch(parsed as { sectionId: string; itemIndex: number; field: string; newValue: string })
+              } else if (eventName === "done") {
+                setStreaming(false)
+                options.onDone?.((parsed.summary as string) ?? "")
+              } else if (eventName === "error") {
+                setStreaming(false)
+                options.onError?.((parsed.detail as string) ?? "AI streaming error — please try again")
+              }
+            } catch {
+              // malformed JSON — ignore
+            }
+          }
+        }
+        if (!cancelled) setStreaming(false)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStreaming(false)
+          options.onError?.("AI streaming error — please try again")
+        }
+      })
+
+    function cleanup() {
+      cancelled = true
+      // F1: cancel the underlying ReadableStream reader to release the network connection
+      activeReader?.cancel().catch(() => {})
+      setStreaming(false)
+    }
+    return cleanup
+  }
+
+  return { startStream, startStreamWithPost }
 }

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/apiClient"
 import { useResumeStore } from "@/stores/useResumeStore"
+import { useChatStore } from "@/stores/useChatStore"
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout"
 import SectionsPanel from "@/components/resume/SectionsPanel"
 import ResumeCanvas from "@/components/resume/ResumeCanvas"
@@ -10,6 +11,7 @@ import EditorToolbar from "@/components/resume/EditorToolbar"
 import SaveAsDialog from "@/components/resume/SaveAsDialog"
 import TemplateGallery from "@/components/resume/TemplateGallery"
 import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
+import ChatPanel from "@/components/resume/ChatPanel"
 import { useAutosave } from "@/hooks/useAutosave"
 import type { ResumeDto } from "@/types/api"
 
@@ -97,10 +99,11 @@ export default function EditorPage() {
     load()
   }, [id, setCurrentResume, setLastSavedDocument])
 
-  // Cleanup: clear current resume from store on unmount
+  // Cleanup: clear current resume and chat messages from store on unmount
   useEffect(() => {
     return () => {
       setCurrentResume(null)
+      useChatStore.getState().clearMessages()
     }
   }, [setCurrentResume])
 
@@ -315,9 +318,7 @@ export default function EditorPage() {
           </div>
         }
         rightSlot={
-          <div className="p-4 text-sm text-muted-foreground">
-            Chat panel coming in Story 4.3
-          </div>
+          <ChatPanel resumeId={id} />
         }
       />
       <SaveAsDialog
