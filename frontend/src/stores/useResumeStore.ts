@@ -174,10 +174,34 @@ export const useResumeStore = create<ResumeState>((set) => ({
         currentResume: { ...state.currentResume, templateId },
       }
     }),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  applyPatch: (_patch) => {
-    // No-op stub — fully implemented in Story 4.2
-  },
+  applyPatch: (patch) =>
+    set((state) => {
+      if (!state.currentResume) return state
+      // Guard: never mutate reserved discriminant fields
+      if (patch.field === "type" || patch.field === "id") return state
+      const sections = state.currentResume.content.sections
+      const sectionIndex = sections.findIndex((s) => s.sectionType === patch.sectionId)
+      if (sectionIndex === -1) return state // unknown section — no-op (same as backend InvalidPatchException but frontend is lenient)
+      const section = sections[sectionIndex]
+      if (patch.itemIndex < 0 || patch.itemIndex >= section.items.length) return state // out-of-bounds — no-op
+      const targetItem = section.items[patch.itemIndex]
+      if (!(patch.field in targetItem)) return state // unknown field — no-op guard (D1 resolution)
+      const updatedItem = { ...targetItem, [patch.field]: patch.newValue }
+      const updatedSection: ResumeSectionDto = {
+        ...section,
+        items: section.items.map((item, idx) => (idx === patch.itemIndex ? updatedItem : item)),
+      }
+      return {
+        ...state,
+        currentResume: {
+          ...state.currentResume,
+          content: {
+            ...state.currentResume.content,
+            sections: sections.map((s, idx) => (idx === sectionIndex ? updatedSection : s)),
+          },
+        },
+      }
+    }),
   addItem: (sectionType, position) =>
     set((state) => {
       if (!state.currentResume) return state

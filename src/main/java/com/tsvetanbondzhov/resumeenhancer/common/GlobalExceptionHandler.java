@@ -1,5 +1,6 @@
 package com.tsvetanbondzhov.resumeenhancer.common;
 
+import com.tsvetanbondzhov.resumeenhancer.ai.InvalidPatchException;
 import com.tsvetanbondzhov.resumeenhancer.ai.OllamaUnavailableException;
 import com.tsvetanbondzhov.resumeenhancer.auth.InvalidCurrentPasswordException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeAccessDeniedException;
@@ -171,6 +172,14 @@ public class GlobalExceptionHandler {
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "AI features are temporarily unavailable");
         problem.setTitle("Service Unavailable");
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidPatchException.class)
+    public ProblemDetail handleInvalidPatch(InvalidPatchException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        problem.setTitle("Unprocessable Entity");
         return problem;
     }
 

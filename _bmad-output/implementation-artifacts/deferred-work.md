@@ -118,6 +118,15 @@
 
 - Latent dedup gap in restore guards (`DashboardPage.tsx`, `EditorPage.tsx`) — rapid delete-then-undo-then-delete cycle can reorder the resume list because the restore appends at the end rather than restoring original position. Not introduced by this story (pre-existing with `.find()`); the `.some()` refactor preserves identical behavior.
 
+## Deferred from: code review of 5-2-documentpatchservice-and-useresumestore-applypatch (2026-06-18)
+
+- **F6** `GlobalExceptionHandler.java` — Exception messages echo user-supplied `patch.field()`, `patch.sectionId()`, `patch.itemIndex()` directly into the 422 response body. Reflected content injection risk. Pre-existing pattern for other exceptions in the handler; address in a future API hardening pass.
+- **F7** `DocumentPatchEvent.java` — No `@Size` constraint on `newValue`; arbitrarily large payloads can bloat persisted resumes. Pre-existing validation pattern in project; address in a future input validation hardening pass.
+- **F8** `DocumentPatchService.java` — If `document.sections()` contains two sections with the same `sectionType`, the `stream().map()` will call `applyToSection` on both, potentially throwing `InvalidPatchException` mid-stream. Requires malformed `ResumeDocument`; domain invariant elsewhere prevents this; address if defensive dedup is ever needed.
+- **F9** `useResumeStore.ts` — `applyPatch` uses `itemIndex` for addressing; if a concurrent `addItem`/`deleteItem` fires in the same render cycle, the index refers to the wrong item. SSE concurrent edit is out of scope for v1; address when real-time collaboration or concurrent AI edits are specified.
+- **F10** `DocumentPatchService.java` — `UNKNOWN` section type is patchable via `GenericItem` branch. Intentional design; address with an explicit reject path if AI should not patch unrecognised sections.
+- **F11** `DocumentPatchService.java` — `@NotBlank` / `@Min(0)` on `DocumentPatchEvent` are only enforced via `@Valid` at the controller level; service is not self-validating. Address when `DocumentPatchService.apply()` is first called from a non-web context (messaging consumer, scheduled task).
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 
