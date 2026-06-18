@@ -102,6 +102,46 @@ At the start of Step 3 for each story, reset the per-story counter `{review_cycl
 
 - Re-read `sprint-status.yaml` and return to **Step 0** to select the next story.
 
+## Code Verification (after the Main Loop)
+
+Once all stories in `{selection}` are `done` (the Main Loop exits normally), run the following verification loop **before** emitting the final report. This step is skipped if `{vcs} = none`.
+
+### Verification Loop
+
+At the start of this phase, set `{verify_cycles} = 0`.
+
+**Step V1: Run sonar-check**
+
+Execute `.\scripts\sonar-check.ps1` (PowerShell). Capture the full stdout/stderr output.
+
+- If the script exits with code `0` **and** the output contains `Quality Gate PASSED` → the codebase is clean. Proceed directly to **Reporting**.
+- If the script exits with a non-zero code → classify the failure (see **Step V2**).
+
+**Step V2: Classify the failure**
+
+Inspect the captured output and bucket every failure into one or more of the following categories. A single run may hit multiple categories — dispatch one subagent per category in **parallel**.
+
+| Category | Detection signal | Subagent instruction |
+|---|---|---|
+| **Coverage** | Output contains lines like `Actual: <n> \| Threshold: <m>` for a metric whose key includes `coverage` (e.g. `new_coverage`, `coverage`) | Dispatch a subagent: invoke `/fix-low-coverage`. Pass the failing metric keys and their actual/threshold values. |
+| **SonarQube issues** | Output contains an `=== Open Issues` section or `=== Failing Quality Gate Conditions ===` for non-coverage metrics (e.g. `new_violations`, `reliability_rating`) | Dispatch a subagent: invoke `/fix-sonar-issues`. Pass the full `=== Failing Quality Gate Conditions ===` block and `=== Open Issues ===` block verbatim. |
+| **Build / test failures** | Output contains Maven build errors (lines starting with `[ERROR]` in a `mvn verify` block) or TypeScript/Node test failures (lines containing `FAIL`, `Error:`, `✕`, or a non-zero Jest/Vitest exit) | Dispatch a subagent and pass **only** the relevant error lines extracted from the log. Do not pass the full output — trim to the actionable error block. The subagent should diagnose and fix the errors using its own judgment. |
+| **Transient / infrastructure failure** | Scanner cannot reach the SonarQube server (network error, HTTP 5xx, `Could not connect`), or `report-task.txt` is missing with no scan output | Do **not** dispatch a subagent. Log the transient error, increment `{verify_cycles}`, and retry **Step V1** after a short wait (the retry itself counts as a cycle). |
+
+If the failure does not match any category above (unrecognised output), treat it as a transient failure and follow the transient path.
+
+**Step V3: Wait and re-verify**
+
+After all dispatched subagents return:
+
+1. Increment `{verify_cycles}`.
+2. If `{verify_cycles}` < 3 → return to **Step V1** and re-run the sonar-check.
+3. If `{verify_cycles}` has reached 3 and the quality gate still fails → **halt** and surface the issue to the user. Present:
+   - The current `{verify_cycles}` count.
+   - The full sonar-check output from the last run.
+   - A recommendation on next steps (manual SonarQube dashboard review, or running `/fix-sonar-issues` / `/fix-low-coverage` manually).
+   - Do **not** emit the normal final report — the run is blocked.
+
 ## Subagent Dispatch Rules
 
 - Each subagent starts with **no prior conversation context**. Give it only: the `{story_key}`, the slash commands to invoke (in order), and the expected end state.
