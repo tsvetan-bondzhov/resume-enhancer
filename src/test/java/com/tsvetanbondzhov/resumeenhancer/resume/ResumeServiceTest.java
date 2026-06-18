@@ -402,7 +402,7 @@ class ResumeServiceTest {
         ArgumentCaptor<Resume> captor = ArgumentCaptor.forClass(Resume.class);
         Resume savedResume = buildResume(user);
         savedResume.setTemplateId(newTemplateId);
-        when(resumeRepository.save(captor.capture())).thenReturn(savedResume);
+        when(resumeRepository.saveAndFlush(captor.capture())).thenReturn(savedResume);
 
         UpdateResumeRequest request = new UpdateResumeRequest("My Resume", new ResumeDocument(List.of()), newTemplateId);
         resumeService.updateResume(EMAIL, RESUME_ID, request);
@@ -421,7 +421,7 @@ class ResumeServiceTest {
         when(resumeRepository.findByIdAndUser(RESUME_ID, user)).thenReturn(Optional.of(resume));
 
         ArgumentCaptor<Resume> captor = ArgumentCaptor.forClass(Resume.class);
-        when(resumeRepository.save(captor.capture())).thenReturn(resume);
+        when(resumeRepository.saveAndFlush(captor.capture())).thenReturn(resume);
 
         UpdateResumeRequest request = new UpdateResumeRequest("My Resume", new ResumeDocument(List.of()), null);
         resumeService.updateResume(EMAIL, RESUME_ID, request);

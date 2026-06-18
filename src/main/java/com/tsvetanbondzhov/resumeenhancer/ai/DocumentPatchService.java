@@ -9,6 +9,8 @@ import java.util.List;
 @Service
 public class DocumentPatchService {
 
+    private static final String FIELD_DESCRIPTION = "description";
+
     /**
      * Applies a DocumentPatchEvent to a ResumeDocument, returning a new updated document.
      * ResumeDocument is immutable (records + defensive copies) — this method creates a new instance.
@@ -70,7 +72,7 @@ public class DocumentPatchService {
             case WorkExperienceItem w -> switch (field) {
                 case "jobTitle"    -> new WorkExperienceItem(w.id(), newValue, w.company(), w.startDate(), w.endDate(), w.isCurrent(), w.description());
                 case "company"     -> new WorkExperienceItem(w.id(), w.jobTitle(), newValue, w.startDate(), w.endDate(), w.isCurrent(), w.description());
-                case "description" -> new WorkExperienceItem(w.id(), w.jobTitle(), w.company(), w.startDate(), w.endDate(), w.isCurrent(), newValue);
+                case FIELD_DESCRIPTION -> new WorkExperienceItem(w.id(), w.jobTitle(), w.company(), w.startDate(), w.endDate(), w.isCurrent(), newValue);
                 default -> throw new InvalidPatchException("Unknown field '" + field + "' for WORK_EXPERIENCE");
             };
             case EducationItem e -> switch (field) {
@@ -95,7 +97,7 @@ public class DocumentPatchService {
             };
             case ProjectItem p -> switch (field) {
                 case "name"         -> new ProjectItem(p.id(), newValue, p.description(), p.technologies(), p.link(), p.startDate(), p.endDate(), p.isCurrent());
-                case "description"  -> new ProjectItem(p.id(), p.name(), newValue, p.technologies(), p.link(), p.startDate(), p.endDate(), p.isCurrent());
+                case FIELD_DESCRIPTION -> new ProjectItem(p.id(), p.name(), newValue, p.technologies(), p.link(), p.startDate(), p.endDate(), p.isCurrent());
                 case "technologies" -> new ProjectItem(p.id(), p.name(), p.description(), newValue, p.link(), p.startDate(), p.endDate(), p.isCurrent());
                 case "link"         -> new ProjectItem(p.id(), p.name(), p.description(), p.technologies(), newValue, p.startDate(), p.endDate(), p.isCurrent());
                 default -> throw new InvalidPatchException("Unknown field '" + field + "' for PROJECTS");
@@ -103,7 +105,7 @@ public class DocumentPatchService {
             case VolunteeringItem v -> switch (field) {
                 case "role"         -> new VolunteeringItem(v.id(), newValue, v.organization(), v.description(), v.startDate(), v.endDate(), v.isCurrent());
                 case "organization" -> new VolunteeringItem(v.id(), v.role(), newValue, v.description(), v.startDate(), v.endDate(), v.isCurrent());
-                case "description"  -> new VolunteeringItem(v.id(), v.role(), v.organization(), newValue, v.startDate(), v.endDate(), v.isCurrent());
+                case FIELD_DESCRIPTION -> new VolunteeringItem(v.id(), v.role(), v.organization(), newValue, v.startDate(), v.endDate(), v.isCurrent());
                 default -> throw new InvalidPatchException("Unknown field '" + field + "' for VOLUNTEERING");
             };
             case SummaryItem s -> switch (field) {

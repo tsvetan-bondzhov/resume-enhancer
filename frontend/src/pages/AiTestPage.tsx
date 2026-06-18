@@ -12,6 +12,81 @@ import { useAuthStore } from "@/stores/useAuthStore"
  *
  * See docs/ai-spike-findings.md for full reasoning.
  */
+
+/** Dispatch one parsed SSE event to the appropriate state handler. */
+function dispatchSseEvent(
+  eventName: string,
+  parsed: Record<string, unknown>,
+  assistantMsgId: string,
+  setDoneMsg: (msg: string) => void,
+  setErrorMsg: (msg: string) => void
+): void {
+  if (eventName === "token") {
+    useChatStore.setState((state) => ({
+      ...state,
+      messages: state.messages.map((m) =>
+        m.id === assistantMsgId
+          ? { ...m, content: m.content + (parsed.token as string) }
+          : m
+      ),
+    }))
+  } else if (eventName === "done") {
+    setDoneMsg(parsed.summary as string)
+  } else if (eventName === "error") {
+    setErrorMsg(parsed.detail as string)
+  }
+}
+
+type SseLineState = { eventName: string; dataLine: string }
+
+function processLine(
+  line: string,
+  state: SseLineState,
+  assistantMsgId: string,
+  setDoneMsg: (msg: string) => void,
+  setErrorMsg: (msg: string) => void
+): void {
+  if (line.startsWith("event:")) {
+    state.eventName = line.slice("event:".length).trim()
+  } else if (line.startsWith("data:")) {
+    state.dataLine = line.slice("data:".length).trim()
+  } else if (line === "") {
+    if (state.eventName && state.dataLine) {
+      try {
+        const parsed = JSON.parse(state.dataLine) as Record<string, unknown>
+        dispatchSseEvent(state.eventName, parsed, assistantMsgId, setDoneMsg, setErrorMsg)
+      } catch {
+        // ignore malformed SSE data lines
+      }
+    }
+    state.eventName = ""
+    state.dataLine = ""
+  }
+}
+
+/** Read an SSE stream and dispatch events until the stream closes. */
+async function readSseStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  assistantMsgId: string,
+  setDoneMsg: (msg: string) => void,
+  setErrorMsg: (msg: string) => void
+): Promise<void> {
+  const decoder = new TextDecoder()
+  let buffer = ""
+  const state: SseLineState = { eventName: "", dataLine: "" }
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split("\n")
+    buffer = lines.pop() ?? ""
+    for (const line of lines) {
+      processLine(line, state, assistantMsgId, setDoneMsg, setErrorMsg)
+    }
+  }
+}
+
 export default function AiTestPage() {
   const [prompt, setPrompt] = useState("")
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -26,7 +101,7 @@ export default function AiTestPage() {
   )
   const addMessage = useChatStore((state) => state.addMessage)
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault()
     setErrorMsg(null)
     setDoneMsg(null)
@@ -74,54 +149,7 @@ export default function AiTestPage() {
       }
 
       const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ""
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() ?? ""
-
-        let eventName = ""
-        let dataLine = ""
-
-        for (const line of lines) {
-          if (line.startsWith("event:")) {
-            eventName = line.slice("event:".length).trim()
-          } else if (line.startsWith("data:")) {
-            dataLine = line.slice("data:".length).trim()
-          } else if (line === "") {
-            // F12: blank line always marks end of SSE event block — reset unconditionally
-            if (eventName && dataLine) {
-              // Dispatch the accumulated event
-              try {
-                const parsed = JSON.parse(dataLine)
-                if (eventName === "token") {
-                  useChatStore.setState((state) => ({
-                    ...state,
-                    messages: state.messages.map((m) =>
-                      m.id === assistantMsgId
-                        ? { ...m, content: m.content + (parsed.token as string) }
-                        : m
-                    ),
-                  }))
-                } else if (eventName === "done") {
-                  setDoneMsg(parsed.summary as string)
-                } else if (eventName === "error") {
-                  setErrorMsg(parsed.detail as string)
-                }
-              } catch {
-                // ignore malformed SSE data lines
-              }
-            }
-            eventName = ""
-            dataLine = ""
-          }
-        }
-      }
+      await readSseStream(reader, assistantMsgId, (msg) => setDoneMsg(msg), (msg) => setErrorMsg(msg))
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== "AbortError") {
         setErrorMsg(err.message)

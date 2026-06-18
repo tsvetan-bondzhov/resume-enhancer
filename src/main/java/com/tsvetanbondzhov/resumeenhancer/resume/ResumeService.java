@@ -126,7 +126,8 @@ public class ResumeService {
         if (request.templateId() != null) {
             resume.setTemplateId(request.templateId());
         }
-        return toDto(resumeRepository.save(resume));
+        // flush ensures @PreUpdate fires (sets updatedAt) before toDto reads the field
+        return toDto(resumeRepository.saveAndFlush(resume));
     }
 
     private User resolveUser(String email) {

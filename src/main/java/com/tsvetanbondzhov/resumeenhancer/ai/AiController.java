@@ -33,6 +33,9 @@ public class AiController {
 
     private static final Logger log = LoggerFactory.getLogger(AiController.class);
     private static final long SSE_TIMEOUT_MS = 120_000L; // 2 minutes
+    private static final String EVENT_TOKEN = "token";
+    private static final String EVENT_DONE = "done";
+    private static final String EVENT_ERROR = "error";
 
     private final AiService aiService;
     private final OllamaHealthGuard healthGuard;
@@ -52,11 +55,7 @@ public class AiController {
     public ResponseEntity<?> chat(@Valid @RequestBody ChatRequest request) {
         // AC2: OllamaHealthGuard checked first — before any AiService call
         if (!healthGuard.isAvailable()) {
-            ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "AI features are temporarily unavailable");
-            problem.setTitle("Service Unavailable");
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(problem);
+            return unavailableResponse();
         }
 
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
@@ -67,36 +66,7 @@ public class AiController {
             // AC3: Explicit OTel context propagation — does NOT auto-propagate across async boundary
             try (var ignored = otelContext.makeCurrent()) {
                 Flux<String> tokenFlux = aiService.streamChat(request.prompt());
-                Disposable disposable = tokenFlux.doOnNext(token -> {
-                    try {
-                        emitter.send(SseEmitter.event()
-                                .name("token")
-                                .data(objectMapper.writeValueAsString(Map.of("token", token))));
-                    } catch (IOException e) {
-                        log.warn("SSE send failed for token: {}", e.getMessage());
-                        emitter.completeWithError(e);
-                    }
-                }).doOnComplete(() -> {
-                    try {
-                        emitter.send(SseEmitter.event()
-                                .name("done")
-                                .data(objectMapper.writeValueAsString(Map.of("summary", "Stream complete"))));
-                        emitter.complete();
-                    } catch (IOException e) {
-                        emitter.completeWithError(e);
-                    }
-                }).doOnError(err -> {
-                    // F4: log full error server-side; send generic message to client
-                    log.warn("SSE stream error: {}", err.getMessage(), err);
-                    try {
-                        emitter.send(SseEmitter.event()
-                                .name("error")
-                                .data(objectMapper.writeValueAsString(Map.of("detail", "AI streaming error — please try again"))));
-                    } catch (IOException ex) {
-                        log.warn("SSE send failed for error event: {}", ex.getMessage());
-                    }
-                    emitter.completeWithError(err);
-                }).subscribe();
+                Disposable disposable = buildChatDisposable(tokenFlux, emitter);
 
                 // F1: Register emitter lifecycle callbacks to cancel the Flux on client disconnect / timeout
                 emitter.onCompletion(disposable::dispose);
@@ -116,11 +86,7 @@ public class AiController {
                                      Authentication authentication) {
         // AC2: OllamaHealthGuard checked first
         if (!healthGuard.isAvailable()) {
-            ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "AI features are temporarily unavailable");
-            problem.setTitle("Service Unavailable");
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(problem);
+            return unavailableResponse();
         }
 
         // Load resume and verify ownership — same pattern as ResumeController
@@ -133,57 +99,7 @@ public class AiController {
         executor.execute(() -> {
             try (var ignored = otelContext.makeCurrent()) {
                 Flux<String> tokenFlux = aiService.streamEnhance(document);
-                // Buffer to accumulate tokens into complete JSON lines for patch parsing
-                StringBuilder lineBuffer = new StringBuilder();
-
-                Disposable disposable = tokenFlux.doOnNext(token -> {
-                    try {
-                        // Forward raw token to chat panel (narration)
-                        emitter.send(SseEmitter.event()
-                                .name("token")
-                                .data(objectMapper.writeValueAsString(Map.of("token", token))));
-
-                        // Accumulate tokens to detect complete patch JSON lines
-                        lineBuffer.append(token);
-                        int newlineIdx;
-                        while ((newlineIdx = lineBuffer.indexOf("\n")) >= 0) {
-                            String line = lineBuffer.substring(0, newlineIdx).trim();
-                            lineBuffer.delete(0, newlineIdx + 1);
-                            if (!line.isEmpty()) {
-                                tryEmitPatch(emitter, line);
-                            }
-                        }
-                    } catch (IOException e) {
-                        log.warn("SSE send failed for token: {}", e.getMessage());
-                        emitter.completeWithError(e);
-                    }
-                }).doOnComplete(() -> {
-                    try {
-                        // Flush any remaining buffered content
-                        String remaining = lineBuffer.toString().trim();
-                        if (!remaining.isEmpty()) {
-                            tryEmitPatch(emitter, remaining);
-                        }
-                        emitter.send(SseEmitter.event()
-                                .name("done")
-                                .data(objectMapper.writeValueAsString(
-                                        Map.of("summary", "Enhancement complete"))));
-                        emitter.complete();
-                    } catch (IOException e) {
-                        emitter.completeWithError(e);
-                    }
-                }).doOnError(err -> {
-                    log.warn("SSE enhance stream error: {}", err.getMessage(), err);
-                    try {
-                        emitter.send(SseEmitter.event()
-                                .name("error")
-                                .data(objectMapper.writeValueAsString(
-                                        Map.of("detail", "AI streaming error — please try again"))));
-                    } catch (IOException ex) {
-                        log.warn("SSE send failed for error event: {}", ex.getMessage());
-                    }
-                    emitter.completeWithError(err);
-                }).subscribe();
+                Disposable disposable = buildEnhanceDisposable(tokenFlux, emitter);
 
                 emitter.onCompletion(disposable::dispose);
                 emitter.onTimeout(disposable::dispose);
@@ -195,6 +111,101 @@ public class AiController {
         });
 
         return ResponseEntity.ok(emitter);
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    private ResponseEntity<?> unavailableResponse() {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "AI features are temporarily unavailable");
+        problem.setTitle("Service Unavailable");
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(problem);
+    }
+
+    private Disposable buildChatDisposable(Flux<String> tokenFlux, SseEmitter emitter) {
+        return tokenFlux.doOnNext(token -> {
+            try {
+                emitter.send(SseEmitter.event()
+                        .name(EVENT_TOKEN)
+                        .data(objectMapper.writeValueAsString(Map.of(EVENT_TOKEN, token))));
+            } catch (IOException e) {
+                log.warn("SSE send failed for token: {}", e.getMessage());
+                emitter.completeWithError(e);
+            }
+        }).doOnComplete(() -> {
+            try {
+                emitter.send(SseEmitter.event()
+                        .name(EVENT_DONE)
+                        .data(objectMapper.writeValueAsString(Map.of("summary", "Stream complete"))));
+                emitter.complete();
+            } catch (IOException e) {
+                emitter.completeWithError(e);
+            }
+        }).doOnError(err -> {
+            // F4: log full error server-side; send generic message to client
+            log.warn("SSE stream error: {}", err.getMessage(), err);
+            trySendError(emitter);
+            emitter.completeWithError(err);
+        }).subscribe();
+    }
+
+    @SuppressWarnings("java:S3063")
+    private Disposable buildEnhanceDisposable(Flux<String> tokenFlux, SseEmitter emitter) {
+        StringBuilder lineBuffer = new StringBuilder();
+
+        return tokenFlux.doOnNext(token -> {
+            try {
+                // Forward raw token to chat panel (narration)
+                emitter.send(SseEmitter.event()
+                        .name(EVENT_TOKEN)
+                        .data(objectMapper.writeValueAsString(Map.of(EVENT_TOKEN, token))));
+
+                // Accumulate tokens to detect complete patch JSON lines
+                lineBuffer.append(token);
+                int newlineIdx;
+                while ((newlineIdx = lineBuffer.indexOf("\n")) >= 0) {
+                    String line = lineBuffer.substring(0, newlineIdx).trim();
+                    lineBuffer.delete(0, newlineIdx + 1);
+                    if (!line.isEmpty()) {
+                        tryEmitPatch(emitter, line);
+                    }
+                }
+            } catch (IOException e) {
+                log.warn("SSE send failed for token: {}", e.getMessage());
+                emitter.completeWithError(e);
+            }
+        }).doOnComplete(() -> {
+            try {
+                // Flush any remaining buffered content
+                String remaining = lineBuffer.toString().trim();
+                if (!remaining.isEmpty()) {
+                    tryEmitPatch(emitter, remaining);
+                }
+                emitter.send(SseEmitter.event()
+                        .name(EVENT_DONE)
+                        .data(objectMapper.writeValueAsString(
+                                Map.of("summary", "Enhancement complete"))));
+                emitter.complete();
+            } catch (IOException e) {
+                emitter.completeWithError(e);
+            }
+        }).doOnError(err -> {
+            log.warn("SSE enhance stream error: {}", err.getMessage(), err);
+            trySendError(emitter);
+            emitter.completeWithError(err);
+        }).subscribe();
+    }
+
+    private void trySendError(SseEmitter emitter) {
+        try {
+            emitter.send(SseEmitter.event()
+                    .name(EVENT_ERROR)
+                    .data(objectMapper.writeValueAsString(
+                            Map.of("detail", "AI streaming error — please try again"))));
+        } catch (IOException ex) {
+            log.warn("SSE send failed for error event: {}", ex.getMessage());
+        }
     }
 
     private void tryEmitPatch(SseEmitter emitter, String line) {

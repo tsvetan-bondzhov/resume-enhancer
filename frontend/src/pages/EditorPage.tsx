@@ -126,6 +126,18 @@ export default function EditorPage() {
     return () => { ref.forEach(clearTimeout) }
   }, [])
 
+  // Dismiss AI diff suggestions on any canvas click or Escape keypress
+  useEffect(() => {
+    const handleClick = () => useDiffStore.getState().fadeAll()
+    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") useDiffStore.getState().fadeAll() }
+    document.addEventListener("click", handleClick)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("click", handleClick)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [])
+
   const handleTitleChange = useCallback(
     (sectionId: string, title: string) => {
       updateSectionTitle(sectionId, title)
@@ -284,7 +296,6 @@ export default function EditorPage() {
         centerSlot={
           <div
             className="flex flex-col h-full overflow-hidden"
-            onClick={() => useDiffStore.getState().fadeAll()}
           >
             <EditorToolbar
               resumeName={currentResume?.name ?? ""}
