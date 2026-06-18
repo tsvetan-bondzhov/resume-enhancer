@@ -427,7 +427,7 @@ describe("SummaryStep", () => {
     mockNavigate.mockReset()
   })
 
-  it("'Save & Finish' calls onSaveAndContinue with the summary payload", async () => {
+  it("'Save & Continue' calls onSaveAndContinue with the summary payload", async () => {
     const user = userEvent.setup()
 
     const capturedPayload = { current: null as Partial<ProfileUpdateRequest> | null }
@@ -446,7 +446,7 @@ describe("SummaryStep", () => {
     const textarea = screen.getByPlaceholderText(/Experienced software engineer/i)
     await user.type(textarea, "Passionate developer with 3 years experience.")
 
-    const saveButton = screen.getByRole("button", { name: /save & finish/i })
+    const saveButton = screen.getByRole("button", { name: /save & continue/i })
     await user.click(saveButton)
 
     await waitFor(() => {
@@ -459,8 +459,7 @@ describe("SummaryStep", () => {
     )
   })
 
-  it("'Skip' navigates away without calling onSaveAndContinue", async () => {
-    const user = userEvent.setup()
+  it("does not render a Skip button (Skip was removed; step advances via Save & Continue)", () => {
     const onSaveAndContinue = vi.fn()
 
     render(
@@ -469,11 +468,7 @@ describe("SummaryStep", () => {
       </MemoryRouter>,
     )
 
-    const skipButton = screen.getByRole("button", { name: /skip/i })
-    await user.click(skipButton)
-
-    expect(onSaveAndContinue).not.toHaveBeenCalled()
-    expect(mockNavigate).toHaveBeenCalledWith("/")
+    expect(screen.queryByRole("button", { name: /skip/i })).not.toBeInTheDocument()
   })
 })
 
@@ -844,7 +839,7 @@ describe("VolunteeringStep", () => {
     })
   })
 
-  it("filling valid role and organization and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {
+  it("filling valid role and organization and clicking Save & Finish calls onSaveAndContinue with correct payload", async () => {
     const user = userEvent.setup()
 
     const capturedPayload = { current: null as Partial<ProfileUpdateRequest> | null }
@@ -865,7 +860,7 @@ describe("VolunteeringStep", () => {
     const orgInput = screen.getByPlaceholderText("e.g. Code.org")
     await user.type(orgInput, "Local School")
 
-    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    const saveButton = screen.getByRole("button", { name: /save & finish/i })
     await user.click(saveButton)
 
     await waitFor(() => {
@@ -878,7 +873,7 @@ describe("VolunteeringStep", () => {
     expect(capturedPayload.current?.volunteering![0].organization).toBe("Local School")
   })
 
-  it("Save & Continue with no entries calls onSaveAndContinue with an empty volunteering array", async () => {
+  it("Save & Finish with no entries calls onSaveAndContinue with an empty volunteering array", async () => {
     const user = userEvent.setup()
     const capturedPayload = { current: null as Partial<ProfileUpdateRequest> | null }
     const onSaveAndContinue = vi
@@ -889,7 +884,7 @@ describe("VolunteeringStep", () => {
 
     render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
 
-    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    const saveButton = screen.getByRole("button", { name: /save & finish/i })
     await user.click(saveButton)
 
     await waitFor(() => {
@@ -909,7 +904,7 @@ describe("VolunteeringStep", () => {
     await user.click(screen.getByRole("button", { name: /add volunteering/i }))
     await screen.findByPlaceholderText("e.g. Mentor")
 
-    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    const saveButton = screen.getByRole("button", { name: /save & finish/i })
     await user.click(saveButton)
 
     expect(onSaveAndContinue).not.toHaveBeenCalled()

@@ -1,4 +1,6 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 import { useProfileStore } from "@/stores/useProfileStore"
 import { EntryDateRangeAndActivity, EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit, makeUpdateField } from "./profileStepShared"
 import type { VolunteeringRequest, ProfileUpdateRequest } from "@/types/api"
@@ -42,6 +44,7 @@ interface VolunteeringStepProps {
 export default function VolunteeringStep({
   onSaveAndContinue,
 }: VolunteeringStepProps) {
+  const navigate = useNavigate()
   const profile = useProfileStore((s) => s.profile)
   const isSaving = useProfileStore((s) => s.isSaving)
 
@@ -113,7 +116,18 @@ export default function VolunteeringStep({
           isCurrent: e.draft.isCurrent,
         })),
       }),
-      onSaveAndContinue,
+      async (partial) => {
+        try {
+          await onSaveAndContinue(partial)
+          // Only show success toast and navigate if the save succeeded —
+          // if onSaveAndContinue throws, these lines are skipped.
+          toast.success("Profile complete!")
+          navigate("/")
+        } catch {
+          // Error toast is already shown by ProfilePage.handleSaveAndContinue;
+          // nothing additional to do here.
+        }
+      },
     )
   }
 
@@ -169,7 +183,7 @@ export default function VolunteeringStep({
         </div>
       ))}
 
-      <StepFooter isSaving={isSaving} onAddAnother={addAnother} onSubmit={handleSubmit} />
+      <StepFooter isSaving={isSaving} onAddAnother={addAnother} onSubmit={handleSubmit} submitLabel="Save & Finish" />
     </div>
   )
 }

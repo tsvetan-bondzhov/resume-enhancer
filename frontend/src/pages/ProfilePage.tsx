@@ -143,12 +143,10 @@ export default function ProfilePage() {
       const payload = mergeProfilePayload(partial, current)
       const updated = await apiClient.put<ProfileDto>("/api/v1/profile", payload)
       setProfile(updated)
-      // Suppress generic "Profile saved" toast and step advance for SummaryStep
-      // (index 0) and the last step (index LAST_STEP) — SummaryStep.handleSaveAndFinish
-      // shows its own "Profile complete!" toast and navigates itself, so firing
-      // both would stack two toasts and double-advance.
-      const SUMMARY_STEP = 0
-      if (currentStep !== SUMMARY_STEP && currentStep < LAST_STEP) {
+      // Suppress generic "Profile saved" toast and step advance for the last step
+      // (VolunteeringStep) — it shows its own "Profile complete!" toast and
+      // navigates to "/" itself, so firing both would stack two toasts and double-advance.
+      if (currentStep < LAST_STEP) {
         toast.success("Profile saved")
         setStep(currentStep + 1)
       }

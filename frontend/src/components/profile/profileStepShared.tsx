@@ -86,9 +86,10 @@ interface StepFooterProps {
   readonly isSaving: boolean
   readonly onAddAnother: () => void
   readonly onSubmit: () => void
+  readonly submitLabel?: string
 }
 
-export function StepFooter({ isSaving, onAddAnother, onSubmit }: StepFooterProps) {
+export function StepFooter({ isSaving, onAddAnother, onSubmit, submitLabel = "Save & Continue" }: StepFooterProps) {
   return (
     <>
       <Button type="button" variant="outline" onClick={onAddAnother}>
@@ -97,7 +98,7 @@ export function StepFooter({ isSaving, onAddAnother, onSubmit }: StepFooterProps
 
       <div className="flex justify-end">
         <Button onClick={onSubmit} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save & Continue"}
+          {isSaving ? "Saving..." : submitLabel}
         </Button>
       </div>
     </>
