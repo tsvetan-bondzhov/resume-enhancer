@@ -15,6 +15,7 @@ import java.util.Map;
 public class AiService {
 
     private static final Logger log = LoggerFactory.getLogger(AiService.class);
+    private static final String OLLAMA_UNAVAILABLE_PREFIX = "Ollama is unavailable: ";
 
     private final ChatClient chatClient;
 
@@ -37,7 +38,7 @@ public class AiService {
                     .content();
         } catch (Exception e) {
             log.warn("Ollama call failed for sectionType={}: {}", sectionType, e.getMessage());
-            throw new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e);
+            throw new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e);
         }
     }
 
@@ -55,10 +56,10 @@ public class AiService {
                     .stream()
                     .content()
                     // F3: map reactive mid-stream errors — try/catch only covers Flux assembly errors
-                    .onErrorMap(e -> new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e));
+                    .onErrorMap(e -> new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e));
         } catch (Exception e) {
             log.warn("Ollama streaming call failed: {}", e.getMessage());
-            throw new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e);
+            throw new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e);
         }
     }
 
@@ -76,10 +77,10 @@ public class AiService {
                     .user(prompt)
                     .stream()
                     .content()
-                    .onErrorMap(e -> new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e));
+                    .onErrorMap(e -> new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e));
         } catch (Exception e) {
             log.warn("Ollama enhance call failed: {}", e.getMessage());
-            throw new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e);
+            throw new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e);
         }
     }
 
@@ -97,10 +98,10 @@ public class AiService {
                     .user(prompt)
                     .stream()
                     .content()
-                    .onErrorMap(e -> new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e));
+                    .onErrorMap(e -> new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e));
         } catch (Exception e) {
             log.warn("Ollama tailor call failed: {}", e.getMessage());
-            throw new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e);
+            throw new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e);
         }
     }
 
