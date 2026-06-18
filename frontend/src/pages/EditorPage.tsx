@@ -12,6 +12,8 @@ import SaveAsDialog from "@/components/resume/SaveAsDialog"
 import TemplateGallery from "@/components/resume/TemplateGallery"
 import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
 import ChatPanel from "@/components/resume/ChatPanel"
+import AIActionBar from "@/components/resume/AIActionBar"
+import { useDiffStore } from "@/stores/useDiffStore"
 import { useAutosave } from "@/hooks/useAutosave"
 import type { ResumeDto } from "@/types/api"
 
@@ -99,11 +101,12 @@ export default function EditorPage() {
     load()
   }, [id, setCurrentResume, setLastSavedDocument])
 
-  // Cleanup: clear current resume and chat messages from store on unmount
+  // Cleanup: clear current resume, chat messages, and diffs from store on unmount
   useEffect(() => {
     return () => {
       setCurrentResume(null)
       useChatStore.getState().clearMessages()
+      useDiffStore.getState().clearAll()
     }
   }, [setCurrentResume])
 
@@ -279,7 +282,10 @@ export default function EditorPage() {
           </div>
         }
         centerSlot={
-          <div className="flex flex-col h-full overflow-hidden">
+          <div
+            className="flex flex-col h-full overflow-hidden"
+            onClick={() => useDiffStore.getState().fadeAll()}
+          >
             <EditorToolbar
               resumeName={currentResume?.name ?? ""}
               autosaveStatus={autosaveStatus}
@@ -291,6 +297,7 @@ export default function EditorPage() {
               onSaveAs={() => setIsSaveAsOpen(true)}
               onBack={handleBack}
             />
+            <AIActionBar resumeId={id} />
             {error !== null && !isLoading ? (
               <div className="flex items-center justify-center h-64">
                 <p className="text-destructive">{error}</p>

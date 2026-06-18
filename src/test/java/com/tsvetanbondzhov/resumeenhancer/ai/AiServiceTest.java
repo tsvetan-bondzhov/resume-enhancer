@@ -1,5 +1,6 @@
 package com.tsvetanbondzhov.resumeenhancer.ai;
 
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +14,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -174,6 +176,64 @@ class AiServiceTest {
         assertThatThrownBy(() -> aiService.streamChat("test"))
                 .isInstanceOf(OllamaUnavailableException.class)
                 .hasMessageContaining("Ollama is unavailable");
+    }
+
+    // ─── streamEnhance — success path ───────────────────────────────────────
+
+    @Test
+    void streamEnhance_returnsPatchFlux() {
+        ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.StreamResponseSpec streamSpec = mock(ChatClient.StreamResponseSpec.class);
+
+        when(chatClient.prompt()).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(userSpec);
+        when(userSpec.stream()).thenReturn(streamSpec);
+        when(streamSpec.content()).thenReturn(
+                Flux.just(
+                        "{\"sectionId\":\"WORK_EXPERIENCE\",",
+                        "\"itemIndex\":0,\"field\":\"description\",\"newValue\":\"Led cross-functional teams\"}\n"
+                )
+        );
+
+        ResumeDocument document = new ResumeDocument(List.of());
+        Flux<String> result = aiService.streamEnhance(document);
+
+        StepVerifier.create(result)
+                .expectNext("{\"sectionId\":\"WORK_EXPERIENCE\",")
+                .expectNext("\"itemIndex\":0,\"field\":\"description\",\"newValue\":\"Led cross-functional teams\"}\n")
+                .verifyComplete();
+    }
+
+    // ─── streamEnhance — exception path ─────────────────────────────────────
+
+    @Test
+    void streamEnhance_ollamaUnavailable_throwsOllamaUnavailableException() {
+        ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
+
+        when(chatClient.prompt()).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(userSpec);
+        when(userSpec.stream()).thenThrow(new RuntimeException("Connection refused"));
+
+        ResumeDocument document = new ResumeDocument(List.of());
+
+        assertThatThrownBy(() -> aiService.streamEnhance(document))
+                .isInstanceOf(OllamaUnavailableException.class)
+                .hasMessageContaining("Ollama is unavailable");
+    }
+
+    // ─── buildEnhancePrompt — content verification ───────────────────────────
+
+    @Test
+    void buildEnhancePrompt_containsInstructionsAndResumeData() {
+        ResumeDocument document = new ResumeDocument(List.of());
+        String prompt = aiService.buildEnhancePrompt(document);
+
+        assertThat(prompt).contains("resume coach");
+        assertThat(prompt).contains("sectionId");
+        assertThat(prompt).contains("itemIndex");
+        assertThat(prompt).contains("newValue");
     }
 
     // ─── helper ──────────────────────────────────────────────────────────────

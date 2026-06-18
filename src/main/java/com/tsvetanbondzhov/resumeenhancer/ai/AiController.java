@@ -1,6 +1,9 @@
 package com.tsvetanbondzhov.resumeenhancer.ai;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tsvetanbondzhov.resumeenhancer.resume.ResumeService;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
 import io.opentelemetry.context.Context;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -9,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +23,7 @@ import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -32,12 +37,15 @@ public class AiController {
     private final AiService aiService;
     private final OllamaHealthGuard healthGuard;
     private final ObjectMapper objectMapper;
+    private final ResumeService resumeService;
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
-    public AiController(AiService aiService, OllamaHealthGuard healthGuard, ObjectMapper objectMapper) {
+    public AiController(AiService aiService, OllamaHealthGuard healthGuard,
+                        ObjectMapper objectMapper, ResumeService resumeService) {
         this.aiService = aiService;
         this.healthGuard = healthGuard;
         this.objectMapper = objectMapper;
+        this.resumeService = resumeService;
     }
 
     @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -101,5 +109,106 @@ public class AiController {
         });
 
         return ResponseEntity.ok(emitter);
+    }
+
+    @PostMapping(value = "/enhance", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public ResponseEntity<?> enhance(@Valid @RequestBody EnhanceRequest request,
+                                     Authentication authentication) {
+        // AC2: OllamaHealthGuard checked first
+        if (!healthGuard.isAvailable()) {
+            ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "AI features are temporarily unavailable");
+            problem.setTitle("Service Unavailable");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(problem);
+        }
+
+        // Load resume and verify ownership — same pattern as ResumeController
+        UUID resumeId = UUID.fromString(request.resumeId());
+        ResumeDocument document = resumeService.getResume(authentication.getName(), resumeId).content();
+
+        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
+        Context otelContext = Context.current();
+
+        executor.execute(() -> {
+            try (var ignored = otelContext.makeCurrent()) {
+                Flux<String> tokenFlux = aiService.streamEnhance(document);
+                // Buffer to accumulate tokens into complete JSON lines for patch parsing
+                StringBuilder lineBuffer = new StringBuilder();
+
+                Disposable disposable = tokenFlux.doOnNext(token -> {
+                    try {
+                        // Forward raw token to chat panel (narration)
+                        emitter.send(SseEmitter.event()
+                                .name("token")
+                                .data(objectMapper.writeValueAsString(Map.of("token", token))));
+
+                        // Accumulate tokens to detect complete patch JSON lines
+                        lineBuffer.append(token);
+                        int newlineIdx;
+                        while ((newlineIdx = lineBuffer.indexOf("\n")) >= 0) {
+                            String line = lineBuffer.substring(0, newlineIdx).trim();
+                            lineBuffer.delete(0, newlineIdx + 1);
+                            if (!line.isEmpty()) {
+                                tryEmitPatch(emitter, line);
+                            }
+                        }
+                    } catch (IOException e) {
+                        log.warn("SSE send failed for token: {}", e.getMessage());
+                        emitter.completeWithError(e);
+                    }
+                }).doOnComplete(() -> {
+                    try {
+                        // Flush any remaining buffered content
+                        String remaining = lineBuffer.toString().trim();
+                        if (!remaining.isEmpty()) {
+                            tryEmitPatch(emitter, remaining);
+                        }
+                        emitter.send(SseEmitter.event()
+                                .name("done")
+                                .data(objectMapper.writeValueAsString(
+                                        Map.of("summary", "Enhancement complete"))));
+                        emitter.complete();
+                    } catch (IOException e) {
+                        emitter.completeWithError(e);
+                    }
+                }).doOnError(err -> {
+                    log.warn("SSE enhance stream error: {}", err.getMessage(), err);
+                    try {
+                        emitter.send(SseEmitter.event()
+                                .name("error")
+                                .data(objectMapper.writeValueAsString(
+                                        Map.of("detail", "AI streaming error — please try again"))));
+                    } catch (IOException ex) {
+                        log.warn("SSE send failed for error event: {}", ex.getMessage());
+                    }
+                    emitter.completeWithError(err);
+                }).subscribe();
+
+                emitter.onCompletion(disposable::dispose);
+                emitter.onTimeout(disposable::dispose);
+                emitter.onError(e -> disposable.dispose());
+            } catch (Exception e) {
+                log.error("SSE enhance emitter setup failed", e);
+                emitter.completeWithError(e);
+            }
+        });
+
+        return ResponseEntity.ok(emitter);
+    }
+
+    private void tryEmitPatch(SseEmitter emitter, String line) {
+        try {
+            // Attempt to parse as DocumentPatchEvent
+            DocumentPatchEvent patch = objectMapper.readValue(line, DocumentPatchEvent.class);
+            emitter.send(SseEmitter.event()
+                    .name("patch")
+                    .data(objectMapper.writeValueAsString(patch)));
+        } catch (JsonProcessingException e) {
+            // Line is not a valid patch JSON — skip silently (may be partial token or prose)
+            log.debug("Skipping non-patch line from enhance stream: {}", line);
+        } catch (IOException e) {
+            log.warn("Failed to emit patch event: {}", e.getMessage());
+        }
     }
 }

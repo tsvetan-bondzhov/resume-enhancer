@@ -12,6 +12,12 @@ vi.mock("@/components/resume/ChatPanel", () => ({
   ),
 }))
 
+vi.mock("@/components/resume/AIActionBar", () => ({
+  default: ({ resumeId }: { resumeId: string | undefined }) => (
+    <div data-testid="ai-action-bar" data-resume-id={resumeId ?? ""} />
+  ),
+}))
+
 vi.mock("@/lib/apiClient", () => ({
   apiClient: {
     get: vi.fn(),

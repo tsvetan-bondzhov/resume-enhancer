@@ -1,5 +1,6 @@
 package com.tsvetanbondzhov.resumeenhancer.ai;
 
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -59,6 +60,58 @@ public class AiService {
             log.warn("Ollama streaming call failed: {}", e.getMessage());
             throw new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Streams AI-generated enhancement suggestions for the given resume document.
+     * The AI is instructed to emit one DocumentPatchEvent JSON object per line —
+     * the controller parses each line into a patch SSE event.
+     *
+     * AiService is the ONLY class in the codebase that calls ChatClient directly.
+     */
+    public Flux<String> streamEnhance(ResumeDocument document) {
+        try {
+            String prompt = buildEnhancePrompt(document);
+            return chatClient.prompt()
+                    .user(prompt)
+                    .stream()
+                    .content()
+                    .onErrorMap(e -> new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e));
+        } catch (Exception e) {
+            log.warn("Ollama enhance call failed: {}", e.getMessage());
+            throw new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e);
+        }
+    }
+
+    String buildEnhancePrompt(ResumeDocument document) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("""
+                You are an expert resume coach. Analyze the resume below and suggest improvements.
+                For each improvement, output exactly ONE JSON object on its own line in this format:
+                {"sectionId":"<sectionType>","itemIndex":<0-based index>,"field":"<field name>","newValue":"<improved text>"}
+
+                Rules:
+                - Output ONLY the JSON objects, one per line — no prose, no markdown, no explanations
+                - sectionId must be the exact sectionType value (e.g. WORK_EXPERIENCE, SUMMARY, SKILLS)
+                - itemIndex is the 0-based position of the item within that section's items array
+                - field is the exact field name to improve (e.g. description, jobTitle, name)
+                - newValue is the improved text — concise, impactful, action-verb led
+                - Only suggest changes for fields that have existing non-empty text
+                - Limit suggestions to the most impactful improvements (max 5 total)
+
+                Resume:
+                """);
+
+        for (var section : document.sections()) {
+            if (!section.visible()) continue;
+            sb.append("Section: ").append(section.sectionType()).append("\n");
+            var items = section.items();
+            for (int i = 0; i < items.size(); i++) {
+                sb.append("  Item ").append(i).append(": ").append(items.get(i)).append("\n");
+            }
+        }
+
+        return sb.toString();
     }
 
     private String buildPrompt(String sectionType, String sectionText) {
