@@ -21,9 +21,8 @@ public class AiService {
     }
 
     /**
-     * Calls Ollama with a section extraction prompt built from
-     * {@code prompts/resume-section-extraction.st}. Returns raw JSON string.
-     * Throws OllamaUnavailableException if Ollama is unreachable.
+     * Calls Ollama with a section-specific extraction prompt.
+     * Returns raw JSON string. Throws OllamaUnavailableException if Ollama is unreachable.
      *
      * AiService is the ONLY class in the codebase that calls ChatClient directly.
      */
@@ -42,15 +41,11 @@ public class AiService {
 
     private String buildPrompt(String sectionType, String sectionText) {
         try {
-            PromptTemplate template = new PromptTemplate(
-                    new ClassPathResource("prompts/resume-section-extraction.st"));
-            return template.render(Map.of(
-                    "sectionType", sectionType,
-                    "sectionText", sectionText,
-                    "fieldSchema", getFieldSchema(sectionType)
-            ));
+            String templateName = getPromptTemplateName(sectionType);
+            PromptTemplate template = new PromptTemplate(new ClassPathResource(templateName));
+            return template.render(Map.of("sectionText", sectionText));
         } catch (Exception e) {
-            log.warn("Failed to load prompt template, using inline fallback: {}", e.getMessage());
+            log.warn("Failed to load prompt template for {}, using inline fallback: {}", sectionType, e.getMessage());
             return String.format("""
                     You are a resume parsing expert. Extract structured data from the following resume section.
                     Return ONLY a valid JSON array. Do not include markdown, code blocks, or explanations.
@@ -65,25 +60,17 @@ public class AiService {
         }
     }
 
-    private String getFieldSchema(String sectionType) {
+    String getPromptTemplateName(String sectionType) {
         return switch (sectionType) {
-            case "WORK_EXPERIENCE" -> "[{\"jobTitle\": \"\", \"company\": \"\", \"startDate\": \"YYYY-MM-DD\", " +
-                    "\"endDate\": \"YYYY-MM-DD or null\", \"isCurrent\": false, " +
-                    "\"description\": \"comma-separated achievements\"}]";
-            case "EDUCATION" -> "[{\"institution\": \"\", \"degree\": \"\", \"fieldOfStudy\": \"\", " +
-                    "\"startDate\": \"YYYY-MM-DD or null\", \"endDate\": \"YYYY-MM-DD or null\"}]";
-            case "SKILLS" -> "[{\"name\": \"\"}]";
-            case "CERTIFICATIONS" -> "[{\"name\": \"\", \"issuer\": \"\", " +
-                    "\"issueDate\": \"YYYY-MM-DD\", \"expirationDate\": \"YYYY-MM-DD or null\"}]";
-            case "PROJECTS" -> "[{\"name\": \"\", \"description\": \"\", " +
-                    "\"technologies\": \"comma-separated\", \"link\": \"\", " +
-                    "\"startDate\": \"YYYY-MM-DD or null\", \"endDate\": \"YYYY-MM-DD or null\", \"isCurrent\": false}]";
-            case "SUMMARY" -> "[{\"text\": \"full summary prose\"}]";
-            case "LANGUAGES" -> "[{\"language\": \"\", \"proficiency\": \"\"}]";
-            case "VOLUNTEERING" -> "[{\"role\": \"\", \"organization\": \"\", " +
-                    "\"startDate\": \"YYYY-MM-DD or null\", \"endDate\": \"YYYY-MM-DD or null\", " +
-                    "\"isCurrent\": false, \"description\": \"\"}]";
-            default -> "[{\"text\": \"raw content\"}]";
+            case "WORK_EXPERIENCE" -> "prompts/resume-extraction-work-experience.st";
+            case "EDUCATION"       -> "prompts/resume-extraction-education.st";
+            case "SKILLS"          -> "prompts/resume-extraction-skills.st";
+            case "CERTIFICATIONS"  -> "prompts/resume-extraction-certifications.st";
+            case "PROJECTS"        -> "prompts/resume-extraction-projects.st";
+            case "SUMMARY"         -> "prompts/resume-extraction-summary.st";
+            case "LANGUAGES"       -> "prompts/resume-extraction-languages.st";
+            case "VOLUNTEERING"    -> "prompts/resume-extraction-volunteering.st";
+            default                -> "prompts/resume-extraction-default.st";
         };
     }
 }

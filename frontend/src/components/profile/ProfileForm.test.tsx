@@ -427,7 +427,7 @@ describe("SummaryStep", () => {
     mockNavigate.mockReset()
   })
 
-  it("'Save & Finish' calls onSaveAndContinue with the summary payload", async () => {
+  it("'Save & Continue' calls onSaveAndContinue with the summary payload", async () => {
     const user = userEvent.setup()
 
     const capturedPayload = { current: null as Partial<ProfileUpdateRequest> | null }
@@ -446,7 +446,7 @@ describe("SummaryStep", () => {
     const textarea = screen.getByPlaceholderText(/Experienced software engineer/i)
     await user.type(textarea, "Passionate developer with 3 years experience.")
 
-    const saveButton = screen.getByRole("button", { name: /save & finish/i })
+    const saveButton = screen.getByRole("button", { name: /save & continue/i })
     await user.click(saveButton)
 
     await waitFor(() => {
@@ -459,8 +459,7 @@ describe("SummaryStep", () => {
     )
   })
 
-  it("'Skip' navigates away without calling onSaveAndContinue", async () => {
-    const user = userEvent.setup()
+  it("does not render a Skip button (Skip was removed; step advances via Save & Continue)", () => {
     const onSaveAndContinue = vi.fn()
 
     render(
@@ -469,11 +468,48 @@ describe("SummaryStep", () => {
       </MemoryRouter>,
     )
 
-    const skipButton = screen.getByRole("button", { name: /skip/i })
-    await user.click(skipButton)
+    expect(screen.queryByRole("button", { name: /skip/i })).not.toBeInTheDocument()
+  })
 
-    expect(onSaveAndContinue).not.toHaveBeenCalled()
-    expect(mockNavigate).toHaveBeenCalledWith("/")
+  it("syncs form fields when the profile store is updated externally (e.g. resume upload while on this step)", async () => {
+    const onSaveAndContinue = vi.fn()
+
+    render(
+      <MemoryRouter>
+        <SummaryStep onSaveAndContinue={onSaveAndContinue} />
+      </MemoryRouter>,
+    )
+
+    const textarea = screen.getByPlaceholderText(/Experienced software engineer/i) as HTMLTextAreaElement
+    expect(textarea.value).toBe("")
+
+    // Simulate what useResumeUpload does: replace the entire profile in the store
+    const { act } = await import("@testing-library/react")
+    await act(async () => {
+      useProfileStore.setState((s) => ({
+        ...s,
+        profile: {
+          ...s.profile!,
+          summary: "Uploaded summary text",
+          contactEmail: "uploaded@example.com",
+          locationCity: "Berlin",
+          locationCountry: "Germany",
+        },
+      }))
+    })
+
+    await waitFor(() => {
+      expect(textarea.value).toBe("Uploaded summary text")
+    })
+
+    const emailInput = screen.getByLabelText(/contact email/i) as HTMLInputElement
+    expect(emailInput.value).toBe("uploaded@example.com")
+
+    const cityInput = screen.getByLabelText(/city/i) as HTMLInputElement
+    expect(cityInput.value).toBe("Berlin")
+
+    const countryInput = screen.getByLabelText(/country/i) as HTMLInputElement
+    expect(countryInput.value).toBe("Germany")
   })
 })
 
@@ -844,7 +880,7 @@ describe("VolunteeringStep", () => {
     })
   })
 
-  it("filling valid role and organization and clicking Save & Continue calls onSaveAndContinue with correct payload", async () => {
+  it("filling valid role and organization and clicking Save & Finish calls onSaveAndContinue with correct payload", async () => {
     const user = userEvent.setup()
 
     const capturedPayload = { current: null as Partial<ProfileUpdateRequest> | null }
@@ -865,7 +901,7 @@ describe("VolunteeringStep", () => {
     const orgInput = screen.getByPlaceholderText("e.g. Code.org")
     await user.type(orgInput, "Local School")
 
-    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    const saveButton = screen.getByRole("button", { name: /save & finish/i })
     await user.click(saveButton)
 
     await waitFor(() => {
@@ -878,7 +914,7 @@ describe("VolunteeringStep", () => {
     expect(capturedPayload.current?.volunteering![0].organization).toBe("Local School")
   })
 
-  it("Save & Continue with no entries calls onSaveAndContinue with an empty volunteering array", async () => {
+  it("Save & Finish with no entries calls onSaveAndContinue with an empty volunteering array", async () => {
     const user = userEvent.setup()
     const capturedPayload = { current: null as Partial<ProfileUpdateRequest> | null }
     const onSaveAndContinue = vi
@@ -889,7 +925,7 @@ describe("VolunteeringStep", () => {
 
     render(<VolunteeringStep onSaveAndContinue={onSaveAndContinue} />)
 
-    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    const saveButton = screen.getByRole("button", { name: /save & finish/i })
     await user.click(saveButton)
 
     await waitFor(() => {
@@ -909,7 +945,7 @@ describe("VolunteeringStep", () => {
     await user.click(screen.getByRole("button", { name: /add volunteering/i }))
     await screen.findByPlaceholderText("e.g. Mentor")
 
-    const saveButton = screen.getByRole("button", { name: /save & continue/i })
+    const saveButton = screen.getByRole("button", { name: /save & finish/i })
     await user.click(saveButton)
 
     expect(onSaveAndContinue).not.toHaveBeenCalled()
