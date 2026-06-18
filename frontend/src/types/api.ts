@@ -370,6 +370,12 @@ export interface ParsedResumeDtoVolunteering {
 
 export interface ParsedResumeDtoSummary {
   text: string | null
+  linkedInUrl: string | null
+  personalPageUrl: string | null
+  blogUrl: string | null
+  contactEmail: string | null
+  locationCountry: string | null
+  locationCity: string | null
 }
 
 export interface ParsedResumeDtoResponse {

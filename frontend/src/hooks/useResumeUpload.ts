@@ -130,12 +130,12 @@ export function useResumeUpload(): {
       } else {
         const seeded: ProfileDto = {
           summary: parsed.summary?.text ?? null,
-          linkedInUrl: null,
-          personalPageUrl: null,
-          blogUrl: null,
-          contactEmail: null,
-          locationCountry: null,
-          locationCity: null,
+          linkedInUrl: parsed.summary?.linkedInUrl ?? null,
+          personalPageUrl: parsed.summary?.personalPageUrl ?? null,
+          blogUrl: parsed.summary?.blogUrl ?? null,
+          contactEmail: parsed.summary?.contactEmail ?? null,
+          locationCountry: parsed.summary?.locationCountry ?? null,
+          locationCity: parsed.summary?.locationCity ?? null,
           workExperiences: mapped.workExperiences ?? [],
           education: mapped.education ?? [],
           skills: mapped.skills ?? [],

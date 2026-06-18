@@ -256,7 +256,16 @@ public class LlmSectionExtractor {
                     parseDate(raw, END_DATE),
                     bool(raw, IS_CURRENT)
             );
-            case SUMMARY -> new SummaryItem(id, str(raw, "text"), null, null, null, null, null, null);
+            case SUMMARY -> new SummaryItem(
+                    id,
+                    str(raw, "text"),
+                    str(raw, "linkedInUrl"),
+                    str(raw, "personalPageUrl"),
+                    str(raw, "blogUrl"),
+                    str(raw, "contactEmail"),
+                    str(raw, "locationCountry"),
+                    str(raw, "locationCity")
+            );
             case UNKNOWN -> new GenericItem(id, toStringMap(raw));
         };
     }
