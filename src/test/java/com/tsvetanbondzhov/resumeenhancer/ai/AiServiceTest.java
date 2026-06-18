@@ -10,12 +10,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.ai.chat.client.ChatClient;
+import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
 
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -134,6 +137,43 @@ class AiServiceTest {
         assertThat(new ClassPathResource(templatePath).exists())
                 .as("Template file missing: %s", templatePath)
                 .isTrue();
+    }
+
+    // ─── streamChat — success path ───────────────────────────────────────────
+
+    @Test
+    void streamChat_returns_flux_of_tokens() {
+        ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.StreamResponseSpec streamSpec = mock(ChatClient.StreamResponseSpec.class);
+
+        when(chatClient.prompt()).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(userSpec);
+        when(userSpec.stream()).thenReturn(streamSpec);
+        when(streamSpec.content()).thenReturn(Flux.just("Hello", " world"));
+
+        Flux<String> result = aiService.streamChat("test prompt");
+
+        StepVerifier.create(result)
+                .expectNext("Hello")
+                .expectNext(" world")
+                .verifyComplete();
+    }
+
+    // ─── streamChat — exception path ─────────────────────────────────────────
+
+    @Test
+    void streamChat_throws_OllamaUnavailableException_when_chatClient_fails() {
+        ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
+
+        when(chatClient.prompt()).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(userSpec);
+        when(userSpec.stream()).thenThrow(new RuntimeException("Connection refused"));
+
+        assertThatThrownBy(() -> aiService.streamChat("test"))
+                .isInstanceOf(OllamaUnavailableException.class)
+                .hasMessageContaining("Ollama is unavailable");
     }
 
     // ─── helper ──────────────────────────────────────────────────────────────

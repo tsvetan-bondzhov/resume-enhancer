@@ -11,6 +11,12 @@
 - **F1** `apiClient.ts` missing `window.location.href = '/login'` redirect on 401 — project-context rule requires redirect on unauthorized. Pre-existing from Story 1.2; `clearAuth()` is called but redirect is absent. Address in Story 1.5 (protected routes / auth shell).
 
 
+## Deferred from: code review of 5-1-ai-streaming-spike-spring-ai-ollama-sse-end-to-end (2026-06-18)
+
+- **F2** `AiController.java` — ExecutorService (virtual thread per task) field never shut down; no `@PreDestroy`. Low impact with virtual threads, but should be addressed before production. Add `@PreDestroy void shutdown() { executor.shutdown(); }`.
+- **F8** `OllamaHealthGuard.java` — Creates a new `HttpClient` instance on every `isAvailable()` call. Leaks connections and blocks the Tomcat thread for up to 6 seconds per request. Pre-existing; refactor to a shared/cached `HttpClient` field.
+- **F11** `frontend/src/router/index.tsx` — `/ai-test` route (AiTestPage) is included in the production bundle with no build-time or runtime exclusion. The page is designated dev-only but is accessible to any authenticated user. Add admin-role guard or environment flag before Epic 5 ships to production.
+
 
 ## Deferred from: code review of 1-5-protected-routes-and-application-shell (2026-05-20)
 

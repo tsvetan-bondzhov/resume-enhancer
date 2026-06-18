@@ -6,6 +6,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.util.Map;
 
@@ -35,6 +36,27 @@ public class AiService {
                     .content();
         } catch (Exception e) {
             log.warn("Ollama call failed for sectionType={}: {}", sectionType, e.getMessage());
+            throw new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Streams a chat response from Ollama for the given prompt.
+     * Returns a Flux<String> where each emission is one streaming token chunk.
+     * Throws OllamaUnavailableException if Ollama is unreachable.
+     *
+     * AiService is the ONLY class in the codebase that calls ChatClient directly.
+     */
+    public Flux<String> streamChat(String prompt) {
+        try {
+            return chatClient.prompt()
+                    .user(prompt)
+                    .stream()
+                    .content()
+                    // F3: map reactive mid-stream errors — try/catch only covers Flux assembly errors
+                    .onErrorMap(e -> new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e));
+        } catch (Exception e) {
+            log.warn("Ollama streaming call failed: {}", e.getMessage());
             throw new OllamaUnavailableException("Ollama is unavailable: " + e.getMessage(), e);
         }
     }

@@ -1,5 +1,6 @@
 package com.tsvetanbondzhov.resumeenhancer.common;
 
+import com.tsvetanbondzhov.resumeenhancer.ai.OllamaUnavailableException;
 import com.tsvetanbondzhov.resumeenhancer.auth.InvalidCurrentPasswordException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeAccessDeniedException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeNotFoundException;
@@ -160,6 +161,16 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN, "Access denied");
         problem.setTitle("Forbidden");
+        return problem;
+    }
+
+    @ExceptionHandler(OllamaUnavailableException.class)
+    public ProblemDetail handleOllamaUnavailable(OllamaUnavailableException ex) {
+        log.warn("Ollama unavailable: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "AI features are temporarily unavailable");
+        problem.setTitle("Service Unavailable");
         return problem;
     }
 
