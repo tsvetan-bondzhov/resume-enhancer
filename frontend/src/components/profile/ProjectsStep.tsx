@@ -67,7 +67,7 @@ export default function ProjectsStep({ onSaveAndContinue }: ProjectsStepProps) {
 
   const updateField = makeUpdateField<ProjectDraft, FieldErrors>(setEntries, ["name"])
   const handleBlur = makeHandleBlur<ProjectDraft, FieldErrors>(setEntries, "Project name is required")
-  const addAnother = makeAddAnother(setEntries, emptyDraft, {} as FieldErrors)
+  const addAnother = makeAddAnother(setEntries, emptyDraft, {})
   const removeEntry = makeRemoveEntry(setEntries)
 
   function validateAll(): EntryState[] {

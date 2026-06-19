@@ -60,7 +60,7 @@ export default function CertificationsStep({
 
   const updateField = makeUpdateField<CertificationDraft, FieldErrors>(setEntries, ["name"])
   const handleBlur = makeHandleBlur<CertificationDraft, FieldErrors>(setEntries, "Certification name is required")
-  const addAnother = makeAddAnother(setEntries, emptyDraft, {} as FieldErrors)
+  const addAnother = makeAddAnother(setEntries, emptyDraft, {})
   const removeEntry = makeRemoveEntry(setEntries)
 
   function validateAll(): EntryState[] {

@@ -72,7 +72,7 @@ export default function LanguagesStep({
 
   const updateField = makeUpdateField<LanguageDraft, FieldErrors>(setEntries, ["name", "proficiencyLevel"])
   const handleBlur = makeHandleBlur<LanguageDraft, FieldErrors>(setEntries, "Language name is required")
-  const addAnother = makeAddAnother(setEntries, emptyDraft, {} as FieldErrors)
+  const addAnother = makeAddAnother(setEntries, emptyDraft, {})
   const removeEntry = makeRemoveEntry(setEntries)
 
   function validateAll(): EntryState[] {

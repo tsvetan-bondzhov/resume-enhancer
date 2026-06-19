@@ -57,6 +57,13 @@ function buildResume(sections: ResumeSectionDto[] = defaultSections): ResumeDto 
   }
 }
 
+function assertSwappedToEducationFirst(reorderSections: ReturnType<typeof vi.fn>) {
+  expect(reorderSections).toHaveBeenCalledOnce()
+  const newOrder = reorderSections.mock.calls[0][0] as ResumeSectionDto[]
+  expect(newOrder[0].sectionType).toBe("EDUCATION")
+  expect(newOrder[1].sectionType).toBe("WORK_EXPERIENCE")
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("SectionsPanel", () => {
@@ -125,15 +132,6 @@ describe("SectionsPanel", () => {
     render(<SectionsPanel sections={defaultSections} />)
     fireEvent.click(screen.getByLabelText("Toggle sections panel"))
     return { reorderSections }
-  }
-
-  // ── Reorder assertion helper ──────────────────────────────────────────────
-
-  function assertSwappedToEducationFirst(reorderSections: ReturnType<typeof vi.fn>) {
-    expect(reorderSections).toHaveBeenCalledOnce()
-    const newOrder = reorderSections.mock.calls[0][0] as ResumeSectionDto[]
-    expect(newOrder[0].sectionType).toBe("EDUCATION")
-    expect(newOrder[1].sectionType).toBe("WORK_EXPERIENCE")
   }
 
   // ── Move up ───────────────────────────────────────────────────────────────
