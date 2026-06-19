@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tsvetanbondzhov.resumeenhancer.auth.UserRepository;
 import com.tsvetanbondzhov.resumeenhancer.auth.domain.User;
-import com.tsvetanbondzhov.resumeenhancer.export.renderers.PdfRenderer;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeAccessDeniedException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeRepository;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.Resume;
@@ -34,20 +33,20 @@ public class ExportService {
     private final TemplateRepository templateRepository;
     private final UserRepository userRepository;
     private final TemplateDefinitionService templateDefinitionService;
-    private final PdfRenderer pdfRenderer;
+    private final Map<String, DocumentRenderer> renderers;
     private final ObjectMapper objectMapper;
 
     public ExportService(ResumeRepository resumeRepository,
                          TemplateRepository templateRepository,
                          UserRepository userRepository,
                          TemplateDefinitionService templateDefinitionService,
-                         PdfRenderer pdfRenderer,
+                         Map<String, DocumentRenderer> renderers,
                          ObjectMapper objectMapper) {
         this.resumeRepository = resumeRepository;
         this.templateRepository = templateRepository;
         this.userRepository = userRepository;
         this.templateDefinitionService = templateDefinitionService;
-        this.pdfRenderer = pdfRenderer;
+        this.renderers = renderers;
         this.objectMapper = objectMapper;
     }
 
@@ -63,7 +62,7 @@ public class ExportService {
      *
      * @param userEmail authenticated user's email
      * @param resumeId  UUID of the resume to export
-     * @param format    "pdf" (DOCX not yet implemented — story 6-2)
+     * @param format    "pdf" or "docx"
      * @return {@link ExportResult} with rendered bytes and the resume's name
      */
     @Transactional(readOnly = true)
@@ -77,9 +76,14 @@ public class ExportService {
         ResumeTemplate template = resolveTemplate(resume.getTemplateId());
 
         byte[] content = switch (format.toLowerCase()) {
-            case "pdf" -> pdfRenderer.render(doc, template);
-            case "docx" -> throw new UnsupportedExportFormatException(
-                    "DOCX export not yet implemented");
+            case "pdf", "docx" -> {
+                DocumentRenderer renderer = renderers.get(format.toLowerCase());
+                if (renderer == null) {
+                    throw new UnsupportedExportFormatException(
+                            "Unsupported export format. Use 'pdf' or 'docx'.");
+                }
+                yield renderer.render(doc, template);
+            }
             default -> throw new UnsupportedExportFormatException(
                     "Unsupported export format. Use 'pdf' or 'docx'.");
         };

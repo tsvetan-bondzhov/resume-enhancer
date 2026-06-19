@@ -211,6 +211,39 @@ export default function EditorPage() {
     navigate("/")
   }, [navigate])
 
+  const exportDocx = useCallback(async () => {
+    if (!id) return
+    if (!currentResume) {
+      toast.error("Resume not loaded — please refresh")
+      return
+    }
+    setExporting(true)
+    try {
+      const token = useAuthStore.getState().token
+      const res = await fetch(`/api/v1/resumes/${id}/export?format=docx`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { detail?: string }
+        throw new Error(body.detail ?? "Export failed")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${currentResume?.name ?? "resume"}.docx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success("Download ready", { duration: 4000 })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed", { duration: 8000 })
+    } finally {
+      setExporting(false)
+    }
+  }, [id, currentResume, setExporting])
+
   const exportPdf = useCallback(async () => {
     if (!id) return
     // D3: guard against exporting when the resume failed to load — avoids a blank PDF download
@@ -355,6 +388,7 @@ export default function EditorPage() {
               onSaveAs={() => setIsSaveAsOpen(true)}
               onBack={handleBack}
               onExportPdf={exportPdf}
+              onExportDocx={exportDocx}
             />
             <AIActionBar resumeId={id} />
             {error !== null && !isLoading ? (

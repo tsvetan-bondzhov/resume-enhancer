@@ -4,8 +4,10 @@ import { toast } from "sonner"
 import { FileText } from "lucide-react"
 import { apiClient } from "@/lib/apiClient"
 import { useResumeStore } from "@/stores/useResumeStore"
+import { useAuthStore } from "@/stores/useAuthStore"
 import ResumeDashboardCard from "@/components/resume/ResumeDashboardCard"
 import ResumeDashboardCardSkeleton from "@/components/resume/ResumeDashboardCardSkeleton"
+import ExportFormatDialog from "@/components/resume/ExportFormatDialog"
 import { Button } from "@/components/ui/button"
 import type { CreateResumeRequest, ResumeDto } from "@/types/api"
 
@@ -20,6 +22,8 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
+  const [exportingResume, setExportingResume] = useState<ResumeDto | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
   const pendingDeletes = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const setResumes = useResumeStore((state) => state.setResumes)
 
@@ -114,6 +118,42 @@ export default function DashboardPage() {
     })
   }, [])
 
+  const handleExportClick = useCallback((resume: ResumeDto) => {
+    setExportingResume(resume)
+  }, [])
+
+  const handleExport = useCallback(async (format: "pdf" | "docx") => {
+    if (!exportingResume) return
+    setIsExporting(true)
+    try {
+      // Direct fetch (not apiClient) — export returns binary, not JSON.
+      const token = useAuthStore.getState().token
+      const res = await fetch(
+        `/api/v1/resumes/${exportingResume.id}/export?format=${format}`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+      )
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { detail?: string }
+        throw new Error(body.detail ?? "Export failed")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${exportingResume.name ?? "resume"}.${format}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success("Download ready", { duration: 4000 })
+      setExportingResume(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed", { duration: 8000 })
+    } finally {
+      setIsExporting(false)
+    }
+  }, [exportingResume])
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       {/* Page header */}
@@ -161,12 +201,20 @@ export default function DashboardPage() {
                 onOpen={() => handleOpen(resume.id)}
                 onDuplicate={() => handleDuplicate(resume)}
                 onDelete={() => handleDelete(resume)}
+                onExport={() => handleExportClick(resume)}
                 isDuplicating={duplicatingId === resume.id}
               />
             ))}
           </div>
         </section>
       )}
+      <ExportFormatDialog
+        open={exportingResume !== null}
+        resumeName={exportingResume?.name ?? ""}
+        isExporting={isExporting}
+        onExport={handleExport}
+        onClose={() => { if (!isExporting) setExportingResume(null) }}
+      />
     </div>
   )
 }

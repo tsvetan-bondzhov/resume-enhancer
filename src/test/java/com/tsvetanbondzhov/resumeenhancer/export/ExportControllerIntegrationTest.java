@@ -20,6 +20,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
 /**
@@ -159,6 +160,26 @@ class ExportControllerIntegrationTest {
                 .header("Authorization", "Bearer " + tokenB)
                 .exchange()
                 .expectStatus().isForbidden();
+    }
+
+    // ─── Test 5: Happy path DOCX export ──────────────────────────────────────
+
+    @Test
+    void get_exportResume_docx_returns200WithDocxContent() throws Exception {
+        String token = registerAndGetToken("export_docx@example.com", "Password1");
+        String resumeId = createResume(token, "My DOCX Resume");
+
+        webTestClient()
+                .get()
+                .uri("/api/v1/resumes/" + resumeId + "/export?format=docx")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueMatches("Content-Type",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document.*")
+                .expectHeader().valueMatches("Content-Disposition", "attachment; filename=\".*\\.docx\"")
+                .expectBody(byte[].class)
+                .value(bytes -> assertThat(bytes).isNotNull().isNotEmpty());
     }
 
     // ─── Test 4: Unsupported format → 400 ProblemDetail ──────────────────────

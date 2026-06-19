@@ -1,5 +1,4 @@
 import { ExternalLink, Download, Copy, Trash2, Loader2 } from "lucide-react"
-import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import type { ResumeDto } from "@/types/api"
 import ResumeCanvas from "@/components/resume/ResumeCanvas"
@@ -12,6 +11,7 @@ interface ResumeDashboardCardProps {
   readonly onOpen: () => void
   readonly onDuplicate: () => void
   readonly onDelete: () => void
+  readonly onExport: () => void
   readonly isDuplicating?: boolean
 }
 
@@ -20,6 +20,7 @@ export default function ResumeDashboardCard({
   onOpen,
   onDuplicate,
   onDelete,
+  onExport,
   isDuplicating = false,
 }: ResumeDashboardCardProps) {
   return (
@@ -85,10 +86,10 @@ export default function ResumeDashboardCard({
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                toast("Export coming soon")
+                onExport()
               }}
-              aria-label="Download resume"
-              title="Download resume"
+              aria-label="Export resume"
+              title="Export resume"
               className="p-1 rounded hover:bg-muted cursor-pointer"
             >
               <Download className="size-4" />

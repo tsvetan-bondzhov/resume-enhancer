@@ -16,6 +16,7 @@ function buildProps(overrides?: Partial<Parameters<typeof EditorToolbar>[0]>) {
     onSaveAs: vi.fn(),
     onBack: vi.fn(),
     onExportPdf: vi.fn(),
+    onExportDocx: vi.fn(),
     ...overrides,
   }
 }
@@ -187,6 +188,24 @@ describe("EditorToolbar — Export PDF button (AC4, AC5)", () => {
   it("shows 'Exporting…' and disables button when isExporting is true", () => {
     render(<EditorToolbar {...buildProps({ isExporting: true, onExportPdf: vi.fn() })} />)
     const btn = screen.getByRole("button", { name: /export resume as pdf/i })
+    expect(btn).toBeDisabled()
+    expect(btn).toHaveTextContent("Exporting…")
+  })
+})
+
+describe("EditorToolbar — Export DOCX button", () => {
+  it("renders Export DOCX button and calls onExportDocx on click", () => {
+    const onExportDocx = vi.fn()
+    render(<EditorToolbar {...buildProps({ isExporting: false, onExportDocx })} />)
+    const btn = screen.getByRole("button", { name: /export resume as docx/i })
+    expect(btn).toBeInTheDocument()
+    fireEvent.click(btn)
+    expect(onExportDocx).toHaveBeenCalledOnce()
+  })
+
+  it("shows 'Exporting…' and disables DOCX button when isExporting is true", () => {
+    render(<EditorToolbar {...buildProps({ isExporting: true, onExportDocx: vi.fn() })} />)
+    const btn = screen.getByRole("button", { name: /export resume as docx/i })
     expect(btn).toBeDisabled()
     expect(btn).toHaveTextContent("Exporting…")
   })

@@ -172,6 +172,13 @@
 - **W5** `buildFallbackTemplate` creates bare `ResumeTemplate` entity with no `id`/`name` — latent JPA risk if fallback object is ever accidentally passed to a persistence operation. No current code path triggers it; add warning comment for story 6-2 implementer.
 - **W6** `URL.revokeObjectURL` called synchronously after `a.click()` — common browser race; modern browsers handle this safely in practice. Address if download failures are reported on specific browser versions.
 
+## Deferred from: code review of 6-2-docxrenderer-and-export-download-ux (2026-06-19)
+
+- **W1** `DashboardPage.tsx` / `EditorPage.tsx` (exportDocx) — `URL.revokeObjectURL` called synchronously after `a.click()`; browser download initiation is async and revocation may race the download on Firefox. Pre-existing identical pattern in `exportPdf`; address with `setTimeout(() => URL.revokeObjectURL(url), 100)` if download failures are reported.
+- **W2** `ExportFormatDialog.tsx` `onClose` handler — backdrop click / Escape during active export silently no-ops; Cancel button is disabled but Backdrop dismissal gives no feedback. Pre-existing design choice; address with a tooltip or `aria-description` in a future UX accessibility pass.
+- **W3** `DashboardPage.tsx` `handleExport` — no AbortController or in-flight deduplication; rapid double-click can fire two parallel export fetch requests before `setIsExporting(true)` re-render. Pre-existing pattern across delete/duplicate handlers; address when global request cancellation strategy is introduced.
+- **W4** `EditorPage.tsx` — `exportDocx` and `exportPdf` share `isExporting` Zustand state with no early-return guard; `isExporting` button-disabled state prevents concurrent clicks in normal usage but not in race conditions between button render and click. Pre-existing shared-state pattern; address if concurrent export bugs are observed in production.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

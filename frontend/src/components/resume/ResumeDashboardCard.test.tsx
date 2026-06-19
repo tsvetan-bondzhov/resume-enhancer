@@ -30,13 +30,14 @@ function buildResume(overrides?: Partial<ResumeDto>): ResumeDto {
   }
 }
 
-function renderCard(resume: ResumeDto = buildResume()) {
+function renderCard(resume: ResumeDto = buildResume(), onExport = vi.fn()) {
   return render(
     <ResumeDashboardCard
       resume={resume}
       onOpen={vi.fn()}
       onDuplicate={vi.fn()}
       onDelete={vi.fn()}
+      onExport={onExport}
     />,
   )
 }
@@ -123,14 +124,14 @@ describe("ResumeDashboardCard", () => {
     expect(onOpen).toHaveBeenCalled()
   })
 
-  // Lines 84-85: Export button calls toast
-  it("clicking the Export button calls toast with 'Export coming soon'", async () => {
-    const { toast } = await import("sonner")
+  // Export button now calls onExport (AC5: wired to ExportFormatDialog)
+  it("clicking the Export button calls onExport", async () => {
+    const onExport = vi.fn()
     const user = userEvent.setup()
-    renderCard()
-    const exportButton = screen.getByLabelText("Download resume")
+    renderCard(buildResume(), onExport)
+    const exportButton = screen.getByLabelText("Export resume")
     await user.click(exportButton)
-    expect(toast).toHaveBeenCalledWith("Export coming soon")
+    expect(onExport).toHaveBeenCalledOnce()
   })
 
   // Line 31: onKeyDown — pressing an unrelated key does NOT trigger onOpen
@@ -159,6 +160,7 @@ describe("ResumeDashboardCard", () => {
         onOpen={vi.fn()}
         onDuplicate={vi.fn()}
         onDelete={vi.fn()}
+        onExport={vi.fn()}
         isDuplicating={true}
       />,
     )

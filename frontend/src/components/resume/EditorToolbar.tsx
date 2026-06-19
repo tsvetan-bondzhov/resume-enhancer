@@ -14,6 +14,7 @@ interface EditorToolbarProps {
   readonly onSaveAs: () => void
   readonly onBack: () => void
   readonly onExportPdf: () => void
+  readonly onExportDocx: () => void
 }
 
 function formatSavedAgo(date: Date): string {
@@ -35,6 +36,7 @@ export default function EditorToolbar({
   onSaveAs,
   onBack,
   onExportPdf,
+  onExportDocx,
 }: EditorToolbarProps) {
   const [localName, setLocalName] = useState(resumeName)
   const [nameError, setNameError] = useState<string | null>(null)
@@ -135,6 +137,18 @@ export default function EditorToolbar({
         aria-label="Export resume as PDF"
       >
         {isExporting ? "Exporting…" : "Export PDF"}
+      </Button>
+
+      {/* Export DOCX button */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onExportDocx}
+        disabled={isExporting}
+        aria-label="Export resume as DOCX"
+      >
+        {isExporting ? "Exporting…" : "Export DOCX"}
       </Button>
 
       {/* Save As button */}
