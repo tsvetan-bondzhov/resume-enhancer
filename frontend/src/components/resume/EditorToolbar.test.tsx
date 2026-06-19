@@ -10,10 +10,12 @@ function buildProps(overrides?: Partial<Parameters<typeof EditorToolbar>[0]>) {
     isDirty: false,
     lastSavedAt: null,
     isSavingAs: false,
+    isExporting: false,
     onNameChange: vi.fn(),
     onSave: vi.fn(),
     onSaveAs: vi.fn(),
     onBack: vi.fn(),
+    onExportPdf: vi.fn(),
     ...overrides,
   }
 }
@@ -169,5 +171,23 @@ describe("EditorToolbar — savedLabel (line 81)", () => {
   it("shows 'Saved' when lastSavedAt is null and not dirty", () => {
     render(<EditorToolbar {...buildProps({ lastSavedAt: null, isDirty: false })} />)
     expect(screen.getByRole("button", { name: /^Saved$/i })).toBeInTheDocument()
+  })
+})
+
+describe("EditorToolbar — Export PDF button (AC4, AC5)", () => {
+  it("renders Export PDF button and calls onExportPdf on click", () => {
+    const onExportPdf = vi.fn()
+    render(<EditorToolbar {...buildProps({ isExporting: false, onExportPdf })} />)
+    const btn = screen.getByRole("button", { name: /export resume as pdf/i })
+    expect(btn).toBeInTheDocument()
+    fireEvent.click(btn)
+    expect(onExportPdf).toHaveBeenCalledOnce()
+  })
+
+  it("shows 'Exporting…' and disables button when isExporting is true", () => {
+    render(<EditorToolbar {...buildProps({ isExporting: true, onExportPdf: vi.fn() })} />)
+    const btn = screen.getByRole("button", { name: /export resume as pdf/i })
+    expect(btn).toBeDisabled()
+    expect(btn).toHaveTextContent("Exporting…")
   })
 })

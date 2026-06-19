@@ -3,6 +3,7 @@ package com.tsvetanbondzhov.resumeenhancer.common;
 import com.tsvetanbondzhov.resumeenhancer.ai.InvalidPatchException;
 import com.tsvetanbondzhov.resumeenhancer.ai.OllamaUnavailableException;
 import com.tsvetanbondzhov.resumeenhancer.auth.InvalidCurrentPasswordException;
+import com.tsvetanbondzhov.resumeenhancer.export.UnsupportedExportFormatException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeAccessDeniedException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeNotFoundException;
 import com.tsvetanbondzhov.resumeenhancer.template.TemplateNotFoundException;
@@ -106,6 +107,13 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Not Found");
+        return problem;
+    }
+
+    @ExceptionHandler(UnsupportedExportFormatException.class)
+    public ProblemDetail handleUnsupportedExportFormat(UnsupportedExportFormatException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle(BAD_REQUEST);
         return problem;
     }
 

@@ -163,6 +163,15 @@
 - **R2-D4** `ChatPanel.test.tsx` — "patch event dispatches to useResumeStore.applyPatch (AC4, AC8)" test mislabels AC tags (tests patch behavior that AC6 forbids for the chat path). Fix label/remove test in a future test quality pass.
 - **R2-D5** `AiController.java` / `buildChatDisposable` — `done` event sends hardcoded `"Stream complete"` summary; produces a duplicate assistant bubble after the token-accumulated bubble. Pre-existing from story 5-3. Address in a future UX polish pass (send accumulated token content as summary or use empty string to suppress the second bubble).
 
+## Deferred from: code review of 6-1-documentrenderer-interface-and-pdfrenderer (2026-06-19)
+
+- **W1** `PdfRenderException` not registered in `GlobalExceptionHandler` — iText font/write failures surface as generic 500 with `"An unexpected error occurred."` and no retry signal. Pre-existing catch-all pattern; acceptable for v1. Add a specific handler or error code when export reliability SLA is defined.
+- **W2** NPE risk in `findSummaryItem` if Jackson bypasses record compact constructor — `section.items()` could be null if Jackson deserializes JSONB directly bypassing the record's compact constructor null-guard. Requires investigation of Jackson 2.18.x record constructor selection with JSONB. Not triggered by any current code path.
+- **W3** Two-column template with `columns: null` in DB silently drops all body sections — `buildSectionOrder` returns empty when `layout.columns` is null for a two-column template. `TemplateService` validates definitions on write; no valid template in DB should have this state.
+- **W4** `parseFontSize`/`parseMargin` silently ignore `rem`, `em`, `pt` CSS units — falls back to hardcoded defaults. `TemplateService` already validates only `px`/`in` units on template creation, so no valid template triggers this.
+- **W5** `buildFallbackTemplate` creates bare `ResumeTemplate` entity with no `id`/`name` — latent JPA risk if fallback object is ever accidentally passed to a persistence operation. No current code path triggers it; add warning comment for story 6-2 implementer.
+- **W6** `URL.revokeObjectURL` called synchronously after `a.click()` — common browser race; modern browsers handle this safely in practice. Address if download failures are reported on specific browser versions.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

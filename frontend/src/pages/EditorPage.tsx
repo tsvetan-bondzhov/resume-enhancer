@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/apiClient"
 import { useResumeStore } from "@/stores/useResumeStore"
+import { useAuthStore } from "@/stores/useAuthStore"
 import { useChatStore } from "@/stores/useChatStore"
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout"
 import SectionsPanel from "@/components/resume/SectionsPanel"
@@ -67,6 +68,8 @@ export default function EditorPage() {
   const addResume = useResumeStore((state) => state.addResume)
   const removeResume = useResumeStore((state) => state.removeResume)
   const syncCurrentResumeName = useResumeStore((state) => state.syncCurrentResumeName)
+  const isExporting = useResumeStore((state) => state.isExporting)
+  const setExporting = useResumeStore((state) => state.setExporting)
 
   const [sidebarResumes, setSidebarResumes] = useState<ResumeDto[]>(() => resumes)
   const [duplicatingSidebarId, setDuplicatingSidebarId] = useState<string | null>(null)
@@ -208,6 +211,43 @@ export default function EditorPage() {
     navigate("/")
   }, [navigate])
 
+  const exportPdf = useCallback(async () => {
+    if (!id) return
+    // D3: guard against exporting when the resume failed to load — avoids a blank PDF download
+    if (!currentResume) {
+      toast.error("Resume not loaded — please refresh")
+      return
+    }
+    setExporting(true)
+    try {
+      // Direct fetch (not apiClient) — export returns binary PDF, not JSON.
+      // apiClient.get<T>() calls res.json() which is wrong for binary blobs.
+      // This is an intentional, documented exception to the "all HTTP via apiClient" rule.
+      const token = useAuthStore.getState().token
+      const res = await fetch(`/api/v1/resumes/${id}/export?format=pdf`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { detail?: string }
+        throw new Error(body.detail ?? "Export failed")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${currentResume?.name ?? "resume"}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success("Download ready", { duration: 4000 })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed", { duration: 8000 })
+    } finally {
+      setExporting(false)
+    }
+  }, [id, currentResume, setExporting])
+
   const handleDuplicateFromSidebar = useCallback(async (resume: ResumeDto) => {
     setDuplicatingSidebarId(resume.id)
     try {
@@ -309,10 +349,12 @@ export default function EditorPage() {
               isDirty={isDirty}
               lastSavedAt={lastSavedAt}
               isSavingAs={isSavingAs}
+              isExporting={isExporting}
               onNameChange={handleNameChange}
               onSave={saveNow}
               onSaveAs={() => setIsSaveAsOpen(true)}
               onBack={handleBack}
+              onExportPdf={exportPdf}
             />
             <AIActionBar resumeId={id} />
             {error !== null && !isLoading ? (

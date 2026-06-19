@@ -8,10 +8,12 @@ interface EditorToolbarProps {
   readonly isDirty: boolean
   readonly lastSavedAt: Date | null
   readonly isSavingAs: boolean
+  readonly isExporting: boolean
   readonly onNameChange: (name: string) => void
   readonly onSave: () => void
   readonly onSaveAs: () => void
   readonly onBack: () => void
+  readonly onExportPdf: () => void
 }
 
 function formatSavedAgo(date: Date): string {
@@ -27,10 +29,12 @@ export default function EditorToolbar({
   isDirty,
   lastSavedAt,
   isSavingAs,
+  isExporting,
   onNameChange,
   onSave,
   onSaveAs,
   onBack,
+  onExportPdf,
 }: EditorToolbarProps) {
   const [localName, setLocalName] = useState(resumeName)
   const [nameError, setNameError] = useState<string | null>(null)
@@ -82,7 +86,7 @@ export default function EditorToolbar({
   const saveButtonLabel = isDirty ? "Save" : savedLabel
 
   return (
-    <div className="h-12 border-b border-border bg-card flex items-center gap-2 px-4 shrink-0">
+    <div className="relative h-12 border-b border-border bg-card flex items-center gap-2 px-4 shrink-0">
       {/* Back navigation */}
       <Button
         type="button"
@@ -121,6 +125,18 @@ export default function EditorToolbar({
         )}
       </div>
 
+      {/* Export PDF button */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onExportPdf}
+        disabled={isExporting}
+        aria-label="Export resume as PDF"
+      >
+        {isExporting ? "Exporting…" : "Export PDF"}
+      </Button>
+
       {/* Save As button */}
       <Button
         type="button"
@@ -152,6 +168,15 @@ export default function EditorToolbar({
           />
         )}
       </Button>
+
+      {/* Export progress bar — visible only while exporting (UX-DR19) */}
+      {isExporting && (
+        <div
+          className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 animate-pulse"
+          role="progressbar"
+          aria-label="Exporting…"
+        />
+      )}
     </div>
   )
 }
