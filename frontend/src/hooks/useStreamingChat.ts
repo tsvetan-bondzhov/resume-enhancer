@@ -147,15 +147,13 @@ function dispatchEnhanceEvent(
   }
 }
 
-/** Process all complete SSE lines from a buffer chunk, returning the remaining partial line. */
-function processBasicBuffer(
+/** Process all complete SSE lines from a buffer chunk, returning the remaining partial line.
+ *  `dispatchFn` is called for each complete event (blank-line separator). */
+function processBuffer(
   buffer: string,
   newChunk: string,
-  assistantMsgId: string,
-  applyPatch: (patch: PatchEvent) => void,
-  setStreaming: (v: boolean) => void,
-  options: UseStreamingChatOptions,
-  state: { eventName: string; dataLine: string }
+  state: { eventName: string; dataLine: string },
+  dispatchFn: (eventName: string, dataLine: string) => void
 ): { remaining: string; eventName: string; dataLine: string } {
   const combined = buffer + newChunk
   const lines = combined.split("\n")
@@ -164,37 +162,8 @@ function processBasicBuffer(
   let { eventName, dataLine } = state
   for (const line of lines) {
     if (line === "") {
-      dispatchBasicEvent(eventName, dataLine, assistantMsgId, applyPatch, setStreaming, options)
-      // F4: always reset on blank line to prevent stale field bleed-through
-      eventName = ""
-      dataLine = ""
-    } else {
-      const updated = parseSseLine(line, eventName, dataLine)
-      eventName = updated.eventName
-      dataLine = updated.dataLine
-    }
-  }
-  return { remaining, eventName, dataLine }
-}
-
-/** Process all complete SSE lines from a buffer chunk for the enhance stream. */
-function processEnhanceBuffer(
-  buffer: string,
-  newChunk: string,
-  assistantMsgId: string,
-  applyPatch: (patch: PatchEvent) => void,
-  setStreaming: (v: boolean) => void,
-  options: UseStreamingChatOptions,
-  state: { eventName: string; dataLine: string }
-): { remaining: string; eventName: string; dataLine: string } {
-  const combined = buffer + newChunk
-  const lines = combined.split("\n")
-  const remaining = lines.pop() ?? ""
-
-  let { eventName, dataLine } = state
-  for (const line of lines) {
-    if (line === "") {
-      dispatchEnhanceEvent(eventName, dataLine, assistantMsgId, applyPatch, setStreaming, options)
+      dispatchFn(eventName, dataLine)
+      // always reset on blank line to prevent stale field bleed-through
       eventName = ""
       dataLine = ""
     } else {
@@ -299,8 +268,8 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
           const { done, value } = await reader.read()
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
-          const result = processBasicBuffer(
-            buffer, chunk, assistantMsgId, applyPatch, setStreaming, options, sseState
+          const result = processBuffer(buffer, chunk, sseState, (en, dl) =>
+            dispatchBasicEvent(en, dl, assistantMsgId, applyPatch, setStreaming, options)
           )
           buffer = result.remaining
           sseState = { eventName: result.eventName, dataLine: result.dataLine }
@@ -361,8 +330,8 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
           const { done, value } = await reader.read()
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
-          const result = processEnhanceBuffer(
-            buffer, chunk, assistantMsgId, applyPatch, setStreaming, options, sseState
+          const result = processBuffer(buffer, chunk, sseState, (en, dl) =>
+            dispatchEnhanceEvent(en, dl, assistantMsgId, applyPatch, setStreaming, options)
           )
           buffer = result.remaining
           sseState = { eventName: result.eventName, dataLine: result.dataLine }
@@ -443,8 +412,8 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
           const { done, value } = await reader.read()
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
-          const result = processEnhanceBuffer(
-            buffer, chunk, assistantMsgId, applyPatch, setStreaming, tailorOptions, sseState
+          const result = processBuffer(buffer, chunk, sseState, (en, dl) =>
+            dispatchEnhanceEvent(en, dl, assistantMsgId, applyPatch, setStreaming, tailorOptions)
           )
           buffer = result.remaining
           sseState = { eventName: result.eventName, dataLine: result.dataLine }

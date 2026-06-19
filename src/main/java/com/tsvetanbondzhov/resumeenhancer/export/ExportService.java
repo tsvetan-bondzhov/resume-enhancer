@@ -13,7 +13,9 @@ import com.tsvetanbondzhov.resumeenhancer.template.domain.ResumeTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -32,20 +34,17 @@ public class ExportService {
     private final ResumeRepository resumeRepository;
     private final TemplateRepository templateRepository;
     private final UserRepository userRepository;
-    private final TemplateDefinitionService templateDefinitionService;
     private final Map<String, DocumentRenderer> renderers;
     private final ObjectMapper objectMapper;
 
     public ExportService(ResumeRepository resumeRepository,
                          TemplateRepository templateRepository,
                          UserRepository userRepository,
-                         TemplateDefinitionService templateDefinitionService,
                          Map<String, DocumentRenderer> renderers,
                          ObjectMapper objectMapper) {
         this.resumeRepository = resumeRepository;
         this.templateRepository = templateRepository;
         this.userRepository = userRepository;
-        this.templateDefinitionService = templateDefinitionService;
         this.renderers = renderers;
         this.objectMapper = objectMapper;
     }
@@ -55,7 +54,25 @@ public class ExportService {
      * Consolidates name + content in a single DB round-trip to avoid race conditions
      * where a concurrent delete could cause a 403 between two separate fetches (F1).
      */
-    public record ExportResult(byte[] content, String name) {}
+    public record ExportResult(byte[] content, String name) {
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            ExportResult r = (ExportResult) o;
+            return Arrays.equals(content, r.content) && Objects.equals(name, r.name);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * Arrays.hashCode(content) + Objects.hashCode(name);
+        }
+
+        @Override
+        public String toString() {
+            return "ExportResult{content=" + Arrays.toString(content) + ", name=" + name + "}";
+        }
+    }
 
     /**
      * Exports a resume belonging to {@code userEmail} as the given {@code format}.

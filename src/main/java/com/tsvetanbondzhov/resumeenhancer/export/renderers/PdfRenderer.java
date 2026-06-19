@@ -25,7 +25,6 @@ import com.tsvetanbondzhov.resumeenhancer.resume.domain.SummaryItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.VolunteeringItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem;
 import com.tsvetanbondzhov.resumeenhancer.template.domain.ResumeTemplate;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
@@ -52,11 +51,12 @@ import java.util.stream.Collectors;
  * This class is a stateless {@code @Component} (singleton). All per-render state
  * lives in local variables inside {@link #render}.
  */
-@Component
-@Qualifier("pdf")
+@Component("pdf")
 public class PdfRenderer implements DocumentRenderer {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MMM yyyy");
+    private static final String SEPARATOR_PIPE = "  |  ";
+    private static final String SEPARATOR_DASH = "  —  ";
     private static final float PT_PER_IN = 72f;
     private static final float PT_PER_PX = 0.75f;
     private static final float DEFAULT_MARGIN_PT = 54f; // 0.75 in
@@ -95,7 +95,6 @@ public class PdfRenderer implements DocumentRenderer {
 
             PdfFont regularFont = PdfFontFactory.createFont(StandardFonts.HELVETICA);
             PdfFont boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
-            PdfFont italicFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_OBLIQUE);
 
             List<ResumeSection> sections = doc.sections() != null ? doc.sections() : List.of();
 
@@ -107,11 +106,11 @@ public class PdfRenderer implements DocumentRenderer {
             List<ResumeSection> orderedSections = orderSections(sections, templateDef);
 
             for (ResumeSection section : orderedSections) {
-                if (!section.visible()) continue;
-                // Skip SUMMARY — already rendered as header
-                if (section.sectionType() != null &&
-                        "SUMMARY".equals(section.sectionType().name())) continue;
-                renderSection(document, section, boldFont, regularFont, italicFont, baseFontSize);
+                // Skip invisible sections and SUMMARY (already rendered as header)
+                if (!section.visible()
+                        || (section.sectionType() != null
+                            && "SUMMARY".equals(section.sectionType().name()))) continue;
+                renderSection(document, section, boldFont, regularFont, baseFontSize);
             }
         } catch (IOException e) {
             // F4: accurate message — covers font creation and any I/O during PDF generation.
@@ -125,43 +124,45 @@ public class PdfRenderer implements DocumentRenderer {
 
     private void renderHeader(Document document, SummaryItem summary,
                               PdfFont boldFont, PdfFont regularFont, float baseFontSize) throws IOException {
-        if (summary != null) {
-            // Candidate name placeholder — use email domain or "Resume" if no name available
-            String nameDisplay = buildNameDisplay(summary);
-            if (nameDisplay != null && !nameDisplay.isBlank()) {
-                Paragraph name = new Paragraph(nameDisplay)
-                        .setFont(boldFont)
-                        .setFontSize(NAME_FONT_SIZE_PT)
-                        .setTextAlignment(TextAlignment.CENTER)
-                        .setMarginBottom(4f);
-                document.add(name);
-            }
+        if (summary == null) return;
 
-            // Contact line
-            List<String> contacts = new ArrayList<>();
-            if (summary.contactEmail() != null) contacts.add(summary.contactEmail());
-            if (summary.linkedInUrl() != null) contacts.add(summary.linkedInUrl());
-            if (summary.locationCity() != null) contacts.add(summary.locationCity());
-            if (summary.locationCountry() != null) contacts.add(summary.locationCountry());
-            if (!contacts.isEmpty()) {
-                Paragraph contact = new Paragraph(String.join("  |  ", contacts))
-                        .setFont(regularFont)
-                        .setFontSize(baseFontSize - 1f)
-                        .setTextAlignment(TextAlignment.CENTER)
-                        .setMarginBottom(6f);
-                document.add(contact);
-            }
-
-            // Summary text
-            if (summary.text() != null && !summary.text().isBlank()) {
-                Paragraph summaryText = new Paragraph(summary.text())
-                        .setFont(regularFont)
-                        .setFontSize(baseFontSize)
-                        .setItalic()
-                        .setMarginBottom(8f);
-                document.add(summaryText);
-            }
+        // Candidate name placeholder — use email domain or "Resume" if no name available
+        String nameDisplay = buildNameDisplay(summary);
+        if (nameDisplay != null && !nameDisplay.isBlank()) {
+            document.add(new Paragraph(nameDisplay)
+                    .setFont(boldFont)
+                    .setFontSize(NAME_FONT_SIZE_PT)
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(4f));
         }
+
+        // Contact line
+        List<String> contacts = buildContactList(summary);
+        if (!contacts.isEmpty()) {
+            document.add(new Paragraph(String.join(SEPARATOR_PIPE, contacts))
+                    .setFont(regularFont)
+                    .setFontSize(baseFontSize - 1f)
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(6f));
+        }
+
+        // Summary text
+        if (summary.text() != null && !summary.text().isBlank()) {
+            document.add(new Paragraph(summary.text())
+                    .setFont(regularFont)
+                    .setFontSize(baseFontSize)
+                    .setItalic()
+                    .setMarginBottom(8f));
+        }
+    }
+
+    private List<String> buildContactList(SummaryItem summary) {
+        List<String> contacts = new ArrayList<>();
+        if (summary.contactEmail() != null) contacts.add(summary.contactEmail());
+        if (summary.linkedInUrl() != null) contacts.add(summary.linkedInUrl());
+        if (summary.locationCity() != null) contacts.add(summary.locationCity());
+        if (summary.locationCountry() != null) contacts.add(summary.locationCountry());
+        return contacts;
     }
 
     private String buildNameDisplay(SummaryItem summary) {
@@ -180,11 +181,15 @@ public class PdfRenderer implements DocumentRenderer {
     // ─── Section rendering ────────────────────────────────────────────────────
 
     private void renderSection(Document document, ResumeSection section,
-                               PdfFont boldFont, PdfFont regularFont, PdfFont italicFont,
+                               PdfFont boldFont, PdfFont regularFont,
                                float baseFontSize) throws IOException {
         // Section heading
-        String title = section.title() != null ? section.title()
-                : (section.sectionType() != null ? section.sectionType().name() : "Section");
+        String title;
+        if (section.title() != null) {
+            title = section.title();
+        } else {
+            title = section.sectionType() != null ? section.sectionType().name() : "Section";
+        }
         Paragraph heading = new Paragraph(title.toUpperCase())
                 .setFont(boldFont)
                 .setFontSize(HEADING_FONT_SIZE_PT)
@@ -210,14 +215,14 @@ public class PdfRenderer implements DocumentRenderer {
         }
 
         for (ResumeItem item : items) {
-            renderItem(document, item, boldFont, regularFont, italicFont, baseFontSize);
+            renderItem(document, item, boldFont, regularFont, baseFontSize);
         }
     }
 
     private void renderSkillsSection(Document document, List<ResumeItem> items,
                                      PdfFont regularFont, float baseFontSize) throws IOException {
         String skills = items.stream()
-                .filter(i -> i instanceof SkillItem)
+                .filter(SkillItem.class::isInstance)
                 .map(i -> ((SkillItem) i).name())
                 .filter(n -> n != null && !n.isBlank())
                 .collect(Collectors.joining(", "));
@@ -230,15 +235,15 @@ public class PdfRenderer implements DocumentRenderer {
     }
 
     private void renderItem(Document document, ResumeItem item,
-                            PdfFont boldFont, PdfFont regularFont, PdfFont italicFont,
+                            PdfFont boldFont, PdfFont regularFont,
                             float baseFontSize) throws IOException {
         switch (item) {
-            case WorkExperienceItem w -> renderWorkExperience(document, w, boldFont, regularFont, italicFont, baseFontSize);
-            case EducationItem e -> renderEducation(document, e, boldFont, regularFont, italicFont, baseFontSize);
-            case CertificationItem c -> renderCertification(document, c, boldFont, regularFont, baseFontSize);
+            case WorkExperienceItem w -> renderWorkExperience(document, w, boldFont, regularFont, baseFontSize);
+            case EducationItem e -> renderEducation(document, e, regularFont, baseFontSize);
+            case CertificationItem c -> renderCertification(document, c, regularFont, baseFontSize);
             case LanguageItem l -> renderLanguage(document, l, regularFont, baseFontSize);
-            case ProjectItem p -> renderProject(document, p, boldFont, regularFont, italicFont, baseFontSize);
-            case VolunteeringItem v -> renderVolunteering(document, v, boldFont, regularFont, italicFont, baseFontSize);
+            case ProjectItem p -> renderProject(document, p, boldFont, regularFont, baseFontSize);
+            case VolunteeringItem v -> renderVolunteering(document, v, boldFont, regularFont, baseFontSize);
             case SummaryItem ignored -> { /* already rendered as header */ }
             case SkillItem ignored -> { /* handled in renderSkillsSection */ }
             case GenericItem g -> renderGeneric(document, g, regularFont, baseFontSize);
@@ -246,14 +251,14 @@ public class PdfRenderer implements DocumentRenderer {
     }
 
     private void renderWorkExperience(Document document, WorkExperienceItem w,
-                                      PdfFont boldFont, PdfFont regularFont, PdfFont italicFont,
+                                      PdfFont boldFont, PdfFont regularFont,
                                       float baseFontSize) throws IOException {
         StringBuilder line = new StringBuilder();
         if (w.jobTitle() != null) line.append(w.jobTitle());
-        if (w.company() != null) line.append(line.isEmpty() ? "" : "  —  ").append(w.company());
+        if (w.company() != null) line.append(line.isEmpty() ? "" : SEPARATOR_DASH).append(w.company());
         String dateRange = formatDateRange(w.startDate(), w.endDate(), w.isCurrent());
         // F6: only prepend the separator when line is non-empty to avoid leading "  |  Jan 2020"
-        if (!dateRange.isBlank()) line.append(line.isEmpty() ? "" : "  |  ").append(dateRange);
+        if (!dateRange.isBlank()) line.append(line.isEmpty() ? "" : SEPARATOR_PIPE).append(dateRange);
 
         if (!line.isEmpty()) {
             document.add(new Paragraph(line.toString())
@@ -270,14 +275,13 @@ public class PdfRenderer implements DocumentRenderer {
     }
 
     private void renderEducation(Document document, EducationItem e,
-                                 PdfFont boldFont, PdfFont regularFont, PdfFont italicFont,
-                                 float baseFontSize) throws IOException {
+                                 PdfFont regularFont, float baseFontSize) throws IOException {
         StringBuilder line = new StringBuilder();
         if (e.institution() != null) line.append(e.institution());
         if (e.degree() != null) line.append(line.isEmpty() ? "" : ", ").append(e.degree());
         if (e.fieldOfStudy() != null) line.append(line.isEmpty() ? "" : ", ").append(e.fieldOfStudy());
         String dateRange = formatDateRange(e.startDate(), e.endDate(), false);
-        if (!dateRange.isBlank()) line.append("  |  ").append(dateRange);
+        if (!dateRange.isBlank()) line.append(SEPARATOR_PIPE).append(dateRange);
         if (!line.isEmpty()) {
             document.add(new Paragraph(line.toString())
                     .setFont(regularFont)
@@ -287,11 +291,11 @@ public class PdfRenderer implements DocumentRenderer {
     }
 
     private void renderCertification(Document document, CertificationItem c,
-                                     PdfFont boldFont, PdfFont regularFont, float baseFontSize) throws IOException {
+                                     PdfFont regularFont, float baseFontSize) throws IOException {
         StringBuilder line = new StringBuilder();
         if (c.name() != null) line.append(c.name());
         if (c.issuer() != null) line.append(line.isEmpty() ? "" : " — ").append(c.issuer());
-        if (c.issueDate() != null) line.append("  |  ").append(c.issueDate().format(DATE_FMT));
+        if (c.issueDate() != null) line.append(SEPARATOR_PIPE).append(c.issueDate().format(DATE_FMT));
         if (!line.isEmpty()) {
             document.add(new Paragraph(line.toString())
                     .setFont(regularFont)
@@ -304,9 +308,14 @@ public class PdfRenderer implements DocumentRenderer {
                                 PdfFont regularFont, float baseFontSize) throws IOException {
         // F7: only prepend separator when the language portion is non-empty to avoid "  —  C2"
         String langPart = l.language() != null ? l.language() : "";
-        String profPart = l.proficiency() != null
-                ? (langPart.isEmpty() ? l.proficiency() : "  —  " + l.proficiency())
-                : "";
+        String profPart;
+        if (l.proficiency() == null) {
+            profPart = "";
+        } else if (langPart.isEmpty()) {
+            profPart = l.proficiency();
+        } else {
+            profPart = SEPARATOR_DASH + l.proficiency();
+        }
         String line = langPart + profPart;
         if (!line.isBlank()) {
             document.add(new Paragraph(line)
@@ -317,13 +326,13 @@ public class PdfRenderer implements DocumentRenderer {
     }
 
     private void renderProject(Document document, ProjectItem p,
-                               PdfFont boldFont, PdfFont regularFont, PdfFont italicFont,
+                               PdfFont boldFont, PdfFont regularFont,
                                float baseFontSize) throws IOException {
         StringBuilder line = new StringBuilder();
         if (p.name() != null) line.append(p.name());
-        if (p.technologies() != null) line.append(line.isEmpty() ? "" : "  —  ").append(p.technologies());
+        if (p.technologies() != null) line.append(line.isEmpty() ? "" : SEPARATOR_DASH).append(p.technologies());
         String dateRange = formatDateRange(p.startDate(), p.endDate(), p.isCurrent());
-        if (!dateRange.isBlank()) line.append("  |  ").append(dateRange);
+        if (!dateRange.isBlank()) line.append(SEPARATOR_PIPE).append(dateRange);
         if (!line.isEmpty()) {
             document.add(new Paragraph(line.toString())
                     .setFont(boldFont)
@@ -339,13 +348,13 @@ public class PdfRenderer implements DocumentRenderer {
     }
 
     private void renderVolunteering(Document document, VolunteeringItem v,
-                                    PdfFont boldFont, PdfFont regularFont, PdfFont italicFont,
+                                    PdfFont boldFont, PdfFont regularFont,
                                     float baseFontSize) throws IOException {
         StringBuilder line = new StringBuilder();
         if (v.role() != null) line.append(v.role());
-        if (v.organization() != null) line.append(line.isEmpty() ? "" : "  —  ").append(v.organization());
+        if (v.organization() != null) line.append(line.isEmpty() ? "" : SEPARATOR_DASH).append(v.organization());
         String dateRange = formatDateRange(v.startDate(), v.endDate(), v.isCurrent());
-        if (!dateRange.isBlank()) line.append("  |  ").append(dateRange);
+        if (!dateRange.isBlank()) line.append(SEPARATOR_PIPE).append(dateRange);
         if (!line.isEmpty()) {
             document.add(new Paragraph(line.toString())
                     .setFont(boldFont)
@@ -383,64 +392,17 @@ public class PdfRenderer implements DocumentRenderer {
      */
     private List<ResumeSection> orderSections(List<ResumeSection> sections,
                                               TemplateDefinition templateDef) {
-        List<String> order = buildSectionOrder(templateDef);
-        if (order.isEmpty()) return sections;
-
-        List<ResumeSection> ordered = new ArrayList<>();
-        List<ResumeSection> unordered = new ArrayList<>(sections);
-
-        for (String sectionTypeName : order) {
-            sections.stream()
-                    .filter(s -> s.sectionType() != null
-                            && sectionTypeName.equals(s.sectionType().name()))
-                    .findFirst()
-                    .ifPresent(found -> {
-                        ordered.add(found);
-                        unordered.remove(found);
-                    });
-        }
-        // Append any sections not in the template order (safer: skip for ATS)
-        // Per story: "skip sections not in sectionOrder" — we do not append unordered
-
-        return ordered;
-    }
-
-    private List<String> buildSectionOrder(TemplateDefinition templateDef) {
-        if (templateDef.layout() == null) return List.of();
-        if (templateDef.isTwoColumn() && templateDef.layout().columns() != null) {
-            // Flatten left + right into single ATS-compatible order
-            List<String> merged = new ArrayList<>();
-            var cols = templateDef.layout().columns();
-            if (cols.left() != null) merged.addAll(cols.left());
-            if (cols.right() != null) merged.addAll(cols.right());
-            return merged;
-        }
-        return templateDef.layout().sectionOrder() != null
-                ? templateDef.layout().sectionOrder()
-                : List.of();
+        return RendererUtils.orderSections(sections, templateDef);
     }
 
     // ─── Utilities ────────────────────────────────────────────────────────────
 
     private SummaryItem findSummaryItem(List<ResumeSection> sections) {
-        for (ResumeSection section : sections) {
-            if (section.sectionType() != null
-                    && "SUMMARY".equals(section.sectionType().name())) {
-                for (ResumeItem item : section.items()) {
-                    if (item instanceof SummaryItem si) return si;
-                }
-            }
-        }
-        return null;
+        return RendererUtils.findSummaryItem(sections);
     }
 
     private String formatDateRange(LocalDate start, LocalDate end, boolean isCurrent) {
-        String startStr = start != null ? start.format(DATE_FMT) : "";
-        String endStr = isCurrent ? "Present" : (end != null ? end.format(DATE_FMT) : "");
-        if (!startStr.isBlank() && !endStr.isBlank()) return startStr + " – " + endStr;
-        if (!startStr.isBlank()) return startStr;
-        if (!endStr.isBlank()) return endStr;
-        return "";
+        return RendererUtils.formatDateRange(start, end, isCurrent);
     }
 
     private float parseMargin(Object cssValue) {

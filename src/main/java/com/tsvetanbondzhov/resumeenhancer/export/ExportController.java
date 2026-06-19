@@ -45,7 +45,7 @@ public class ExportController {
         // F5: '"' excluded from allowed chars to prevent Content-Disposition header injection.
         String rawName = result.name() != null ? result.name() : "resume";
         String filename = rawName.replaceAll("[^a-zA-Z0-9\\-_ .]", "_")
-                .replaceAll("\"", "_") + "." + normalizedFormat;
+                .replace("\"", "_") + "." + normalizedFormat;
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, resolveContentType(normalizedFormat))

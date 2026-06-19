@@ -19,7 +19,6 @@ import com.tsvetanbondzhov.resumeenhancer.template.domain.ResumeTemplate;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
@@ -43,11 +42,13 @@ import java.util.stream.Collectors;
  * This class is a stateless {@code @Component} (singleton). All per-render state
  * lives in local variables inside {@link #render}.
  */
-@Component
-@Qualifier("docx")
+@Component("docx")
 public class DocxRenderer implements DocumentRenderer {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MMM yyyy");
+    private static final String SEPARATOR_PIPE = "  |  ";
+    private static final String SEPARATOR_DASH = "  —  ";
+    private static final String STYLE_HEADING2 = "Heading2";
 
     private final TemplateDefinitionService templateDefinitionService;
 
@@ -71,10 +72,10 @@ public class DocxRenderer implements DocumentRenderer {
             List<ResumeSection> orderedSections = orderSections(sections, templateDef);
 
             for (ResumeSection section : orderedSections) {
-                if (!section.visible()) continue;
-                // Skip SUMMARY — already rendered as header
-                if (section.sectionType() == null) continue;
-                if ("SUMMARY".equals(section.sectionType().name())) continue;
+                // Skip invisible, typeless, or SUMMARY sections (already rendered as header)
+                if (!section.visible()
+                        || section.sectionType() == null
+                        || "SUMMARY".equals(section.sectionType().name())) continue;
                 renderSection(document, section);
             }
 
@@ -110,7 +111,7 @@ public class DocxRenderer implements DocumentRenderer {
         if (!contacts.isEmpty()) {
             XWPFParagraph contactPara = document.createParagraph();
             XWPFRun contactRun = contactPara.createRun();
-            contactRun.setText(String.join("  |  ", contacts));
+            contactRun.setText(String.join(SEPARATOR_PIPE, contacts));
             contactRun.setFontSize(9);
         }
 
@@ -139,8 +140,12 @@ public class DocxRenderer implements DocumentRenderer {
 
     private void renderSection(XWPFDocument document, ResumeSection section) {
         // Section heading with Word "Heading 1" style
-        String title = section.title() != null ? section.title()
-                : (section.sectionType() != null ? section.sectionType().name() : "Section");
+        String title;
+        if (section.title() != null) {
+            title = section.title();
+        } else {
+            title = section.sectionType() != null ? section.sectionType().name() : "Section";
+        }
         XWPFParagraph heading = document.createParagraph();
         heading.setStyle("Heading1");
         XWPFRun headingRun = heading.createRun();
@@ -161,7 +166,7 @@ public class DocxRenderer implements DocumentRenderer {
 
     private void renderSkillsSection(XWPFDocument document, List<ResumeItem> items) {
         String skills = items.stream()
-                .filter(i -> i instanceof SkillItem)
+                .filter(SkillItem.class::isInstance)
                 .map(i -> ((SkillItem) i).name())
                 .filter(n -> n != null && !n.isBlank())
                 .collect(Collectors.joining(", "));
@@ -189,10 +194,10 @@ public class DocxRenderer implements DocumentRenderer {
         // Title + company as Heading2 sub-item
         StringBuilder titleLine = new StringBuilder();
         if (w.jobTitle() != null) titleLine.append(w.jobTitle());
-        if (w.company() != null) titleLine.append(titleLine.isEmpty() ? "" : "  —  ").append(w.company());
+        if (w.company() != null) titleLine.append(titleLine.isEmpty() ? "" : SEPARATOR_DASH).append(w.company());
         if (!titleLine.isEmpty()) {
             XWPFParagraph para = document.createParagraph();
-            para.setStyle("Heading2");
+            para.setStyle(STYLE_HEADING2);
             para.createRun().setText(titleLine.toString());
         }
         // Date range
@@ -213,7 +218,7 @@ public class DocxRenderer implements DocumentRenderer {
         if (e.fieldOfStudy() != null) line.append(line.isEmpty() ? "" : ", ").append(e.fieldOfStudy());
         if (!line.isEmpty()) {
             XWPFParagraph para = document.createParagraph();
-            para.setStyle("Heading2");
+            para.setStyle(STYLE_HEADING2);
             para.createRun().setText(line.toString());
         }
         String dateRange = formatDateRange(e.startDate(), e.endDate(), false);
@@ -226,7 +231,7 @@ public class DocxRenderer implements DocumentRenderer {
         StringBuilder line = new StringBuilder();
         if (c.name() != null) line.append(c.name());
         if (c.issuer() != null) line.append(line.isEmpty() ? "" : " — ").append(c.issuer());
-        if (c.issueDate() != null) line.append("  |  ").append(c.issueDate().format(DATE_FMT));
+        if (c.issueDate() != null) line.append(SEPARATOR_PIPE).append(c.issueDate().format(DATE_FMT));
         if (!line.isEmpty()) {
             document.createParagraph().createRun().setText(line.toString());
         }
@@ -235,9 +240,12 @@ public class DocxRenderer implements DocumentRenderer {
     private void renderLanguage(XWPFDocument document, LanguageItem l) {
         // F7 null-guard: only prepend separator when the language portion is non-empty
         String langPart = l.language() != null ? l.language() : "";
-        String profPart = l.proficiency() != null
-                ? (langPart.isEmpty() ? l.proficiency() : "  —  " + l.proficiency())
-                : "";
+        String profPart;
+        if (l.proficiency() != null) {
+            profPart = langPart.isEmpty() ? l.proficiency() : SEPARATOR_DASH + l.proficiency();
+        } else {
+            profPart = "";
+        }
         String line = langPart + profPart;
         if (!line.isBlank()) {
             document.createParagraph().createRun().setText(line);
@@ -247,7 +255,7 @@ public class DocxRenderer implements DocumentRenderer {
     private void renderProject(XWPFDocument document, ProjectItem p) {
         if (p.name() != null) {
             XWPFParagraph para = document.createParagraph();
-            para.setStyle("Heading2");
+            para.setStyle(STYLE_HEADING2);
             para.createRun().setText(p.name());
         }
         if (p.technologies() != null && !p.technologies().isBlank()) {
@@ -265,16 +273,16 @@ public class DocxRenderer implements DocumentRenderer {
     private void renderVolunteering(XWPFDocument document, VolunteeringItem v) {
         StringBuilder titleLine = new StringBuilder();
         if (v.role() != null) titleLine.append(v.role());
-        if (v.organization() != null) titleLine.append(titleLine.isEmpty() ? "" : "  —  ").append(v.organization());
+        if (v.organization() != null) titleLine.append(titleLine.isEmpty() ? "" : SEPARATOR_DASH).append(v.organization());
         if (!titleLine.isEmpty()) {
             XWPFParagraph para = document.createParagraph();
-            para.setStyle("Heading2");
+            para.setStyle(STYLE_HEADING2);
             para.createRun().setText(titleLine.toString());
         }
         String dateRange = formatDateRange(v.startDate(), v.endDate(), v.isCurrent());
         StringBuilder descLine = new StringBuilder();
         if (v.description() != null && !v.description().isBlank()) descLine.append(v.description());
-        if (!dateRange.isBlank()) descLine.append(descLine.isEmpty() ? "" : "  |  ").append(dateRange);
+        if (!dateRange.isBlank()) descLine.append(descLine.isEmpty() ? "" : SEPARATOR_PIPE).append(dateRange);
         if (!descLine.isEmpty()) {
             document.createParagraph().createRun().setText(descLine.toString());
         }
@@ -300,61 +308,17 @@ public class DocxRenderer implements DocumentRenderer {
      */
     private List<ResumeSection> orderSections(List<ResumeSection> sections,
                                                TemplateDefinition templateDef) {
-        List<String> order = buildSectionOrder(templateDef);
-        if (order.isEmpty()) return sections;
-
-        List<ResumeSection> ordered = new ArrayList<>();
-
-        for (String sectionTypeName : order) {
-            sections.stream()
-                    .filter(s -> s.sectionType() != null
-                            && sectionTypeName.equals(s.sectionType().name()))
-                    .findFirst()
-                    .ifPresent(ordered::add);
-        }
-        // Sections not in the template order are skipped (same policy as PdfRenderer)
-
-        return ordered;
-    }
-
-    private List<String> buildSectionOrder(TemplateDefinition templateDef) {
-        if (templateDef.layout() == null) return List.of();
-        if (templateDef.isTwoColumn() && templateDef.layout().columns() != null) {
-            // Flatten left + right into single ATS-compatible order
-            List<String> merged = new ArrayList<>();
-            var cols = templateDef.layout().columns();
-            if (cols.left() != null) merged.addAll(cols.left());
-            if (cols.right() != null) merged.addAll(cols.right());
-            return merged;
-        }
-        return templateDef.layout().sectionOrder() != null
-                ? templateDef.layout().sectionOrder()
-                : List.of();
+        return RendererUtils.orderSections(sections, templateDef);
     }
 
     // ─── Utilities ────────────────────────────────────────────────────────────
 
     private SummaryItem findSummaryItem(List<ResumeSection> sections) {
-        for (ResumeSection section : sections) {
-            if (section.sectionType() != null
-                    && "SUMMARY".equals(section.sectionType().name())) {
-                List<ResumeItem> items = section.items();
-                if (items == null) continue;
-                for (ResumeItem item : items) {
-                    if (item instanceof SummaryItem si) return si;
-                }
-            }
-        }
-        return null;
+        return RendererUtils.findSummaryItem(sections);
     }
 
     private String formatDateRange(LocalDate start, LocalDate end, boolean isCurrent) {
-        String startStr = start != null ? start.format(DATE_FMT) : "";
-        String endStr = isCurrent ? "Present" : (end != null ? end.format(DATE_FMT) : "");
-        if (!startStr.isBlank() && !endStr.isBlank()) return startStr + " – " + endStr;
-        if (!startStr.isBlank()) return startStr;
-        if (!endStr.isBlank()) return endStr;
-        return "";
+        return RendererUtils.formatDateRange(start, end, isCurrent);
     }
 
     // ─── Internal exception ───────────────────────────────────────────────────

@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { useProfileStore } from "@/stores/useProfileStore"
-import { EntryDateRangeAndActivity, EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit, makeUpdateField } from "./profileStepShared"
+import { EntryDateRangeAndActivity, EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit, makeUpdateField, makeHandleBlur } from "./profileStepShared"
 import type { VolunteeringRequest, ProfileUpdateRequest } from "@/types/api"
 
 interface VolunteeringDraft {
@@ -65,23 +65,7 @@ export default function VolunteeringStep({
   })
 
   const updateField = makeUpdateField<VolunteeringDraft, FieldErrors>(setEntries, ["role", "organization"])
-
-  function handleBlur(index: number, field: "role" | "organization") {
-    setEntries((prev) =>
-      prev.map((entry, i) => {
-        if (i !== index) return entry
-        const value = entry.draft[field]
-        if (!value.trim()) {
-          const label = field === "role" ? "Role" : "Organization"
-          return {
-            ...entry,
-            errors: { ...entry.errors, [field]: `${label} is required` },
-          }
-        }
-        return entry
-      }),
-    )
-  }
+  const handleBlur = makeHandleBlur<VolunteeringDraft, FieldErrors>(setEntries, { role: "Role", organization: "Organization" })
 
   function addAnother() {
     setEntries((prev) => [...prev, { draft: emptyDraft(), errors: {} }])

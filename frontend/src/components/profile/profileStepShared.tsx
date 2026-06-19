@@ -52,6 +52,64 @@ export function makeUpdateField<
   }
 }
 
+// ─── Generic handleBlur factory ───────────────────────────────────────────────
+// Returns a handleBlur function that validates a single required text field
+// on blur and sets a field-specific error message when the value is empty.
+// `fieldLabels` maps each field name to its human-readable label used in the
+// error message (e.g. { jobTitle: "Job title", company: "Company" }).
+
+export function makeHandleBlur<
+  TDraft extends { id: string; [key: string]: unknown },
+  TErrors extends Partial<Record<string, string>>,
+>(
+  setEntries: Dispatch<SetStateAction<Array<{ draft: TDraft; errors: TErrors }>>>,
+  fieldLabels: Partial<Record<string, string>> | string,
+) {
+  return function handleBlur(index: number, field: keyof Omit<TDraft, "id"> & string) {
+    setEntries((prev) =>
+      prev.map((entry, i) => {
+        if (i !== index) return entry
+        const value = entry.draft[field] as string
+        if (!value.trim()) {
+          const message =
+            typeof fieldLabels === "string"
+              ? fieldLabels
+              : `${fieldLabels[field] ?? field} is required`
+          return {
+            ...entry,
+            errors: { ...entry.errors, [field]: message },
+          }
+        }
+        return entry
+      }),
+    )
+  }
+}
+
+// ─── Generic addAnother factory ───────────────────────────────────────────────
+// Returns an addAnother function that appends a fresh empty entry to the list.
+
+export function makeAddAnother<TDraft extends { id: string }, TErrors>(
+  setEntries: Dispatch<SetStateAction<Array<{ draft: TDraft; errors: TErrors }>>>,
+  emptyDraft: () => TDraft,
+  emptyErrors: TErrors,
+) {
+  return function addAnother() {
+    setEntries((prev) => [...prev, { draft: emptyDraft(), errors: emptyErrors }])
+  }
+}
+
+// ─── Generic removeEntry factory ──────────────────────────────────────────────
+// Returns a removeEntry function that removes the entry at the given index.
+
+export function makeRemoveEntry<TDraft, TErrors>(
+  setEntries: Dispatch<SetStateAction<Array<{ draft: TDraft; errors: TErrors }>>>,
+) {
+  return function removeEntry(index: number) {
+    setEntries((prev) => prev.filter((_, i) => i !== index))
+  }
+}
+
 // ─── Entry card header ─────────────────────────────────────────────────────────
 // Renders the "Entry N" label and the remove (×) button used by every profile step.
 

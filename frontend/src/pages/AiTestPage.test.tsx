@@ -45,6 +45,17 @@ function mockFetchNotOk(status = 500, detail = "Server Error") {
   )
 }
 
+async function renderAndSendPrompt(prompt = "Hello", delay = 100) {
+  render(<AiTestPage />)
+  fireEvent.change(screen.getByPlaceholderText(/enter a prompt/i), {
+    target: { value: prompt },
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: /send/i }))
+    await new Promise((r) => setTimeout(r, delay))
+  })
+}
+
 describe("AiTestPage", () => {
   beforeEach(() => {
     vi.unstubAllGlobals()
@@ -194,14 +205,7 @@ describe("AiTestPage", () => {
       "event: done\ndata: {\"summary\": \"Stream complete!\"}\n\n",
     ]
     mockFetchOk(chunks)
-    render(<AiTestPage />)
-    fireEvent.change(screen.getByPlaceholderText(/enter a prompt/i), {
-      target: { value: "Hello" },
-    })
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /send/i }))
-      await new Promise((r) => setTimeout(r, 100))
-    })
+    await renderAndSendPrompt()
     await waitFor(() =>
       expect(screen.getByText(/done: stream complete!/i)).toBeInTheDocument()
     )
@@ -214,14 +218,7 @@ describe("AiTestPage", () => {
       "event: done\ndata: {\"summary\": \"ok\"}\n\n",
     ]
     mockFetchOk(chunks)
-    render(<AiTestPage />)
-    fireEvent.change(screen.getByPlaceholderText(/enter a prompt/i), {
-      target: { value: "Hello" },
-    })
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /send/i }))
-      await new Promise((r) => setTimeout(r, 100))
-    })
+    await renderAndSendPrompt()
     await waitFor(() =>
       expect(screen.getByDisplayValue("AI response")).toBeInTheDocument()
     )
@@ -232,14 +229,7 @@ describe("AiTestPage", () => {
       "event: error\ndata: {\"detail\": \"Model unavailable\"}\n\n",
     ]
     mockFetchOk(chunks)
-    render(<AiTestPage />)
-    fireEvent.change(screen.getByPlaceholderText(/enter a prompt/i), {
-      target: { value: "Hello" },
-    })
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /send/i }))
-      await new Promise((r) => setTimeout(r, 100))
-    })
+    await renderAndSendPrompt()
     await waitFor(() =>
       expect(screen.getByText(/error: model unavailable/i)).toBeInTheDocument()
     )
