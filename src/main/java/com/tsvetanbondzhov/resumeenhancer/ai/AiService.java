@@ -52,9 +52,7 @@ public class AiService {
      * Throws OllamaUnavailableException if Ollama is unreachable.
      *
      * AiService is the ONLY class in the codebase that calls ChatClient directly.
-     * @deprecated prefer {@link #streamChat(String, String, ChatMemory)} for session-aware chat
      */
-    @Deprecated
     public Flux<String> streamChat(String prompt) {
         try {
             return chatClient.prompt()
@@ -96,9 +94,7 @@ public class AiService {
      * Backward-compatible no-memory overload delegate.
      * Creates a fresh ephemeral memory window that is never reused — effectively no chat history.
      * Used by the single-arg public API and legacy callers.
-     * @deprecated prefer {@link #streamChat(String, String, ChatMemory)} for session-aware chat
      */
-    @Deprecated
     Flux<String> streamChatNoMemory(String prompt) {
         return streamChat(prompt, UUID.randomUUID().toString(),
                 MessageWindowChatMemory.builder().maxMessages(1).build());
