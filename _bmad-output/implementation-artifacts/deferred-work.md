@@ -127,6 +127,15 @@
 - **F10** `DocumentPatchService.java` — `UNKNOWN` section type is patchable via `GenericItem` branch. Intentional design; address with an explicit reject path if AI should not patch unrecognised sections.
 - **F11** `DocumentPatchService.java` — `@NotBlank` / `@Min(0)` on `DocumentPatchEvent` are only enforced via `@Valid` at the controller level; service is not self-validating. Address when `DocumentPatchService.apply()` is first called from a non-web context (messaging consumer, scheduled task).
 
+## Deferred from: code review of 5-7-accessibility-audit-and-focus-management-for-ai-features (2026-06-19)
+
+- **D1** `TailorJobDialog.tsx:35-38` — Silent no-op when `resumeId` is undefined: `onClose()` fires unconditionally then stream is silently skipped; dialog closes with no feedback. Pre-existing from story 5-5; disable button or show error before closing when `resumeId` is falsy.
+- **D2** `TailorJobDialog.tsx:37` — Return value of `startTailorStream` (a cleanup/cancel function) is discarded; no cancel handle for unmount or re-invocation. Pre-existing from story 5-5.
+- **D3** `TailorJobDialog.tsx:41-47` — State reset only on close, not on re-open; Radix portal may stay alive between open/close cycles leaving stale state on reopen. Pre-existing from story 5-5.
+- **D4** `TailorJobDialog.tsx:62` — `autoFocus` may not re-fire on rapid dialog re-open if Radix portal stays mounted. Requires real-browser testing; use `useEffect` + `ref.focus()` on `open` transition if this becomes observable. Pre-existing Radix behavior.
+- **D5** `TailorJobDialog.tsx:83-86` — `isStreaming` disables submit button with no `aria-disabled` or status message; screen reader users cannot determine why the button is non-interactive. Pre-existing from story 5-5.
+- **D6** `EditorPage.tsx:132` — Global `keydown` Escape listener (`fadeAll()`) and Radix Dialog's built-in Escape handler both fire when dialog is open; non-deterministic execution order. Pre-existing from story 5-6.
+
 ## Deferred from: code review of 5-3-ai-chat-panel-and-sse-streaming-integration (2026-06-18)
 
 - **F7** `useStreamingChat.ts` `startStreamWithPost` — `applyPatch` errors not caught in the SSE parsing try/catch; an exception thrown by `applyPatch` would propagate out of the loop. Pre-existing `applyPatch` contract from Story 5.2 (lenient no-op on bad patch fields); address in a future streaming robustness pass.

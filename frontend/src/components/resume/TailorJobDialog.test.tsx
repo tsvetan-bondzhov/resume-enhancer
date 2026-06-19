@@ -66,6 +66,13 @@ describe("TailorJobDialog", () => {
     expect(mockStartTailorStream).not.toHaveBeenCalled()
   })
 
+  it("job description textarea receives focus when dialog opens (AC2 — autoFocus)", () => {
+    render(<TailorJobDialog {...defaultProps} />)
+    const textarea = screen.getByLabelText("Job Description")
+    // React 19 + jsdom: autoFocus focuses the element rather than setting the HTML attribute
+    expect(textarea).toHaveFocus()
+  })
+
   it("clears validation error when user types after an empty submit", () => {
     render(<TailorJobDialog {...defaultProps} />)
 

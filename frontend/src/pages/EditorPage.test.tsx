@@ -338,6 +338,15 @@ describe("EditorPage", () => {
     expect(screen.getByTestId("chat-panel")).toHaveAttribute("data-resume-id", "test-resume-id")
   })
 
+  it("renders skip link to resume canvas as first focusable element (AC4)", () => {
+    render(<EditorPage />)
+    const skipLink = screen.getByRole("link", { name: /skip to resume canvas/i })
+    expect(skipLink).toBeInTheDocument()
+    expect(skipLink).toHaveAttribute("href", "#resume-canvas")
+    // Should have sr-only class when not focused
+    expect(skipLink.className).toContain("sr-only")
+  })
+
   it("handleApplyTemplate — optimistic update sets templateId on store (lines 160-167)", async () => {
     const resume = buildResume({ id: "test-resume-id", templateId: null })
     mockGetWithResume(resume)

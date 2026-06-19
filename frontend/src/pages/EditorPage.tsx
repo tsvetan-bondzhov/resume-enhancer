@@ -262,6 +262,12 @@ export default function EditorPage() {
 
   return (
     <>
+      <a
+        href="#resume-canvas"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-3 focus:py-2 focus:rounded focus:bg-primary focus:text-primary-foreground focus:text-sm"
+      >
+        Skip to resume canvas
+      </a>
       <SplitPaneLayout
         leftSlot={
           <div className="overflow-y-auto h-full">

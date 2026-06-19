@@ -209,7 +209,7 @@ export default function ResumeCanvas({
         </div>
 
         {/* Visible page stack */}
-        <div id="resume-canvas" className="flex flex-col items-center gap-4 w-full">
+        <div id="resume-canvas" tabIndex={-1} className="flex flex-col items-center gap-4 w-full">
           {Array.from({ length: pageCount }, (_, i) => (
             <article
               key={i}
