@@ -143,7 +143,7 @@ export default function DashboardPage() {
       a.download = `${exportingResume.name ?? "resume"}.${format}`
       document.body.appendChild(a)
       a.click()
-      document.body.removeChild(a)
+      a.remove()
       URL.revokeObjectURL(url)
       toast.success("Download ready", { duration: 4000 })
       setExportingResume(null)

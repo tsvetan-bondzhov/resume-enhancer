@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { useStreamingChat } from "./useStreamingChat"
 import { useChatStore } from "@/stores/useChatStore"
@@ -9,6 +9,11 @@ import * as sseModule from "@/lib/sseClient"
 
 // Mock sseClient so we control what events fire
 vi.mock("@/lib/sseClient")
+
+// Mock apiClient used in markResumeAsTailored
+vi.mock("@/lib/apiClient", () => ({
+  apiClient: { patch: vi.fn().mockResolvedValue({}) },
+}))
 
 // Helper: build a ReadableStream from a list of SSE string chunks
 function makeStream(chunks: string[]): ReadableStream<Uint8Array> {
@@ -423,6 +428,265 @@ describe("useStreamingChat", () => {
       })
 
       expect(onError).toHaveBeenCalledWith("Enhance failed")
+    })
+
+    it("processes malformed JSON chunk gracefully in flush path", async () => {
+      // Feeds a chunk without trailing newline so processBuffer leaves it in the buffer,
+      // then stream ends — flush path dispatches it (covers lines 341-343 flush block)
+      const chunks = [
+        "event: done\ndata: {\"summary\": \"enh",   // incomplete — no trailing newline
+      ]
+      // The stream ends mid-chunk; the flush remainder tries to parse it
+      mockFetchOk(chunks)
+      const onDone = vi.fn()
+      const { result } = renderHook(() => useStreamingChat({ onDone }))
+
+      await act(async () => {
+        result.current.startEnhanceStream("resume-123")
+        await new Promise((r) => setTimeout(r, 80))
+      })
+
+      // The partial JSON won't parse to a full event, but no exception should be thrown
+      expect(useChatStore.getState().isStreaming).toBe(false)
+    })
+  })
+
+  // ─── startTailorStream ────────────────────────────────────────────────────
+
+  describe("startTailorStream", () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it("sets isStreaming and adds an assistant message immediately", () => {
+      mockFetchOk([])
+      const { result } = renderHook(() => useStreamingChat())
+      act(() => { result.current.startTailorStream("resume-tailor-1", "Senior Java Developer role") })
+
+      expect(useChatStore.getState().isStreaming).toBe(true)
+      expect(useChatStore.getState().messages).toHaveLength(1)
+      expect(useChatStore.getState().messages[0].role).toBe("assistant")
+    })
+
+    it("posts to /api/v1/ai/tailor with resumeId and jobDescription", async () => {
+      mockFetchOk(["event: done\ndata: {\"summary\": \"tailored\"}\n\n"])
+      const mockFetch = vi.mocked(fetch)
+      const { result } = renderHook(() => useStreamingChat())
+
+      await act(async () => {
+        result.current.startTailorStream("resume-t1", "Backend engineer role")
+        await new Promise((r) => setTimeout(r, 50))
+      })
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/v1/ai/tailor",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ resumeId: "resume-t1", jobDescription: "Backend engineer role" }),
+        })
+      )
+    })
+
+    it("includes Authorization header when token is set", async () => {
+      useAuthStore.setState({ token: "tailor-jwt", user: null })
+      mockFetchOk(["event: done\ndata: {\"summary\": \"ok\"}\n\n"])
+      const mockFetch = vi.mocked(fetch)
+      const { result } = renderHook(() => useStreamingChat())
+
+      await act(async () => {
+        result.current.startTailorStream("resume-t2", "Job desc")
+        await new Promise((r) => setTimeout(r, 50))
+      })
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/v1/ai/tailor",
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: "Bearer tailor-jwt" }),
+        })
+      )
+    })
+
+    it("calls onDone when done event is received", async () => {
+      const chunks = ["event: done\ndata: {\"summary\": \"Tailoring complete\"}\n\n"]
+      mockFetchOk(chunks)
+      const onDone = vi.fn()
+
+      const { result } = renderHook(() => useStreamingChat({ onDone }))
+
+      await act(async () => {
+        result.current.startTailorStream("resume-t3", "Description")
+        await new Promise((r) => setTimeout(r, 100))
+      })
+
+      expect(onDone).toHaveBeenCalledWith("Tailoring complete")
+      expect(useChatStore.getState().isStreaming).toBe(false)
+    })
+
+    it("calls onError when server returns non-ok response", async () => {
+      mockFetchNotOk(503)
+      const onError = vi.fn()
+      const { result } = renderHook(() => useStreamingChat({ onError }))
+
+      await act(async () => {
+        result.current.startTailorStream("resume-t4", "Job description")
+        await new Promise((r) => setTimeout(r, 50))
+      })
+
+      expect(onError).toHaveBeenCalledWith("AI features are temporarily unavailable — try again later")
+      expect(useChatStore.getState().isStreaming).toBe(false)
+    })
+
+    it("calls onError on fetch network failure", async () => {
+      mockFetchError("ECONNREFUSED")
+      const onError = vi.fn()
+      const { result } = renderHook(() => useStreamingChat({ onError }))
+
+      await act(async () => {
+        result.current.startTailorStream("resume-t5", "Job description")
+        await new Promise((r) => setTimeout(r, 50))
+      })
+
+      expect(onError).toHaveBeenCalledWith("AI streaming error — please try again")
+      expect(useChatStore.getState().isStreaming).toBe(false)
+    })
+
+    it("calls onError on error SSE event", async () => {
+      const chunks = [
+        "event: error\ndata: {\"detail\": \"Tailor failed\"}\n\n",
+      ]
+      mockFetchOk(chunks)
+      const onError = vi.fn()
+      const { result } = renderHook(() => useStreamingChat({ onError }))
+
+      await act(async () => {
+        result.current.startTailorStream("resume-t6", "Job description")
+        await new Promise((r) => setTimeout(r, 50))
+      })
+
+      expect(onError).toHaveBeenCalledWith("Tailor failed")
+    })
+
+    it("processes token events and appends to assistant message", async () => {
+      const chunks = [
+        "event: token\ndata: {\"token\": \"Tailored\"}\n\n",
+        "event: token\ndata: {\"token\": \"!\"}\n\n",
+        "event: done\ndata: {\"summary\": \"done\"}\n\n",
+      ]
+      mockFetchOk(chunks)
+      const { result } = renderHook(() => useStreamingChat())
+
+      await act(async () => {
+        result.current.startTailorStream("resume-t7", "Job desc")
+        await new Promise((r) => setTimeout(r, 80))
+      })
+
+      expect(useChatStore.getState().messages[0].content).toBe("Tailored!")
+    })
+
+    it("processes patch events and registers diff + applies patch", async () => {
+      const applyPatchSpy = vi.spyOn(useResumeStore.getState(), "applyPatch")
+      const patchData = JSON.stringify({
+        sectionId: "WORK_EXPERIENCE",
+        itemIndex: 0,
+        field: "jobTitle",
+        newValue: "AI Tailored Title",
+      })
+      const chunks = [
+        `event: patch\ndata: ${patchData}\n\n`,
+        "event: done\ndata: {\"summary\": \"tailored\"}\n\n",
+      ]
+      mockFetchOk(chunks)
+      const { result } = renderHook(() => useStreamingChat())
+
+      await act(async () => {
+        result.current.startTailorStream("resume-t8", "Job description")
+        await new Promise((r) => setTimeout(r, 80))
+      })
+
+      expect(applyPatchSpy).toHaveBeenCalledWith({
+        sectionId: "WORK_EXPERIENCE",
+        itemIndex: 0,
+        field: "jobTitle",
+        newValue: "AI Tailored Title",
+      })
+      const diffs = useDiffStore.getState().diffs
+      expect(diffs.length).toBeGreaterThan(0)
+      expect(diffs[0].newValue).toBe("AI Tailored Title")
+    })
+
+    it("cleanup function cancels the stream and stops streaming", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          body: new ReadableStream({ start() {} }),
+        })
+      )
+      const { result } = renderHook(() => useStreamingChat())
+      let cleanup: (() => void) | undefined
+
+      act(() => {
+        cleanup = result.current.startTailorStream("resume-t9", "Job desc")
+      })
+
+      expect(useChatStore.getState().isStreaming).toBe(true)
+      act(() => { cleanup?.() })
+      expect(useChatStore.getState().isStreaming).toBe(false)
+    })
+
+    it("flushes remaining buffer content when stream ends without trailing newline", async () => {
+      // Covers lines 423-425: buffer.trim() is non-empty when stream ends
+      const chunks = [
+        "event: token\ndata: {\"token\": \"partial\"}",  // no trailing newline
+      ]
+      mockFetchOk(chunks)
+      const { result } = renderHook(() => useStreamingChat())
+
+      await act(async () => {
+        result.current.startTailorStream("resume-t10", "Job description")
+        await new Promise((r) => setTimeout(r, 80))
+      })
+
+      // Should have appended the token to the assistant message
+      expect(useChatStore.getState().messages[0].content).toBe("partial")
+    })
+  })
+
+  // ─── parseSseLine: no-match branch ───────────────────────────────────────
+
+  describe("startStreamWithPost — buffer flush", () => {
+    it("flushes remaining buffer when stream ends without trailing newline", async () => {
+      // Covers lines 279-281 (startStreamWithPost flush) by sending incomplete SSE chunk
+      const chunks = [
+        "event: done\ndata: {\"summary\": \"flushed\"}",  // no trailing newline
+      ]
+      mockFetchOk(chunks)
+      const onDone = vi.fn()
+      const { result } = renderHook(() => useStreamingChat({ onDone }))
+
+      await act(async () => {
+        result.current.startStreamWithPost("/api/v1/ai/chat", { prompt: "test" })
+        await new Promise((r) => setTimeout(r, 80))
+      })
+
+      expect(onDone).toHaveBeenCalledWith("flushed")
+    })
+
+    it("handles a line with no event: or data: prefix (no-op path in parseSseLine)", async () => {
+      // Covers line 28 in parseSseLine: line is neither event: nor data: → returns unchanged
+      const chunks = [
+        "comment: this is ignored\nevent: done\ndata: {\"summary\": \"ok\"}\n\n",
+      ]
+      mockFetchOk(chunks)
+      const onDone = vi.fn()
+      const { result } = renderHook(() => useStreamingChat({ onDone }))
+
+      await act(async () => {
+        result.current.startStreamWithPost("/api/v1/ai/chat", { prompt: "test" })
+        await new Promise((r) => setTimeout(r, 80))
+      })
+
+      expect(onDone).toHaveBeenCalledWith("ok")
     })
   })
 })

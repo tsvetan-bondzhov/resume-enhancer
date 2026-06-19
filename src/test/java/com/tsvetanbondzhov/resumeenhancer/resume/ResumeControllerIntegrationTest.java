@@ -377,6 +377,98 @@ class ResumeControllerIntegrationTest {
                 .expectStatus().isForbidden();
     }
 
+    // ─── GET /api/v1/resumes/{id} → 200 for own resume ──────────────────────
+
+    @Test
+    void get_resumeById_ownResume_returns200() throws Exception {
+        String token = registerAndGetToken("get_own@example.com", "Password1");
+
+        String createBody = """
+                { "name": "Own Resume", "templateId": null }
+                """;
+        String createResponse = webTestClient().post()
+                .uri("/api/v1/resumes")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(createBody)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        String resumeId = objectMapper.readTree(createResponse).get("id").asText();
+
+        webTestClient().get()
+                .uri("/api/v1/resumes/" + resumeId)
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.id").isEqualTo(resumeId)
+                .jsonPath("$.name").isEqualTo("Own Resume");
+    }
+
+    // ─── PATCH /api/v1/resumes/{id}/tailor → 200 ─────────────────────────────
+
+    @Test
+    void patch_markAsTailored_returns200WithIsTailoredTrue() throws Exception {
+        String token = registerAndGetToken("tailor_resume@example.com", "Password1");
+
+        String createBody = """
+                { "name": "Resume To Tailor", "templateId": null }
+                """;
+        String createResponse = webTestClient().post()
+                .uri("/api/v1/resumes")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(createBody)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        String resumeId = objectMapper.readTree(createResponse).get("id").asText();
+
+        webTestClient().patch()
+                .uri("/api/v1/resumes/" + resumeId + "/tailor")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.id").isEqualTo(resumeId)
+                .jsonPath("$.isTailored").isEqualTo(true);
+    }
+
+    @Test
+    void patch_markAsTailored_otherUsersResume_returns403() throws Exception {
+        String tokenA = registerAndGetToken("tailor_ownerA@example.com", "Password1");
+        String tokenB = registerAndGetToken("tailor_ownerB@example.com", "Password1");
+
+        String createBody = """
+                { "name": "Owner Resume", "templateId": null }
+                """;
+        String createResponse = webTestClient().post()
+                .uri("/api/v1/resumes")
+                .header("Authorization", "Bearer " + tokenA)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(createBody)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        String resumeId = objectMapper.readTree(createResponse).get("id").asText();
+
+        webTestClient().patch()
+                .uri("/api/v1/resumes/" + resumeId + "/tailor")
+                .header("Authorization", "Bearer " + tokenB)
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
     @Test
     void put_updateResume_blankName_returns400() throws Exception {
         String token = registerAndGetToken("put_invalid@example.com", "Password1");

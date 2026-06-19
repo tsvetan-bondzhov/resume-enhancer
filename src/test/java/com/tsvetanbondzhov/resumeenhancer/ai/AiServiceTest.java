@@ -1,6 +1,8 @@
 package com.tsvetanbondzhov.resumeenhancer.ai;
 
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSection;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSectionType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -321,6 +323,83 @@ class AiServiceTest {
         assertThat(prompt).contains("itemIndex");
         assertThat(prompt).contains("newValue");
         assertThat(prompt).contains("Job Description:");
+    }
+
+    // ─── streamChat(prompt, conversationId, chatMemory) — exception path ─────
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void streamChat_withConversationId_throws_OllamaUnavailableException_when_chatClient_fails() {
+        ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
+
+        when(chatClient.prompt()).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(userSpec);
+        when(userSpec.advisors(any(Consumer.class))).thenReturn(userSpec);
+        when(userSpec.stream()).thenThrow(new RuntimeException("Connection refused"));
+
+        MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
+
+        assertThatThrownBy(() -> aiService.streamChat("test", "conv-999", memory))
+                .isInstanceOf(OllamaUnavailableException.class)
+                .hasMessageContaining("Ollama is unavailable");
+    }
+
+    // ─── streamChatNoMemory — delegates to streamChat with memory ────────────
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void streamChatNoMemory_returns_flux_of_tokens() {
+        ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.StreamResponseSpec streamSpec = mock(ChatClient.StreamResponseSpec.class);
+
+        when(chatClient.prompt()).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(userSpec);
+        when(userSpec.advisors(any(Consumer.class))).thenReturn(userSpec);
+        when(userSpec.stream()).thenReturn(streamSpec);
+        when(streamSpec.content()).thenReturn(Flux.just("token1", "token2"));
+
+        Flux<String> result = aiService.streamChatNoMemory("test prompt");
+
+        StepVerifier.create(result)
+                .expectNext("token1")
+                .expectNext("token2")
+                .verifyComplete();
+    }
+
+    // ─── buildEnhancePrompt — with visible sections ──────────────────────────
+
+    @Test
+    void buildEnhancePrompt_includesSectionDataForVisibleSections() {
+        ResumeSection visibleSection = new ResumeSection(
+                ResumeSectionType.SUMMARY, "Summary", true, List.of());
+        ResumeSection hiddenSection = new ResumeSection(
+                ResumeSectionType.SKILLS, "Skills", false, List.of());
+        ResumeDocument document = new ResumeDocument(List.of(visibleSection, hiddenSection));
+
+        String prompt = aiService.buildEnhancePrompt(document);
+
+        assertThat(prompt).contains("Section: SUMMARY");
+        assertThat(prompt).doesNotContain("Section: SKILLS");
+    }
+
+    // ─── buildTailorPrompt — with visible sections ───────────────────────────
+
+    @Test
+    void buildTailorPrompt_includesSectionDataForVisibleSectionsOnly() {
+        ResumeSection visibleSection = new ResumeSection(
+                ResumeSectionType.WORK_EXPERIENCE, "Work Experience", true, List.of());
+        ResumeSection hiddenSection = new ResumeSection(
+                ResumeSectionType.EDUCATION, "Education", false, List.of());
+        ResumeDocument document = new ResumeDocument(List.of(visibleSection, hiddenSection));
+        String jobDescription = "Looking for a Java developer";
+
+        String prompt = aiService.buildTailorPrompt(document, jobDescription);
+
+        assertThat(prompt).contains("Section: WORK_EXPERIENCE");
+        assertThat(prompt).doesNotContain("Section: EDUCATION");
+        assertThat(prompt).contains(jobDescription);
     }
 
     // ─── helper ──────────────────────────────────────────────────────────────

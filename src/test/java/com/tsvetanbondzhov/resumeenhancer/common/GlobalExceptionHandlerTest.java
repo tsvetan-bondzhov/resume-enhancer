@@ -1,5 +1,7 @@
 package com.tsvetanbondzhov.resumeenhancer.common;
 
+import com.tsvetanbondzhov.resumeenhancer.ai.InvalidPatchException;
+import com.tsvetanbondzhov.resumeenhancer.ai.OllamaUnavailableException;
 import com.tsvetanbondzhov.resumeenhancer.auth.InvalidCurrentPasswordException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeAccessDeniedException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeNotFoundException;
@@ -10,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 
@@ -94,5 +97,62 @@ class GlobalExceptionHandlerTest {
         assertThat(result.getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
         assertThat(result.getDetail()).isEqualTo("Access denied");
         assertThat(result.getTitle()).isEqualTo("Forbidden");
+    }
+
+    // Lines 135-137: handleDateParse
+    @Test
+    void handleDateParse_returns400WithMessage() {
+        DateParseException ex = new DateParseException("Unsupported date format: '31-12-2024'");
+        ProblemDetail result = handler.handleDateParse(ex);
+        assertThat(result.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(result.getDetail()).isEqualTo("Unsupported date format: '31-12-2024'");
+        assertThat(result.getTitle()).isEqualTo("Bad Request");
+    }
+
+    // Lines 145-150: handleNotReadable — DateParseException in cause chain
+    @Test
+    void handleNotReadable_withDateParseExceptionInCause_returns400WithDateParseMessage() {
+        DateParseException dpe = new DateParseException("Bad date value");
+        RuntimeException wrapper = new RuntimeException("Jackson mapping error", dpe);
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException("Not readable", wrapper, null);
+
+        ProblemDetail result = handler.handleNotReadable(ex);
+
+        assertThat(result.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(result.getDetail()).isEqualTo("Bad date value");
+        assertThat(result.getTitle()).isEqualTo("Bad Request");
+    }
+
+    // Lines 154-158: handleNotReadable — no DateParseException in cause chain (fallback path)
+    @Test
+    void handleNotReadable_withoutDateParseException_returns400WithMalformedBody() {
+        RuntimeException cause = new RuntimeException("Some other parse error");
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException("Not readable", cause, null);
+
+        ProblemDetail result = handler.handleNotReadable(ex);
+
+        assertThat(result.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(result.getDetail()).isEqualTo("Malformed request body.");
+        assertThat(result.getTitle()).isEqualTo("Bad Request");
+    }
+
+    // Lines 178-183: handleOllamaUnavailable
+    @Test
+    void handleOllamaUnavailable_returns503WithGenericMessage() {
+        OllamaUnavailableException ex = new OllamaUnavailableException("Ollama is down");
+        ProblemDetail result = handler.handleOllamaUnavailable(ex);
+        assertThat(result.getStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE.value());
+        assertThat(result.getDetail()).isEqualTo("AI features are temporarily unavailable");
+        assertThat(result.getTitle()).isEqualTo("Service Unavailable");
+    }
+
+    // Lines 188-191: handleInvalidPatch
+    @Test
+    void handleInvalidPatch_returns422WithMessage() {
+        InvalidPatchException ex = new InvalidPatchException("Patch field 'summary' is invalid");
+        ProblemDetail result = handler.handleInvalidPatch(ex);
+        assertThat(result.getStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY.value());
+        assertThat(result.getDetail()).isEqualTo("Patch field 'summary' is invalid");
+        assertThat(result.getTitle()).isEqualTo("Unprocessable Entity");
     }
 }

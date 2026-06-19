@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { MemoryRouter, Route, Routes, Navigate, Outlet } from "react-router-dom"
+import { MemoryRouter, Route, Routes, Navigate, Outlet, RouterProvider } from "react-router-dom"
 
 // Mock useAuthStore — state is controlled per test
 let mockToken: string | null = null
@@ -17,6 +17,18 @@ vi.mock("@/stores/useAuthStore", () => ({
 vi.mock("@/components/layout/AppShell", () => ({
   default: ({ children }: { children: React.ReactNode }) => <div data-testid="appshell">{children}</div>,
 }))
+
+// Mock all page components to avoid heavy rendering in router integration tests
+vi.mock("@/pages/LoginPage", () => ({ default: () => <div data-testid="login-page" /> }))
+vi.mock("@/pages/SignupPage", () => ({ default: () => <div data-testid="signup-page" /> }))
+vi.mock("@/pages/DashboardPage", () => ({ default: () => <div data-testid="dashboard-page" /> }))
+vi.mock("@/pages/EditorPage", () => ({ default: () => <div data-testid="editor-page" /> }))
+vi.mock("@/pages/ProfilePage", () => ({ default: () => <div data-testid="profile-page" /> }))
+vi.mock("@/pages/SettingsPage", () => ({ default: () => <div data-testid="settings-page" /> }))
+vi.mock("@/pages/NotFoundPage", () => ({ default: () => <div data-testid="not-found-page" /> }))
+vi.mock("@/pages/AiTestPage", () => ({ default: () => <div data-testid="ai-test-page" /> }))
+vi.mock("@/pages/AdminPage", () => ({ default: () => <div data-testid="admin-page" /> }))
+vi.mock("@/components/ui/skeleton", () => ({ Skeleton: () => <div data-testid="skeleton" /> }))
 
 // ProtectedRoute is not exported, so we exercise it via the router config.
 // We import the router to ensure line 32 (createBrowserRouter call) executes.
@@ -97,5 +109,50 @@ describe("router module", () => {
   it("exports a router object", () => {
     expect(router).toBeDefined()
     expect(typeof router.navigate).toBe("function")
+  })
+})
+
+// ─── RouterProvider integration tests — exercise the actual ProtectedRoute ───
+// These tests render the real router via RouterProvider so that lines 22-26 of
+// index.tsx (the ProtectedRoute function body) are executed directly.
+
+describe("ProtectedRoute via RouterProvider", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockToken = null
+    mockUserRole = null
+  })
+
+  it("redirects unauthenticated user from / to /login", async () => {
+    mockToken = null
+    mockUserRole = null
+    router.navigate("/")
+    render(<RouterProvider router={router} />)
+    await screen.findByTestId("login-page")
+  })
+
+  it("renders dashboard for authenticated non-admin user at /", async () => {
+    mockToken = "tok"
+    mockUserRole = "USER"
+    router.navigate("/")
+    render(<RouterProvider router={router} />)
+    await screen.findByTestId("dashboard-page")
+  })
+
+  it("redirects non-admin to / when accessing /admin", async () => {
+    mockToken = "tok"
+    mockUserRole = "USER"
+    router.navigate("/admin")
+    render(<RouterProvider router={router} />)
+    // non-admin → redirected to / → dashboard shown
+    await screen.findByTestId("dashboard-page")
+  })
+
+  it("renders admin page for ADMIN user at /admin", async () => {
+    mockToken = "tok"
+    mockUserRole = "ADMIN"
+    router.navigate("/admin")
+    render(<RouterProvider router={router} />)
+    await screen.findByTestId("admin-page")
   })
 })

@@ -185,9 +185,8 @@ export default function EditorToolbar({
 
       {/* Export progress bar — visible only while exporting (UX-DR19) */}
       {isExporting && (
-        <div
-          className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 animate-pulse"
-          role="progressbar"
+        <progress
+          className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 animate-pulse appearance-none"
           aria-label="Exporting…"
         />
       )}

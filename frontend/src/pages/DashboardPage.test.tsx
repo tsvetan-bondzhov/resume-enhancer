@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, waitFor, act, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { MemoryRouter } from "react-router-dom"
 import { apiClient } from "@/lib/apiClient"
 import { toast } from "sonner"
 import type { ResumeDto } from "@/types/api"
+import { useAuthStore } from "@/stores/useAuthStore"
 import DashboardPage from "./DashboardPage"
 
 // Mock apiClient
@@ -13,6 +14,31 @@ vi.mock("@/lib/apiClient", () => ({
     get: vi.fn(),
     post: vi.fn(),
     delete: vi.fn(),
+  },
+}))
+
+// Mock ExportFormatDialog to avoid Radix/base-ui portal side-effects in tests
+// The real dialog logic is tested in ExportFormatDialog.test.tsx
+let lastExportFormatDialogProps: {
+  open: boolean
+  resumeName: string
+  isExporting: boolean
+  onExport: (format: "pdf" | "docx") => void
+  onClose: () => void
+} | null = null
+
+vi.mock("@/components/resume/ExportFormatDialog", () => ({
+  default: (props: typeof lastExportFormatDialogProps) => {
+    lastExportFormatDialogProps = props
+    if (!props?.open) return null
+    // Use open attribute so buttons inside are accessible to getByRole
+    return (
+      <dialog open aria-label="Export dialog">
+        <button onClick={() => props?.onExport("pdf")} aria-label="Export as PDF">PDF</button>
+        <button onClick={() => props?.onExport("docx")} aria-label="Export as DOCX">DOCX</button>
+        <button onClick={() => props?.onClose()} aria-label="Cancel export">Cancel</button>
+      </dialog>
+    )
   },
 }))
 
@@ -61,6 +87,13 @@ describe("DashboardPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDelete.mockResolvedValue(undefined)
+    lastExportFormatDialogProps = null
+    // Reset auth store token
+    useAuthStore.setState({ token: null, user: null })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it("renders 3 skeleton cards while loading", () => {
@@ -202,4 +235,124 @@ describe("DashboardPage", () => {
       expect(screen.getAllByText("My Resume (copy)").length).toBeGreaterThan(0)
     })
   })
+
+  it("empty state Go to Profile navigates to /profile", async () => {
+    mockGet.mockResolvedValue([])
+    renderDashboard()
+    await waitFor(() =>
+      screen.getByRole("button", { name: /go to profile/i }),
+    )
+    fireEvent.click(screen.getByRole("button", { name: /go to profile/i }))
+    expect(mockNavigate).toHaveBeenCalledWith("/profile")
+  })
+
+  it("handleExportClick opens ExportFormatDialog", async () => {
+    mockGet.mockResolvedValue([buildResume({ name: "My Resume" })])
+    renderDashboard()
+    await waitFor(() => screen.getByRole("button", { name: /export resume/i }))
+    // Click the export button on the resume card
+    fireEvent.click(screen.getByRole("button", { name: /export resume/i }))
+    // The mocked dialog renders an element with aria-label="Export dialog" when open=true
+    // Use getByLabelText since <dialog> without the `open` attribute isn't role="dialog" in jsdom
+    await waitFor(() =>
+      expect(screen.getByLabelText(/export dialog/i)).toBeInTheDocument(),
+    )
+  })
+
+  it("handleExport success — downloads file and closes dialog", async () => {
+    const mockBlob = new Blob(["pdf"], { type: "application/pdf" })
+
+    mockGet.mockResolvedValue([buildResume({ name: "My Resume" })])
+    renderDashboard()
+    await waitFor(() => screen.getByRole("button", { name: /export resume/i }))
+
+    // Stub fetch and DOM APIs AFTER initial render
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      blob: () => Promise.resolve(mockBlob),
+    }))
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:test")
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {})
+    const appendChildSpy = vi.spyOn(document.body, "appendChild").mockImplementation((node) => node)
+    const removeChildSpy = vi.spyOn(document.body, "removeChild").mockImplementation((node) => node)
+
+    // Open export dialog
+    fireEvent.click(screen.getByRole("button", { name: /export resume/i }))
+    await waitFor(() => screen.getByLabelText(/export dialog/i))
+
+    // Click PDF button in the mocked dialog
+    fireEvent.click(screen.getByRole("button", { name: /export as pdf/i }))
+
+    await waitFor(() =>
+      expect(mockToast.success).toHaveBeenCalledWith("Download ready", expect.any(Object)),
+    )
+
+    // Dialog should close (exportingResume becomes null → mocked dialog returns null)
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/export dialog/i)).not.toBeInTheDocument(),
+    )
+
+    appendChildSpy.mockRestore()
+    removeChildSpy.mockRestore()
+  })
+
+  it("handleExport failure — shows error toast from response detail", async () => {
+    mockGet.mockResolvedValue([buildResume({ name: "My Resume" })])
+    renderDashboard()
+    await waitFor(() => screen.getByRole("button", { name: /export resume/i }))
+
+    // Open export dialog first so lastExportFormatDialogProps is populated
+    fireEvent.click(screen.getByRole("button", { name: /export resume/i }))
+    await waitFor(() => expect(lastExportFormatDialogProps?.open).toBe(true))
+
+    // Stub fetch AFTER dialog is open
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ detail: "Unsupported format" }),
+    }))
+
+    // Trigger export via the captured dialog props (avoids button-inside-dialog accessibility quirks)
+    await act(async () => {
+      lastExportFormatDialogProps?.onExport("pdf")
+    })
+
+    await waitFor(() =>
+      expect(mockToast.error).toHaveBeenCalledWith("Unsupported format", expect.any(Object)),
+    )
+  })
+
+  it("handleDelete API failure restores resume", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      mockGet.mockResolvedValue([buildResume()])
+      mockDelete.mockRejectedValue(new Error("server error"))
+      renderDashboard()
+
+      // Flush the initial async fetch (microtasks still run with fake timers)
+      await act(async () => { await Promise.resolve() })
+
+      // Wait for cards to appear
+      await waitFor(() => expect(screen.getAllByText("Test Resume").length).toBeGreaterThan(0))
+
+      // Click delete — optimistic removal
+      act(() => {
+        fireEvent.click(screen.getByRole("button", { name: /delete resume/i }))
+      })
+      expect(screen.queryByText("Test Resume")).not.toBeInTheDocument()
+
+      // Advance fake timers past the 5s delete timeout and flush async operations
+      await act(async () => {
+        vi.advanceTimersByTime(5100)
+        // Flush the rejected promise microtasks
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      // Resume should be restored after the delete API call failed
+      await waitFor(() => expect(screen.getAllByText("Test Resume").length).toBeGreaterThan(0))
+      expect(mockToast.error).toHaveBeenCalledWith("Delete failed — resume restored")
+    } finally {
+      vi.useRealTimers()
+    }
+  }, 10000)
 })

@@ -234,7 +234,7 @@ export default function EditorPage() {
       a.download = `${currentResume?.name ?? "resume"}.docx`
       document.body.appendChild(a)
       a.click()
-      document.body.removeChild(a)
+      a.remove()
       URL.revokeObjectURL(url)
       toast.success("Download ready", { duration: 4000 })
     } catch (err) {
@@ -271,7 +271,7 @@ export default function EditorPage() {
       a.download = `${currentResume?.name ?? "resume"}.pdf`
       document.body.appendChild(a)
       a.click()
-      document.body.removeChild(a)
+      a.remove()
       URL.revokeObjectURL(url)
       toast.success("Download ready", { duration: 4000 })
     } catch (err) {

@@ -104,6 +104,7 @@ describe("ResumeDashboardCard", () => {
         onOpen={onOpen}
         onDuplicate={vi.fn()}
         onDelete={vi.fn()}
+        onExport={vi.fn()}
       />,
     )
     const outerCard = container.querySelector("[role='button'][tabindex='0']") as HTMLElement

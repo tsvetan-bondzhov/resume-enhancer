@@ -59,8 +59,8 @@ export function makeUpdateField<
 // error message (e.g. { jobTitle: "Job title", company: "Company" }).
 
 export function makeHandleBlur<
-  TDraft extends { id: string; [key: string]: unknown },
-  TErrors extends Partial<Record<string, string>>,
+  TDraft extends { id: string },
+  TErrors extends object,
 >(
   setEntries: Dispatch<SetStateAction<Array<{ draft: TDraft; errors: TErrors }>>>,
   fieldLabels: Partial<Record<string, string>> | string,
@@ -69,7 +69,7 @@ export function makeHandleBlur<
     setEntries((prev) =>
       prev.map((entry, i) => {
         if (i !== index) return entry
-        const value = entry.draft[field] as string
+        const value = entry.draft[field as keyof TDraft] as string
         if (!value.trim()) {
           const message =
             typeof fieldLabels === "string"
