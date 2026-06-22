@@ -60,7 +60,7 @@ class AiControllerTest {
         when(healthGuard.isAvailable()).thenReturn(false);
 
         ChatRequest request = new ChatRequest("Hello AI", null, null);
-        ResponseEntity<?> response = aiController.chat(request);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
     }
@@ -70,7 +70,7 @@ class AiControllerTest {
         when(healthGuard.isAvailable()).thenReturn(false);
 
         ChatRequest request = new ChatRequest("Hello AI", null, null);
-        ResponseEntity<?> response = aiController.chat(request);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().toString()).contains("unavailable");
@@ -81,11 +81,11 @@ class AiControllerTest {
     @Test
     void chat_returns200_with_sse_emitter_when_ollama_available() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
-        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class)))
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any()))
                 .thenReturn(Flux.just("Hello", " world"));
 
         ChatRequest request = new ChatRequest("Say hello", null, null);
-        ResponseEntity<?> response = aiController.chat(request);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isInstanceOf(SseEmitter.class);
@@ -96,30 +96,30 @@ class AiControllerTest {
     @Test
     void chat_withConversationId_returns200_with_sse_emitter() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
-        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class)))
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any()))
                 .thenReturn(Flux.just("Hello", " world"));
 
         ChatRequest request = new ChatRequest("Hello AI", null, "conv-123");
-        ResponseEntity<?> response = aiController.chat(request);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isInstanceOf(SseEmitter.class);
         Thread.sleep(100);
-        verify(aiService).streamChat(eq("Hello AI"), eq("conv-123"), any(ChatMemory.class));
+        verify(aiService).streamChat(eq("Hello AI"), eq("conv-123"), any(ChatMemory.class), any());
     }
 
     @Test
     void chat_withoutConversationId_generates_conversationId_and_returns200() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
-        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class)))
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any()))
                 .thenReturn(Flux.just("token1"));
 
         ChatRequest request = new ChatRequest("Hello AI", null, null);
-        ResponseEntity<?> response = aiController.chat(request);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         Thread.sleep(100);
-        verify(aiService).streamChat(anyString(), matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"), any(ChatMemory.class));
+        verify(aiService).streamChat(anyString(), matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"), any(ChatMemory.class), any());
     }
 
     // ─── /enhance — unavailable path ─────────────────────────────────────────
@@ -418,11 +418,11 @@ class AiControllerTest {
     @Test
     void chat_withStreamError_exercisesDoOnErrorPath() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
-        when(aiService.streamChat(anyString(), anyString(), any()))
+        when(aiService.streamChat(anyString(), anyString(), any(), any()))
                 .thenReturn(Flux.error(new RuntimeException("Connection reset")));
 
         ChatRequest request = new ChatRequest("Say hello", null, null);
-        ResponseEntity<?> response = aiController.chat(request);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         Thread.sleep(200);
@@ -432,11 +432,11 @@ class AiControllerTest {
     void chat_withTokens_exercisesDoOnNextAndDoOnComplete() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
         // Provides actual tokens so doOnNext and doOnComplete fire
-        when(aiService.streamChat(anyString(), anyString(), any()))
+        when(aiService.streamChat(anyString(), anyString(), any(), any()))
                 .thenReturn(Flux.just("Hello", " ", "world"));
 
         ChatRequest request = new ChatRequest("Say hello", null, "conv-existing");
-        ResponseEntity<?> response = aiController.chat(request);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         Thread.sleep(300);

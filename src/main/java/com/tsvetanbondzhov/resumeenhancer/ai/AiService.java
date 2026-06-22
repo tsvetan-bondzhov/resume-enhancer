@@ -20,6 +20,18 @@ public class AiService {
 
     private static final Logger log = LoggerFactory.getLogger(AiService.class);
     private static final String OLLAMA_UNAVAILABLE_PREFIX = "Ollama is unavailable: ";
+    static final String RESUME_ASSISTANT_SYSTEM_PROMPT = """
+            You are a professional resume assistant with deep expertise in career coaching and resume writing.
+            You have access to the user's resume content and must give specific, actionable advice grounded in \
+            their actual experience — not generic tips.
+            When answering questions about the resume, reference specific sections, job titles, companies, \
+            skills, or dates that appear in the resume.
+            When suggesting improvements, explain why the change strengthens the resume (impact, clarity, \
+            relevance, or keyword alignment).
+            Never invent experience or qualifications the user has not listed.
+            Keep responses concise and focused on the user's career goals.
+            """;
+
 
     private final ChatClient chatClient;
 
@@ -71,12 +83,18 @@ public class AiService {
      * Streams a chat response with MessageWindowChatMemory for multi-turn Q&A.
      * The conversationId scopes the memory so each session keeps its own history.
      * Memory is ephemeral (in-memory only, not persisted to DB — AC4).
+     * When resumeContext is non-empty it is prepended to the system prompt so the
+     * LLM can give resume-specific answers rather than generic advice.
      *
      * AiService is the ONLY class in the codebase that calls ChatClient directly.
      */
-    public Flux<String> streamChat(String prompt, String conversationId, ChatMemory chatMemory) {
+    public Flux<String> streamChat(String prompt, String conversationId, ChatMemory chatMemory, String resumeContext) {
         try {
+            String systemPrompt = resumeContext == null || resumeContext.isBlank()
+                    ? RESUME_ASSISTANT_SYSTEM_PROMPT
+                    : RESUME_ASSISTANT_SYSTEM_PROMPT + "\n" + resumeContext;
             return chatClient.prompt()
+                    .system(systemPrompt)
                     .user(prompt)
                     .advisors(a -> a
                             .param(ChatMemory.CONVERSATION_ID, conversationId)
@@ -97,7 +115,7 @@ public class AiService {
      */
     Flux<String> streamChatNoMemory(String prompt) {
         return streamChat(prompt, UUID.randomUUID().toString(),
-                MessageWindowChatMemory.builder().maxMessages(1).build());
+                MessageWindowChatMemory.builder().maxMessages(1).build(), null);
     }
 
     /**
@@ -111,6 +129,7 @@ public class AiService {
         try {
             String prompt = buildEnhancePrompt(document);
             return chatClient.prompt()
+                    .system(RESUME_ASSISTANT_SYSTEM_PROMPT)
                     .user(prompt)
                     .stream()
                     .content()
@@ -132,6 +151,7 @@ public class AiService {
         try {
             String prompt = buildTailorPrompt(document, jobDescription);
             return chatClient.prompt()
+                    .system(RESUME_ASSISTANT_SYSTEM_PROMPT)
                     .user(prompt)
                     .stream()
                     .content()

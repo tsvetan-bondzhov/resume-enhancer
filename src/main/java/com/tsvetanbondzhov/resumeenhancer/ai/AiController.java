@@ -56,7 +56,7 @@ public class AiController {
     }
 
     @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public ResponseEntity<?> chat(@Valid @RequestBody ChatRequest request) {
+    public ResponseEntity<?> chat(@Valid @RequestBody ChatRequest request, Authentication authentication) {
         // AC8: OllamaHealthGuard checked first — before any AiService call
         if (!healthGuard.isAvailable()) {
             return unavailableResponse();
@@ -71,10 +71,12 @@ public class AiController {
         // Capture OTel context in the request thread for propagation into async thread
         Context otelContext = Context.current();
 
+        String resumeContext = resolveResumeContext(request, authentication);
+
         executor.execute(() -> {
             // Explicit OTel context propagation — does NOT auto-propagate across async boundary
             try (var ignored = otelContext.makeCurrent()) {
-                Flux<String> tokenFlux = aiService.streamChat(request.prompt(), conversationId, chatMemory);
+                Flux<String> tokenFlux = aiService.streamChat(request.prompt(), conversationId, chatMemory, resumeContext);
                 Disposable disposable = buildChatDisposable(tokenFlux, emitter);
 
                 // Register emitter lifecycle callbacks to cancel the Flux on client disconnect / timeout
@@ -153,6 +155,20 @@ public class AiController {
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────
+
+    private String resolveResumeContext(ChatRequest request, Authentication authentication) {
+        if (request.resumeId() == null || authentication == null) {
+            return null;
+        }
+        try {
+            UUID resumeId = UUID.fromString(request.resumeId());
+            ResumeDocument document = resumeService.getResume(authentication.getName(), resumeId).content();
+            return ResumeContextBuilder.buildResumeContext(document);
+        } catch (Exception e) {
+            log.warn("Could not load resume context for chat: {}", e.getMessage());
+            return null;
+        }
+    }
 
     private ResponseEntity<?> unavailableResponse() {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
