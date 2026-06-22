@@ -180,7 +180,7 @@ export function SortableItemWrapper({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={containerClassName}>
+    <div ref={setNodeRef} style={style} className={containerClassName} data-item-id={id}>
       <button
         type="button"
         className={className}

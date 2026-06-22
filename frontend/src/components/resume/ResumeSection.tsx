@@ -18,6 +18,7 @@ interface ResumeSectionProps {
   readonly onAddItem?: (position: number) => void
   readonly onDeleteItem?: (itemId: string) => void
   readonly onReorderItems?: (newItems: ResumeItemDto[]) => void
+  readonly visibleItemIds?: ReadonlySet<string>
 }
 
 function renderSectionContent(
@@ -161,6 +162,7 @@ export default function ResumeSection({
   onAddItem,
   onDeleteItem,
   onReorderItems,
+  visibleItemIds,
 }: ResumeSectionProps) {
   const titleRef = useRef<HTMLHeadingElement>(null)
   const isTitleEmpty = !section.title
@@ -181,8 +183,12 @@ export default function ResumeSection({
     }
   }
 
+  const filteredSection = visibleItemIds
+    ? { ...section, items: section.items.filter((item) => visibleItemIds.has(item.id)) }
+    : section
+
   return (
-    <section aria-labelledby={`section-title-${section.sectionType}`} className="mb-6">
+    <section aria-labelledby={`section-title-${section.sectionType}`} className="mb-6" data-section-type={section.sectionType}>
         <h2
           ref={titleRef}
           id={`section-title-${section.sectionType}`}
@@ -195,7 +201,7 @@ export default function ResumeSection({
         >
           {isTitleEmpty ? SECTION_TITLE_PLACEHOLDER : section.title}
         </h2>
-      {renderSectionContent(section, onFieldChange, onAddItem, onDeleteItem, onReorderItems)}
+      {renderSectionContent(filteredSection, onFieldChange, onAddItem, onDeleteItem, onReorderItems)}
       <DiffOverlay sectionId={section.sectionType} />
     </section>
   )
