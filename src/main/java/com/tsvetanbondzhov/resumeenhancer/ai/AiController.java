@@ -107,9 +107,13 @@ public class AiController {
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
         Context otelContext = Context.current();
 
+        String enhanceConversationId = request.conversationId() != null
+                ? request.conversationId()
+                : UUID.randomUUID().toString();
+
         executor.execute(() -> {
             try (var ignored = otelContext.makeCurrent()) {
-                Flux<String> tokenFlux = aiService.streamEnhance(document);
+                Flux<String> tokenFlux = aiService.streamEnhance(document, enhanceConversationId, chatMemory);
                 Disposable disposable = buildEnhanceDisposable(tokenFlux, emitter);
 
                 emitter.onCompletion(disposable::dispose);
@@ -137,9 +141,13 @@ public class AiController {
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
         Context otelContext = Context.current();
 
+        String tailorConversationId = request.conversationId() != null
+                ? request.conversationId()
+                : UUID.randomUUID().toString();
+
         executor.execute(() -> {
             try (var ignored = otelContext.makeCurrent()) {
-                Flux<String> tokenFlux = aiService.streamTailor(document, request.jobDescription());
+                Flux<String> tokenFlux = aiService.streamTailor(document, request.jobDescription(), tailorConversationId, chatMemory);
                 Disposable disposable = buildEnhanceDisposable(tokenFlux, emitter);
 
                 emitter.onCompletion(disposable::dispose);

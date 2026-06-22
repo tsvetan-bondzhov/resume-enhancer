@@ -208,6 +208,7 @@ class AiServiceTest {
     // ─── streamEnhance — success path ───────────────────────────────────────
 
     @Test
+    @SuppressWarnings("unchecked")
     void streamEnhance_returnsPatchFlux() {
         ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
         ChatClient.StreamResponseSpec streamSpec = mock(ChatClient.StreamResponseSpec.class);
@@ -215,6 +216,7 @@ class AiServiceTest {
         when(chatClient.prompt()).thenReturn(promptSpec);
         when(promptSpec.system(anyString())).thenReturn(promptSpec);
         when(promptSpec.user(anyString())).thenReturn(promptSpec);
+        when(promptSpec.advisors(any(Consumer.class))).thenReturn(promptSpec);
         when(promptSpec.stream()).thenReturn(streamSpec);
         when(streamSpec.content()).thenReturn(
                 Flux.just(
@@ -224,7 +226,8 @@ class AiServiceTest {
         );
 
         ResumeDocument document = new ResumeDocument(List.of());
-        Flux<String> result = aiService.streamEnhance(document);
+        MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
+        Flux<String> result = aiService.streamEnhance(document, "conv-enhance-1", memory);
 
         StepVerifier.create(result)
                 .expectNext("{\"sectionId\":\"WORK_EXPERIENCE\",")
@@ -235,17 +238,20 @@ class AiServiceTest {
     // ─── streamEnhance — exception path ─────────────────────────────────────
 
     @Test
+    @SuppressWarnings("unchecked")
     void streamEnhance_ollamaUnavailable_throwsOllamaUnavailableException() {
         ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
 
         when(chatClient.prompt()).thenReturn(promptSpec);
         when(promptSpec.system(anyString())).thenReturn(promptSpec);
         when(promptSpec.user(anyString())).thenReturn(promptSpec);
+        when(promptSpec.advisors(any(Consumer.class))).thenReturn(promptSpec);
         when(promptSpec.stream()).thenThrow(new RuntimeException("Connection refused"));
 
         ResumeDocument document = new ResumeDocument(List.of());
+        MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
 
-        assertThatThrownBy(() -> aiService.streamEnhance(document))
+        assertThatThrownBy(() -> aiService.streamEnhance(document, "conv-enhance-2", memory))
                 .isInstanceOf(OllamaUnavailableException.class)
                 .hasMessageContaining("Ollama is unavailable");
     }
@@ -266,6 +272,7 @@ class AiServiceTest {
     // ─── streamTailor — success path ────────────────────────────────────────
 
     @Test
+    @SuppressWarnings("unchecked")
     void streamTailor_returnsPatchFlux() {
         ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
         ChatClient.StreamResponseSpec streamSpec = mock(ChatClient.StreamResponseSpec.class);
@@ -273,6 +280,7 @@ class AiServiceTest {
         when(chatClient.prompt()).thenReturn(promptSpec);
         when(promptSpec.system(anyString())).thenReturn(promptSpec);
         when(promptSpec.user(anyString())).thenReturn(promptSpec);
+        when(promptSpec.advisors(any(Consumer.class))).thenReturn(promptSpec);
         when(promptSpec.stream()).thenReturn(streamSpec);
         when(streamSpec.content()).thenReturn(
                 Flux.just(
@@ -282,7 +290,8 @@ class AiServiceTest {
         );
 
         ResumeDocument document = new ResumeDocument(List.of());
-        Flux<String> result = aiService.streamTailor(document, "Software Engineer at Google");
+        MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
+        Flux<String> result = aiService.streamTailor(document, "Software Engineer at Google", "conv-tailor-1", memory);
 
         StepVerifier.create(result)
                 .expectNext("{\"sectionId\":\"WORK_EXPERIENCE\",")
@@ -293,17 +302,20 @@ class AiServiceTest {
     // ─── streamTailor — exception path ──────────────────────────────────────
 
     @Test
+    @SuppressWarnings("unchecked")
     void streamTailor_ollamaUnavailable_throwsOllamaUnavailableException() {
         ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
 
         when(chatClient.prompt()).thenReturn(promptSpec);
         when(promptSpec.system(anyString())).thenReturn(promptSpec);
         when(promptSpec.user(anyString())).thenReturn(promptSpec);
+        when(promptSpec.advisors(any(Consumer.class))).thenReturn(promptSpec);
         when(promptSpec.stream()).thenThrow(new RuntimeException("Connection refused"));
 
         ResumeDocument document = new ResumeDocument(List.of());
+        MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
 
-        assertThatThrownBy(() -> aiService.streamTailor(document, "Software Engineer at Google"))
+        assertThatThrownBy(() -> aiService.streamTailor(document, "Software Engineer at Google", "conv-tailor-2", memory))
                 .isInstanceOf(OllamaUnavailableException.class)
                 .hasMessageContaining("Ollama is unavailable");
     }

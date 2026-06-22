@@ -6,9 +6,10 @@ import TailorJobDialog from "@/components/resume/TailorJobDialog"
 
 interface AIActionBarProps {
   readonly resumeId: string | undefined
+  readonly conversationId?: string
 }
 
-export default function AIActionBar({ resumeId }: AIActionBarProps) {
+export default function AIActionBar({ resumeId, conversationId }: AIActionBarProps) {
   const isStreaming = useChatStore((state) => state.isStreaming)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isTailorDialogOpen, setIsTailorDialogOpen] = useState(false)
@@ -26,7 +27,7 @@ export default function AIActionBar({ resumeId }: AIActionBarProps) {
   function handleEnhance() {
     if (!resumeId || isStreaming) return
     setErrorMessage(null)
-    const cleanup = startEnhanceStream(resumeId)
+    const cleanup = startEnhanceStream(resumeId, conversationId)
     cleanupRef.current = cleanup
   }
 
@@ -70,6 +71,7 @@ export default function AIActionBar({ resumeId }: AIActionBarProps) {
       <TailorJobDialog
         open={isTailorDialogOpen}
         resumeId={resumeId}
+        conversationId={conversationId}
         onClose={() => setIsTailorDialogOpen(false)}
         startTailorStream={startTailorStream}
       />

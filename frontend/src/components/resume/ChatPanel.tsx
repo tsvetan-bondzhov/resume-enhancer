@@ -7,6 +7,7 @@ import type { ChatMessage, PatchDiff } from "@/types/api"
 
 export interface ChatPanelProps {
   readonly resumeId: string | undefined
+  readonly conversationId?: string
 }
 
 function diffLineStyle(kind: PatchDiff["kind"]): string {
@@ -92,7 +93,7 @@ function MessageBubble({ message }: { readonly message: ChatMessage }) {
   )
 }
 
-export default function ChatPanel({ resumeId }: ChatPanelProps) {
+export default function ChatPanel({ resumeId, conversationId }: ChatPanelProps) {
   const messages = useChatStore((state) => state.messages)
   const isStreaming = useChatStore((state) => state.isStreaming)
   const addMessage = useChatStore((state) => state.addMessage)
@@ -104,8 +105,7 @@ export default function ChatPanel({ resumeId }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
-  // AC3: session-scoped conversationId — stable across re-renders, new on each component mount (AC4)
-  const conversationIdRef = useRef<string>(crypto.randomUUID())
+  const conversationIdRef = useRef<string>(conversationId ?? crypto.randomUUID())
 
   const { startStreamWithPost } = useStreamingChat({
     onDone: (summary) => {

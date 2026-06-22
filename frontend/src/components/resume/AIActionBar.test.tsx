@@ -52,10 +52,10 @@ describe("AIActionBar", () => {
     expect(screen.getByRole("button", { name: /enhance/i })).toBeDisabled()
   })
 
-  it("clicking Enhance calls startEnhanceStream with the resumeId", () => {
-    render(<AIActionBar resumeId="resume-abc" />)
+  it("clicking Enhance calls startEnhanceStream with the resumeId and conversationId", () => {
+    render(<AIActionBar resumeId="resume-abc" conversationId="conv-test-id" />)
     fireEvent.click(screen.getByRole("button", { name: /enhance/i }))
-    expect(mockStartEnhanceStream).toHaveBeenCalledWith("resume-abc")
+    expect(mockStartEnhanceStream).toHaveBeenCalledWith("resume-abc", "conv-test-id")
   })
 
   it("does not call startEnhanceStream when resumeId is undefined", () => {

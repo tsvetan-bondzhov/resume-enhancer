@@ -77,6 +77,7 @@ export default function EditorPage() {
   const [exportingResume, setExportingResume] = useState<ResumeDto | null>(null)
   const [isSidebarExporting, setIsSidebarExporting] = useState(false)
   const pendingSidebarDeletes = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const conversationIdRef = useRef<string>(crypto.randomUUID())
 
   // Keep sidebar in sync with the Zustand resumes list (updated by add/remove/sync actions)
   useEffect(() => {
@@ -429,7 +430,7 @@ export default function EditorPage() {
               onExportPdf={exportPdf}
               onExportDocx={exportDocx}
             />
-            <AIActionBar resumeId={id} />
+            <AIActionBar resumeId={id} conversationId={conversationIdRef.current} />
             {error !== null && !isLoading ? (
               <div className="flex items-center justify-center h-64">
                 <p className="text-destructive">{error}</p>
@@ -457,7 +458,7 @@ export default function EditorPage() {
           </div>
         }
         rightSlot={
-          <ChatPanel resumeId={id} />
+          <ChatPanel resumeId={id} conversationId={conversationIdRef.current} />
         }
       />
       <SaveAsDialog

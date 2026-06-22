@@ -128,7 +128,7 @@ class AiControllerTest {
     void enhance_returns503_when_ollama_unavailable() {
         when(healthGuard.isAvailable()).thenReturn(false);
 
-        EnhanceRequest request = new EnhanceRequest(UUID.randomUUID().toString());
+        EnhanceRequest request = new EnhanceRequest(UUID.randomUUID().toString(), null);
         Authentication authentication = mock(Authentication.class);
 
         ResponseEntity<?> response = aiController.enhance(request, authentication);
@@ -140,7 +140,7 @@ class AiControllerTest {
     void enhance_response_body_has_problem_detail_when_unavailable() {
         when(healthGuard.isAvailable()).thenReturn(false);
 
-        EnhanceRequest request = new EnhanceRequest(UUID.randomUUID().toString());
+        EnhanceRequest request = new EnhanceRequest(UUID.randomUUID().toString(), null);
         Authentication authentication = mock(Authentication.class);
 
         ResponseEntity<?> response = aiController.enhance(request, authentication);
@@ -164,9 +164,9 @@ class AiControllerTest {
         when(authentication.getName()).thenReturn("user@example.com");
 
         when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
-        when(aiService.streamEnhance(any(ResumeDocument.class))).thenReturn(Flux.just("token1", "token2"));
+        when(aiService.streamEnhance(any(ResumeDocument.class), anyString(), any(ChatMemory.class))).thenReturn(Flux.just("token1", "token2"));
 
-        EnhanceRequest request = new EnhanceRequest(resumeId.toString());
+        EnhanceRequest request = new EnhanceRequest(resumeId.toString(), null);
         ResponseEntity<?> response = aiController.enhance(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -201,7 +201,7 @@ class AiControllerTest {
     @Test
     void enhanceRequest_record_construction_and_accessor() {
         String resumeId = UUID.randomUUID().toString();
-        EnhanceRequest request = new EnhanceRequest(resumeId);
+        EnhanceRequest request = new EnhanceRequest(resumeId, null);
 
         assertThat(request.resumeId()).isEqualTo(resumeId);
     }
@@ -212,7 +212,7 @@ class AiControllerTest {
     void tailor_returns503_when_ollama_unavailable() {
         when(healthGuard.isAvailable()).thenReturn(false);
 
-        TailorRequest request = new TailorRequest(UUID.randomUUID().toString(), "Senior Java Developer role");
+        TailorRequest request = new TailorRequest(UUID.randomUUID().toString(), "Senior Java Developer role", null);
         Authentication authentication = mock(Authentication.class);
 
         ResponseEntity<?> response = aiController.tailor(request, authentication);
@@ -224,7 +224,7 @@ class AiControllerTest {
     void tailor_response_body_has_problem_detail_when_unavailable() {
         when(healthGuard.isAvailable()).thenReturn(false);
 
-        TailorRequest request = new TailorRequest(UUID.randomUUID().toString(), "Senior Java Developer role");
+        TailorRequest request = new TailorRequest(UUID.randomUUID().toString(), "Senior Java Developer role", null);
         Authentication authentication = mock(Authentication.class);
 
         ResponseEntity<?> response = aiController.tailor(request, authentication);
@@ -248,10 +248,10 @@ class AiControllerTest {
         when(authentication.getName()).thenReturn("user@example.com");
 
         when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
-        when(aiService.streamTailor(any(ResumeDocument.class), anyString()))
+        when(aiService.streamTailor(any(ResumeDocument.class), anyString(), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.just("token1", "token2"));
 
-        TailorRequest request = new TailorRequest(resumeId.toString(), "Senior Java Developer");
+        TailorRequest request = new TailorRequest(resumeId.toString(), "Senior Java Developer", null);
         ResponseEntity<?> response = aiController.tailor(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -264,7 +264,7 @@ class AiControllerTest {
     void tailorRequest_record_construction_and_accessors() {
         String resumeId = UUID.randomUUID().toString();
         String jobDesc = "We are looking for a Java developer";
-        TailorRequest request = new TailorRequest(resumeId, jobDesc);
+        TailorRequest request = new TailorRequest(resumeId, jobDesc, null);
 
         assertThat(request.resumeId()).isEqualTo(resumeId);
         assertThat(request.jobDescription()).isEqualTo(jobDesc);
@@ -286,10 +286,10 @@ class AiControllerTest {
 
         // Stream with token, a valid patch JSON line, and then complete
         String patchJson = "{\"sectionId\":\"WORK_EXPERIENCE\",\"itemIndex\":0,\"field\":\"jobTitle\",\"newValue\":\"Senior\"}";
-        when(aiService.streamEnhance(any(ResumeDocument.class)))
+        when(aiService.streamEnhance(any(ResumeDocument.class), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.just("token1\n", patchJson + "\n", "token2"));
 
-        EnhanceRequest request = new EnhanceRequest(resumeId.toString());
+        EnhanceRequest request = new EnhanceRequest(resumeId.toString(), null);
         ResponseEntity<?> response = aiController.enhance(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -310,10 +310,10 @@ class AiControllerTest {
         when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
 
         // Empty intermediate tokens (covers the !line.isEmpty() guard)
-        when(aiService.streamEnhance(any(ResumeDocument.class)))
+        when(aiService.streamEnhance(any(ResumeDocument.class), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.just("chunk1\n", "\n", "chunk2"));
 
-        EnhanceRequest request = new EnhanceRequest(resumeId.toString());
+        EnhanceRequest request = new EnhanceRequest(resumeId.toString(), null);
         ResponseEntity<?> response = aiController.enhance(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -334,10 +334,10 @@ class AiControllerTest {
 
         // A patch JSON without trailing newline — will be flushed in doOnComplete
         String patchJson = "{\"sectionId\":\"SKILLS\",\"itemIndex\":0,\"field\":\"name\",\"newValue\":\"Kotlin\"}";
-        when(aiService.streamEnhance(any(ResumeDocument.class)))
+        when(aiService.streamEnhance(any(ResumeDocument.class), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.just(patchJson));
 
-        EnhanceRequest request = new EnhanceRequest(resumeId.toString());
+        EnhanceRequest request = new EnhanceRequest(resumeId.toString(), null);
         ResponseEntity<?> response = aiController.enhance(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -357,10 +357,10 @@ class AiControllerTest {
         when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
 
         // Flux that emits an error — exercises doOnError in buildEnhanceDisposable
-        when(aiService.streamEnhance(any(ResumeDocument.class)))
+        when(aiService.streamEnhance(any(ResumeDocument.class), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.error(new RuntimeException("AI backend unavailable")));
 
-        EnhanceRequest request = new EnhanceRequest(resumeId.toString());
+        EnhanceRequest request = new EnhanceRequest(resumeId.toString(), null);
         ResponseEntity<?> response = aiController.enhance(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -380,10 +380,10 @@ class AiControllerTest {
         Authentication authentication = mock(Authentication.class);
         when(authentication.getName()).thenReturn("user@example.com");
         when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
-        when(aiService.streamTailor(any(ResumeDocument.class), anyString()))
+        when(aiService.streamTailor(any(ResumeDocument.class), anyString(), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.just("token1\n", "token2"));
 
-        TailorRequest request = new TailorRequest(resumeId.toString(), "Senior Java Developer");
+        TailorRequest request = new TailorRequest(resumeId.toString(), "Senior Java Developer", null);
         ResponseEntity<?> response = aiController.tailor(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -403,10 +403,10 @@ class AiControllerTest {
         when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
 
         // Exercises doOnError in buildEnhanceDisposable (tailor reuses it) + trySendError
-        when(aiService.streamTailor(any(ResumeDocument.class), anyString()))
+        when(aiService.streamTailor(any(ResumeDocument.class), anyString(), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.error(new RuntimeException("Model timeout")));
 
-        TailorRequest request = new TailorRequest(resumeId.toString(), "Job description here");
+        TailorRequest request = new TailorRequest(resumeId.toString(), "Job description here", null);
         ResponseEntity<?> response = aiController.tailor(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);

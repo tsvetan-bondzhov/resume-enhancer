@@ -44,7 +44,7 @@ describe("TailorJobDialog", () => {
   })
 
   it("calls startTailorStream and onClose on valid submission", () => {
-    render(<TailorJobDialog {...defaultProps} />)
+    render(<TailorJobDialog {...defaultProps} conversationId="conv-test-id" />)
 
     const textarea = screen.getByLabelText("Job Description")
     fireEvent.change(textarea, { target: { value: "Senior Java Developer at Acme" } })
@@ -53,7 +53,8 @@ describe("TailorJobDialog", () => {
     expect(mockOnClose).toHaveBeenCalledOnce()
     expect(mockStartTailorStream).toHaveBeenCalledWith(
       "resume-123",
-      "Senior Java Developer at Acme"
+      "Senior Java Developer at Acme",
+      "conv-test-id"
     )
   })
 

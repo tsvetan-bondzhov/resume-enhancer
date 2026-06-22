@@ -12,13 +12,15 @@ import { useChatStore } from "@/stores/useChatStore"
 interface TailorJobDialogProps {
   readonly open: boolean
   readonly resumeId: string | undefined
+  readonly conversationId?: string
   readonly onClose: () => void
-  readonly startTailorStream: (resumeId: string, jobDescription: string) => () => void
+  readonly startTailorStream: (resumeId: string, jobDescription: string, conversationId?: string) => () => void
 }
 
 export default function TailorJobDialog({
   open,
   resumeId,
+  conversationId,
   onClose,
   startTailorStream,
 }: TailorJobDialogProps) {
@@ -34,7 +36,7 @@ export default function TailorJobDialog({
     setValidationError(null)
     onClose() // Close dialog immediately before stream starts (AC4)
     if (resumeId) {
-      startTailorStream(resumeId, jobDescription)
+      startTailorStream(resumeId, jobDescription, conversationId)
     }
   }
 

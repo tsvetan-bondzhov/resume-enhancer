@@ -314,8 +314,15 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
     return makeStreamCleanup(ref, () => setStreaming(false))
   }
 
-  function startEnhanceStream(resumeId: string): () => void {
+  function startEnhanceStream(resumeId: string, conversationId?: string): () => void {
     setStreaming(true)
+
+    addMessage({
+      id: crypto.randomUUID(),
+      role: "user",
+      content: "Enhance my resume",
+      timestamp: new Date().toISOString(),
+    })
 
     const assistantMsgId = crypto.randomUUID()
     addMessage({
@@ -335,7 +342,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ resumeId }),
+      body: JSON.stringify({ resumeId, ...(conversationId ? { conversationId } : {}) }),
     })
       .then(async (res) => {
         if (!res.ok || !res.body) {
@@ -387,8 +394,16 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
     }
   }
 
-  function startTailorStream(resumeId: string, jobDescription: string): () => void {
+  function startTailorStream(resumeId: string, jobDescription: string, conversationId?: string): () => void {
     setStreaming(true)
+
+    const snippet = jobDescription.length > 80 ? jobDescription.slice(0, 80) + "…" : jobDescription
+    addMessage({
+      id: crypto.randomUUID(),
+      role: "user",
+      content: `Tailor my resume to: ${snippet}`,
+      timestamp: new Date().toISOString(),
+    })
 
     const assistantMsgId = crypto.randomUUID()
     addMessage({
@@ -417,7 +432,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
         "Content-Type": "application/json",
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       },
-      body: JSON.stringify({ resumeId, jobDescription }),
+      body: JSON.stringify({ resumeId, jobDescription, ...(conversationId ? { conversationId } : {}) }),
     })
       .then(async (res) => {
         if (!res.ok || !res.body) {

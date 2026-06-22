@@ -114,15 +114,20 @@ public class AiService {
      * Streams AI-generated enhancement suggestions for the given resume document.
      * The AI is instructed to emit one DocumentPatchEvent JSON object per line —
      * the controller parses each line into a patch SSE event.
+     * When conversationId and chatMemory are provided the exchange is stored in
+     * the shared chat memory so the user can follow up in the chat panel.
      *
      * AiService is the ONLY class in the codebase that calls ChatClient directly.
      */
-    public Flux<String> streamEnhance(ResumeDocument document) {
+    public Flux<String> streamEnhance(ResumeDocument document, String conversationId, ChatMemory chatMemory) {
         try {
             String prompt = buildEnhancePrompt(document);
             return chatClient.prompt()
                     .system(chatSystemPrompt)
                     .user(prompt)
+                    .advisors(a -> a
+                            .param(ChatMemory.CONVERSATION_ID, conversationId)
+                            .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build()))
                     .stream()
                     .content()
                     .onErrorMap(e -> new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e));
@@ -136,15 +141,20 @@ public class AiService {
      * Streams AI-generated tailoring suggestions aligned to the provided job description.
      * The AI is instructed to emit one DocumentPatchEvent JSON object per line —
      * the controller parses each line into a patch SSE event.
+     * When conversationId and chatMemory are provided the exchange is stored in
+     * the shared chat memory so the user can follow up in the chat panel.
      *
      * AiService is the ONLY class in the codebase that calls ChatClient directly.
      */
-    public Flux<String> streamTailor(ResumeDocument document, String jobDescription) {
+    public Flux<String> streamTailor(ResumeDocument document, String jobDescription, String conversationId, ChatMemory chatMemory) {
         try {
             String prompt = buildTailorPrompt(document, jobDescription);
             return chatClient.prompt()
                     .system(chatSystemPrompt)
                     .user(prompt)
+                    .advisors(a -> a
+                            .param(ChatMemory.CONVERSATION_ID, conversationId)
+                            .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build()))
                     .stream()
                     .content()
                     .onErrorMap(e -> new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e));
