@@ -85,15 +85,30 @@ export default function ResumeCanvas({
     leftColumnDef.length > 0 &&
     rightColumnDef.length > 0
 
-  // Resolve page margins from CSS variables (px values) falling back to p-8 (32px) padding.
-  const marginTop = Number.parseFloat(cssVars["--page-margin-top"] ?? "") || 32
-  const marginBottom = Number.parseFloat(cssVars["--page-margin-bottom"] ?? "") || 32
+  // Page margins as raw CSS values so the browser resolves any unit (in/rem/px). The
+  // same values are applied to the measurement container and the visible pages, and the
+  // layout hook reads back the resolved pixels from the measurement container.
+  const pagePadding = {
+    paddingTop: cssVars["--page-margin-top"] ?? "32px",
+    paddingRight: cssVars["--page-margin-right"] ?? "32px",
+    paddingBottom: cssVars["--page-margin-bottom"] ?? "32px",
+    paddingLeft: cssVars["--page-margin-left"] ?? "32px",
+  }
 
-  const { pageLayout, pageCount, measureRef } = usePageLayout(
-    document ? orderedSections : [],
-    marginTop,
-    marginBottom,
-  )
+  // Group sections by column so each column paginates independently (single-column
+  // is one group containing every section).
+  const layoutColumns = (() => {
+    if (!document) return []
+    if (isTwoColumn) {
+      return [
+        orderedSections.filter((s) => leftColumnIds.has(s.sectionType)),
+        orderedSections.filter((s) => rightColumnIds.has(s.sectionType)),
+      ]
+    }
+    return [orderedSections]
+  })()
+
+  const { pageLayout, pageCount, measureRef } = usePageLayout(layoutColumns)
 
   // Memoised render helper — renders resume section content for both the hidden
   // measurement container (no slices → all sections) and each visible page article
@@ -199,9 +214,8 @@ export default function ResumeCanvas({
         {/* Hidden measurement container — off-screen, aria-hidden, full A4 width */}
         <div
           ref={measureRef}
-          style={{ position: "absolute", left: "-9999px", visibility: "hidden", width: "794px", ...rootStyle }}
+          style={{ position: "absolute", left: "-9999px", visibility: "hidden", width: "794px", ...rootStyle, ...pagePadding }}
           aria-hidden="true"
-          className="p-8"
         >
           {/* ARIA live region stub for streaming — used in Story 4.3 */}
           <div
@@ -233,7 +247,7 @@ export default function ResumeCanvas({
                 style={{ ...rootStyle, height: PAGE_HEIGHT_PX, overflow: "hidden", position: "relative" }}
                 className="bg-white shadow-lg w-[794px] max-w-full"
               >
-                <div style={{ paddingTop: marginTop, paddingBottom: marginBottom, paddingLeft: 32, paddingRight: 32 }}>
+                <div style={pagePadding}>
                   {/* ARIA live region stub — only on page 1 to avoid duplication */}
                   {i === 0 && (
                     <div
