@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-type DiffHighlightKind = "addition" | "rewrite"
+type DiffHighlightKind = "addition" | "rewrite" | "deletion"
 type DiffHighlightState = "visible" | "faded" | "hidden"
 
 interface DiffHighlightProps {
