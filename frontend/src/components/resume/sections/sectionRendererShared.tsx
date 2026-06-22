@@ -211,7 +211,7 @@ export function AddItemButton({ onClick, isLast = false }: Readonly<{ onClick: (
     <div className="relative h-0 overflow-visible">
       <button
         type="button"
-        className={`absolute left-1/2 -translate-x-1/2 z-20 flex items-center justify-center w-full h-4 cursor-pointer group/btn${isLast ? "-translate-y-1" : " -translate-y-1/2 invisible group-hover/section:visible opacity-0 group-hover/section:opacity-100 transition-opacity"}`}
+        className={`absolute left-1/2 -translate-x-1/2 z-20 flex items-center justify-center p-1 cursor-pointer group/btn${isLast ? "-translate-y-1" : " -translate-y-1/2 invisible group-hover/section:visible opacity-0 group-hover/section:opacity-100 transition-opacity"}`}
         aria-label="Add item here"
         title="Add item"
         onClick={onClick}
