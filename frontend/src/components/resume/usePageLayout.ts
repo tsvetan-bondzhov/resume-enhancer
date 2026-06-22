@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import type { ResumeSectionDto } from "@/types/api"
 import { PAGE_HEIGHT_PX } from "./resumeConstants"
 
@@ -150,9 +150,21 @@ export function usePageLayout(
   const containerRef = useRef<HTMLDivElement | null>(null)
   const observerRef = useRef<ResizeObserver | null>(null)
 
+  const sectionsRef = useRef(sections)
+  const marginTopRef = useRef(marginTop)
+  const marginBottomRef = useRef(marginBottom)
+  sectionsRef.current = sections
+  marginTopRef.current = marginTop
+  marginBottomRef.current = marginBottom
+
   const measure = useCallback(
     (container: HTMLElement, fallbackHeight?: number) => {
-      const { layout, measuredHeight } = computePageLayout(container, sections, marginTop, marginBottom)
+      const { layout, measuredHeight } = computePageLayout(
+        container,
+        sectionsRef.current,
+        marginTopRef.current,
+        marginBottomRef.current,
+      )
       if (measuredHeight > 0) {
         setPageLayout(layout.length > 0 ? layout : null)
         setPageCount(Math.max(1, layout.length))
@@ -161,8 +173,14 @@ export function usePageLayout(
         setPageCount(Math.max(1, Math.ceil(fallbackHeight / PAGE_HEIGHT_PX)))
       }
     },
-    [sections, marginTop, marginBottom],
+    [],
   )
+
+  useEffect(() => {
+    if (containerRef.current) {
+      measure(containerRef.current)
+    }
+  }, [sections, marginTop, marginBottom, measure])
 
   const measureRef = useCallback(
     (el: HTMLDivElement | null) => {
