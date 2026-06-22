@@ -113,6 +113,15 @@ public class ResumeService {
         return toDto(resumeRepository.save(clone));
     }
 
+    @Transactional
+    public ResumeDto markAsTailored(String email, UUID resumeId) {
+        User user = resolveUser(email);
+        Resume resume = resumeRepository.findByIdAndUser(resumeId, user)
+                .orElseThrow(() -> new ResumeAccessDeniedException(ACCESS_DENIED_MSG));
+        resume.setTailored(true);
+        return toDto(resumeRepository.saveAndFlush(resume));
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     @Transactional
@@ -126,7 +135,8 @@ public class ResumeService {
         if (request.templateId() != null) {
             resume.setTemplateId(request.templateId());
         }
-        return toDto(resumeRepository.save(resume));
+        // flush ensures @PreUpdate fires (sets updatedAt) before toDto reads the field
+        return toDto(resumeRepository.saveAndFlush(resume));
     }
 
     private User resolveUser(String email) {

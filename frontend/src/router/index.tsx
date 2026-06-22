@@ -15,6 +15,7 @@ import EditorPage from "@/pages/EditorPage"
 import ProfilePage from "@/pages/ProfilePage"
 import SettingsPage from "@/pages/SettingsPage"
 import NotFoundPage from "@/pages/NotFoundPage"
+import AiTestPage from "@/pages/AiTestPage"
 
 const AdminPage = lazy(() => import("@/pages/AdminPage"))
 
@@ -56,6 +57,10 @@ export const router = createBrowserRouter([
       {
         path: "/settings",
         element: <SettingsPage />,
+      },
+      {
+        path: "/ai-test",
+        element: <AiTestPage />,
       },
     ],
   },

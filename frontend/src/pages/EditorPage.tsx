@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/apiClient"
 import { useResumeStore } from "@/stores/useResumeStore"
+import { useAuthStore } from "@/stores/useAuthStore"
+import { useChatStore } from "@/stores/useChatStore"
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout"
 import SectionsPanel from "@/components/resume/SectionsPanel"
 import ResumeCanvas from "@/components/resume/ResumeCanvas"
@@ -10,6 +12,9 @@ import EditorToolbar from "@/components/resume/EditorToolbar"
 import SaveAsDialog from "@/components/resume/SaveAsDialog"
 import TemplateGallery from "@/components/resume/TemplateGallery"
 import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
+import ChatPanel from "@/components/resume/ChatPanel"
+import AIActionBar from "@/components/resume/AIActionBar"
+import { useDiffStore } from "@/stores/useDiffStore"
 import { useAutosave } from "@/hooks/useAutosave"
 import type { ResumeDto } from "@/types/api"
 
@@ -63,6 +68,8 @@ export default function EditorPage() {
   const addResume = useResumeStore((state) => state.addResume)
   const removeResume = useResumeStore((state) => state.removeResume)
   const syncCurrentResumeName = useResumeStore((state) => state.syncCurrentResumeName)
+  const isExporting = useResumeStore((state) => state.isExporting)
+  const setExporting = useResumeStore((state) => state.setExporting)
 
   const [sidebarResumes, setSidebarResumes] = useState<ResumeDto[]>(() => resumes)
   const [duplicatingSidebarId, setDuplicatingSidebarId] = useState<string | null>(null)
@@ -97,10 +104,12 @@ export default function EditorPage() {
     load()
   }, [id, setCurrentResume, setLastSavedDocument])
 
-  // Cleanup: clear current resume from store on unmount
+  // Cleanup: clear current resume, chat messages, and diffs from store on unmount
   useEffect(() => {
     return () => {
       setCurrentResume(null)
+      useChatStore.getState().clearMessages()
+      useDiffStore.getState().clearAll()
     }
   }, [setCurrentResume])
 
@@ -118,6 +127,18 @@ export default function EditorPage() {
   useEffect(() => {
     const ref = pendingSidebarDeletes.current
     return () => { ref.forEach(clearTimeout) }
+  }, [])
+
+  // Dismiss AI diff suggestions on any canvas click or Escape keypress
+  useEffect(() => {
+    const handleClick = () => useDiffStore.getState().fadeAll()
+    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") useDiffStore.getState().fadeAll() }
+    document.addEventListener("click", handleClick)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("click", handleClick)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
   }, [])
 
   const handleTitleChange = useCallback(
@@ -190,6 +211,76 @@ export default function EditorPage() {
     navigate("/")
   }, [navigate])
 
+  const exportDocx = useCallback(async () => {
+    if (!id) return
+    if (!currentResume) {
+      toast.error("Resume not loaded — please refresh")
+      return
+    }
+    setExporting(true)
+    try {
+      const token = useAuthStore.getState().token
+      const res = await fetch(`/api/v1/resumes/${id}/export?format=docx`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { detail?: string }
+        throw new Error(body.detail ?? "Export failed")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${currentResume?.name ?? "resume"}.docx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast.success("Download ready", { duration: 4000 })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed", { duration: 8000 })
+    } finally {
+      setExporting(false)
+    }
+  }, [id, currentResume, setExporting])
+
+  const exportPdf = useCallback(async () => {
+    if (!id) return
+    // D3: guard against exporting when the resume failed to load — avoids a blank PDF download
+    if (!currentResume) {
+      toast.error("Resume not loaded — please refresh")
+      return
+    }
+    setExporting(true)
+    try {
+      // Direct fetch (not apiClient) — export returns binary PDF, not JSON.
+      // apiClient.get<T>() calls res.json() which is wrong for binary blobs.
+      // This is an intentional, documented exception to the "all HTTP via apiClient" rule.
+      const token = useAuthStore.getState().token
+      const res = await fetch(`/api/v1/resumes/${id}/export?format=pdf`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { detail?: string }
+        throw new Error(body.detail ?? "Export failed")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${currentResume?.name ?? "resume"}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast.success("Download ready", { duration: 4000 })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed", { duration: 8000 })
+    } finally {
+      setExporting(false)
+    }
+  }, [id, currentResume, setExporting])
+
   const handleDuplicateFromSidebar = useCallback(async (resume: ResumeDto) => {
     setDuplicatingSidebarId(resume.id)
     try {
@@ -244,6 +335,12 @@ export default function EditorPage() {
 
   return (
     <>
+      <a
+        href="#resume-canvas"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-3 focus:py-2 focus:rounded focus:bg-primary focus:text-primary-foreground focus:text-sm"
+      >
+        Skip to resume canvas
+      </a>
       <SplitPaneLayout
         leftSlot={
           <div className="overflow-y-auto h-full">
@@ -276,18 +373,24 @@ export default function EditorPage() {
           </div>
         }
         centerSlot={
-          <div className="flex flex-col h-full overflow-hidden">
+          <div
+            className="flex flex-col h-full overflow-hidden"
+          >
             <EditorToolbar
               resumeName={currentResume?.name ?? ""}
               autosaveStatus={autosaveStatus}
               isDirty={isDirty}
               lastSavedAt={lastSavedAt}
               isSavingAs={isSavingAs}
+              isExporting={isExporting}
               onNameChange={handleNameChange}
               onSave={saveNow}
               onSaveAs={() => setIsSaveAsOpen(true)}
               onBack={handleBack}
+              onExportPdf={exportPdf}
+              onExportDocx={exportDocx}
             />
+            <AIActionBar resumeId={id} />
             {error !== null && !isLoading ? (
               <div className="flex items-center justify-center h-64">
                 <p className="text-destructive">{error}</p>
@@ -315,9 +418,7 @@ export default function EditorPage() {
           </div>
         }
         rightSlot={
-          <div className="p-4 text-sm text-muted-foreground">
-            Chat panel coming in Story 4.3
-          </div>
+          <ChatPanel resumeId={id} />
         }
       />
       <SaveAsDialog

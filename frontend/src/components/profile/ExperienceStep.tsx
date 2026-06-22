@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
-import { EntryDateRangeAndActivity, EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit, makeUpdateField } from "./profileStepShared"
+import { EntryDateRangeAndActivity, EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit, makeUpdateField, makeHandleBlur } from "./profileStepShared"
 import type { ProfileUpdateRequest, WorkExperienceRequest } from "@/types/api"
 
 interface ExperienceDraft {
@@ -65,23 +65,7 @@ export default function ExperienceStep({
   })
 
   const updateField = makeUpdateField<ExperienceDraft, FieldErrors>(setEntries, ["jobTitle", "company"])
-
-  function handleBlur(index: number, field: "jobTitle" | "company") {
-    setEntries((prev) =>
-      prev.map((entry, i) => {
-        if (i !== index) return entry
-        const value = entry.draft[field]
-        if (!value.trim()) {
-          const label = field === "jobTitle" ? "Job title" : "Company"
-          return {
-            ...entry,
-            errors: { ...entry.errors, [field]: `${label} is required` },
-          }
-        }
-        return entry
-      }),
-    )
-  }
+  const handleBlur = makeHandleBlur<ExperienceDraft, FieldErrors>(setEntries, { jobTitle: "Job title", company: "Company" })
 
   function addAnother() {
     setEntries((prev) => [...prev, { draft: emptyDraft(), errors: {} }])

@@ -1,7 +1,7 @@
 ﻿import { useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
 import { Input } from "@/components/ui/input"
-import { EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit } from "./profileStepShared"
+import { EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit, makeUpdateField, makeHandleBlur, makeAddAnother, makeRemoveEntry } from "./profileStepShared"
 import type { CertificationRequest, ProfileUpdateRequest } from "@/types/api"
 
 interface CertificationDraft {
@@ -58,47 +58,10 @@ export default function CertificationsStep({
     }))
   })
 
-  function updateField(
-    index: number,
-    field: keyof Omit<CertificationDraft, "id">,
-    value: string,
-  ) {
-    setEntries((prev) =>
-      prev.map((entry, i) => {
-        if (i !== index) return entry
-        const newDraft = { ...entry.draft, [field]: value }
-        const newErrors = { ...entry.errors }
-        if (field === "name") {
-          delete newErrors.name
-        }
-        return { draft: newDraft, errors: newErrors }
-      }),
-    )
-  }
-
-  function handleBlur(index: number, field: "name") {
-    setEntries((prev) =>
-      prev.map((entry, i) => {
-        if (i !== index) return entry
-        const value = entry.draft[field]
-        if (!value.trim()) {
-          return {
-            ...entry,
-            errors: { ...entry.errors, [field]: "Certification name is required" },
-          }
-        }
-        return entry
-      }),
-    )
-  }
-
-  function addAnother() {
-    setEntries((prev) => [...prev, { draft: emptyDraft(), errors: {} }])
-  }
-
-  function removeEntry(index: number) {
-    setEntries((prev) => prev.filter((_, i) => i !== index))
-  }
+  const updateField = makeUpdateField<CertificationDraft, FieldErrors>(setEntries, ["name"])
+  const handleBlur = makeHandleBlur<CertificationDraft, FieldErrors>(setEntries, "Certification name is required")
+  const addAnother = makeAddAnother(setEntries, emptyDraft, {})
+  const removeEntry = makeRemoveEntry(setEntries)
 
   function validateAll(): EntryState[] {
     return entries.map((entry) => {

@@ -570,6 +570,93 @@ describe("CertificationsStep", () => {
   it("does not call onSaveAndContinue when certification name is empty on submit", async () => {
     await testEmptySubmitDoesNotCall(CertificationsStep, "Certification name is required")
   })
+
+  it("initialises entries from existing profile certifications (lines 49–55)", () => {
+    // Seed the store with a pre-existing certification so the else-branch is exercised
+    useProfileStore.setState((s) => ({
+      ...s,
+      profile: {
+        ...s.profile!,
+        certifications: [
+          {
+            name: "AWS Cloud Practitioner",
+            issuer: "Amazon Web Services",
+            issueDate: "2023-01-01",
+            expirationDate: "2026-01-01",
+          },
+        ],
+      },
+    }))
+
+    const onSaveAndContinue = vi.fn()
+    render(<CertificationsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const nameInput = screen.getByPlaceholderText("e.g. AWS Cloud Practitioner") as HTMLInputElement
+    expect(nameInput.value).toBe("AWS Cloud Practitioner")
+
+    const issuerInput = screen.getByPlaceholderText("e.g. Amazon Web Services") as HTMLInputElement
+    expect(issuerInput.value).toBe("Amazon Web Services")
+  })
+
+  it("removes an entry when the remove button is clicked (line 105)", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<CertificationsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    // Add a second entry
+    const addButton = screen.getByRole("button", { name: /add another/i })
+    await user.click(addButton)
+
+    await waitFor(() => {
+      expect(screen.getAllByPlaceholderText("e.g. AWS Cloud Practitioner")).toHaveLength(2)
+    })
+
+    // Remove the first entry
+    const removeButtons = screen.getAllByRole("button", { name: /remove entry/i })
+    await user.click(removeButtons[0])
+
+    await waitFor(() => {
+      expect(screen.getAllByPlaceholderText("e.g. AWS Cloud Practitioner")).toHaveLength(1)
+    })
+  })
+
+  it("updates issuer field via onChange (line 127)", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<CertificationsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const issuerInput = screen.getByPlaceholderText("e.g. Amazon Web Services") as HTMLInputElement
+    await user.type(issuerInput, "Google")
+
+    expect(issuerInput.value).toBe("Google")
+  })
+
+  it("updates issueDate field via onChange (line 144)", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<CertificationsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    // Find the issue date input by its label
+    const issueDateInput = screen.getByLabelText("Issue Date") as HTMLInputElement
+    await user.type(issueDateInput, "2023-06-01")
+
+    expect(issueDateInput.value).toBe("2023-06-01")
+  })
+
+  it("updates expirationDate field via onChange (line 160)", async () => {
+    const user = userEvent.setup()
+    const onSaveAndContinue = vi.fn()
+
+    render(<CertificationsStep onSaveAndContinue={onSaveAndContinue} />)
+
+    const expirationDateInput = screen.getByLabelText("Expiration Date") as HTMLInputElement
+    await user.type(expirationDateInput, "2026-06-01")
+
+    expect(expirationDateInput.value).toBe("2026-06-01")
+  })
 })
 
 describe("LanguagesStep", () => {

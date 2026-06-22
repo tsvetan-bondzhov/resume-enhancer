@@ -57,6 +57,13 @@ function buildResume(sections: ResumeSectionDto[] = defaultSections): ResumeDto 
   }
 }
 
+function assertSwappedToEducationFirst(reorderSections: ReturnType<typeof vi.fn>) {
+  expect(reorderSections).toHaveBeenCalledOnce()
+  const newOrder = reorderSections.mock.calls[0][0] as ResumeSectionDto[]
+  expect(newOrder[0].sectionType).toBe("EDUCATION")
+  expect(newOrder[1].sectionType).toBe("WORK_EXPERIENCE")
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("SectionsPanel", () => {
@@ -134,10 +141,7 @@ describe("SectionsPanel", () => {
 
     // Move "Education" (index 1) up → should swap with "Work Experience" (index 0)
     fireEvent.click(screen.getByLabelText("Move Education up"))
-    expect(reorderSections).toHaveBeenCalledOnce()
-    const newOrder = reorderSections.mock.calls[0][0] as ResumeSectionDto[]
-    expect(newOrder[0].sectionType).toBe("EDUCATION")
-    expect(newOrder[1].sectionType).toBe("WORK_EXPERIENCE")
+    assertSwappedToEducationFirst(reorderSections)
   })
 
   it("does not call reorderSections when Move Up is clicked for the first section", () => {
@@ -155,10 +159,7 @@ describe("SectionsPanel", () => {
 
     // Move "Work Experience" (index 0) down → should swap with "Education" (index 1)
     fireEvent.click(screen.getByLabelText("Move Work Experience down"))
-    expect(reorderSections).toHaveBeenCalledOnce()
-    const newOrder = reorderSections.mock.calls[0][0] as ResumeSectionDto[]
-    expect(newOrder[0].sectionType).toBe("EDUCATION")
-    expect(newOrder[1].sectionType).toBe("WORK_EXPERIENCE")
+    assertSwappedToEducationFirst(reorderSections)
   })
 
   it("does not call reorderSections when Move Down is clicked for the last section", () => {

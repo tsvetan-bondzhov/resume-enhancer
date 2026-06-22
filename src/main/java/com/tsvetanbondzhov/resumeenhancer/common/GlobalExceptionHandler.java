@@ -1,6 +1,9 @@
 package com.tsvetanbondzhov.resumeenhancer.common;
 
+import com.tsvetanbondzhov.resumeenhancer.ai.InvalidPatchException;
+import com.tsvetanbondzhov.resumeenhancer.ai.OllamaUnavailableException;
 import com.tsvetanbondzhov.resumeenhancer.auth.InvalidCurrentPasswordException;
+import com.tsvetanbondzhov.resumeenhancer.export.UnsupportedExportFormatException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeAccessDeniedException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeNotFoundException;
 import com.tsvetanbondzhov.resumeenhancer.template.TemplateNotFoundException;
@@ -107,6 +110,13 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(UnsupportedExportFormatException.class)
+    public ProblemDetail handleUnsupportedExportFormat(UnsupportedExportFormatException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle(BAD_REQUEST);
+        return problem;
+    }
+
     @ExceptionHandler(TemplateValidationException.class)
     public ProblemDetail handleTemplateValidation(TemplateValidationException ex, HttpServletRequest request) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
@@ -160,6 +170,24 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN, "Access denied");
         problem.setTitle("Forbidden");
+        return problem;
+    }
+
+    @ExceptionHandler(OllamaUnavailableException.class)
+    public ProblemDetail handleOllamaUnavailable(OllamaUnavailableException ex) {
+        log.warn("Ollama unavailable: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "AI features are temporarily unavailable");
+        problem.setTitle("Service Unavailable");
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidPatchException.class)
+    public ProblemDetail handleInvalidPatch(InvalidPatchException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        problem.setTitle("Unprocessable Entity");
         return problem;
     }
 

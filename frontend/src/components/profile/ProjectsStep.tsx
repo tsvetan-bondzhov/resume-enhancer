@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useProfileStore } from "@/stores/useProfileStore"
 import { Input } from "@/components/ui/input"
-import { EntryDateRangeAndActivity, EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit, makeUpdateField } from "./profileStepShared"
+import { EntryDateRangeAndActivity, EmptyState, EntryCardHeader, RequiredField, StepFooter, runSubmit, makeUpdateField, makeHandleBlur, makeAddAnother, makeRemoveEntry } from "./profileStepShared"
 import type { ProjectRequest, ProfileUpdateRequest } from "@/types/api"
 
 interface ProjectDraft {
@@ -66,30 +66,9 @@ export default function ProjectsStep({ onSaveAndContinue }: ProjectsStepProps) {
   })
 
   const updateField = makeUpdateField<ProjectDraft, FieldErrors>(setEntries, ["name"])
-
-  function handleBlur(index: number, field: "name") {
-    setEntries((prev) =>
-      prev.map((entry, i) => {
-        if (i !== index) return entry
-        const value = entry.draft[field]
-        if (!value.trim()) {
-          return {
-            ...entry,
-            errors: { ...entry.errors, [field]: "Project name is required" },
-          }
-        }
-        return entry
-      }),
-    )
-  }
-
-  function addAnother() {
-    setEntries((prev) => [...prev, { draft: emptyDraft(), errors: {} }])
-  }
-
-  function removeEntry(index: number) {
-    setEntries((prev) => prev.filter((_, i) => i !== index))
-  }
+  const handleBlur = makeHandleBlur<ProjectDraft, FieldErrors>(setEntries, "Project name is required")
+  const addAnother = makeAddAnother(setEntries, emptyDraft, {})
+  const removeEntry = makeRemoveEntry(setEntries)
 
   function validateAll(): EntryState[] {
     return entries.map((entry) => {

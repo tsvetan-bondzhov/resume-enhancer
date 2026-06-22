@@ -84,6 +84,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 **React / Frontend**
 - All HTTP calls via `lib/apiClient.ts` only — no raw `fetch()` in components or pages
 - All SSE connections via `lib/sseClient.ts` only — no raw `EventSource` outside this file
+- **Exception — dev-only spike/test pages**: Pages routed exclusively for local development (e.g. `/ai-test` in Story 5.1) may use inline `fetch` + `ReadableStream` when the endpoint requires POST body + JWT `Authorization` header that native `EventSource` cannot supply. This exemption applies only to pages explicitly marked as dev-only spikes; all production chat/AI pages must use `apiClient` and `sseClient`.
 - Never directly edit files under `frontend/src/components/ui/` — these are shadcn-managed
 - Use existing Zustand stores (`useAuthStore`, `useResumeStore`, `useChatStore`, `useProfileStore`) — never introduce `useState` for cross-component shared data
 - Zustand state updates always immutable: `set(state => ({ ...state, field: newValue }))` — never mutate state objects directly

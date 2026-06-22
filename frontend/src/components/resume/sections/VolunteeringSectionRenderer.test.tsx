@@ -105,4 +105,43 @@ describe("VolunteeringSectionRenderer", () => {
     )
     expect(screen.getByText(/Present/)).toBeInTheDocument()
   })
+
+  it("renders add button when onAddItem is provided and items list is empty (line 23)", () => {
+    const onAddItem = vi.fn()
+    render(
+      <VolunteeringSectionRenderer
+        items={[]}
+        onAddItem={onAddItem}
+      />
+    )
+    const addButtons = screen.getAllByLabelText("Add item here")
+    expect(addButtons).toHaveLength(1)
+    fireEvent.click(addButtons[0])
+    expect(onAddItem).toHaveBeenCalledWith(0)
+  })
+
+  it("calls onAddItem with index+1 when add button after an item is clicked (line 53)", () => {
+    const onAddItem = vi.fn()
+    render(
+      <VolunteeringSectionRenderer
+        items={[buildItem({ id: "vol-1" }), buildItem({ id: "vol-2" })]}
+        onAddItem={onAddItem}
+      />
+    )
+    // There should be 3 add buttons: before item 0, after item 0, after item 1
+    const addButtons = screen.getAllByLabelText("Add item here")
+    expect(addButtons.length).toBeGreaterThanOrEqual(3)
+    // Click the second add button (after item 0 → position 1)
+    fireEvent.click(addButtons[1])
+    expect(onAddItem).toHaveBeenCalledWith(1)
+  })
+
+  it("renders read-only date range when onFieldChange is not provided and dates exist", () => {
+    render(
+      <VolunteeringSectionRenderer
+        items={[buildItem({ startDate: "2020-01-01", endDate: "2021-01-01", isCurrent: false })]}
+      />
+    )
+    expect(screen.getByText(/Jan 2020/)).toBeInTheDocument()
+  })
 })

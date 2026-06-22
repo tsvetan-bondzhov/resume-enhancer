@@ -1,5 +1,6 @@
 import React, { useRef } from "react"
 import type { ResumeSectionDto, ResumeItemDto } from "@/types/api"
+import DiffOverlay from "@/components/resume/DiffOverlay"
 import WorkExperienceSectionRenderer from "@/components/resume/sections/WorkExperienceSectionRenderer"
 import EducationSectionRenderer from "@/components/resume/sections/EducationSectionRenderer"
 import SkillsSectionRenderer from "@/components/resume/sections/SkillsSectionRenderer"
@@ -195,6 +196,7 @@ export default function ResumeSection({
           {isTitleEmpty ? SECTION_TITLE_PLACEHOLDER : section.title}
         </h2>
       {renderSectionContent(section, onFieldChange, onAddItem, onDeleteItem, onReorderItems)}
+      <DiffOverlay sectionId={section.sectionType} />
     </section>
   )
 }

@@ -11,6 +11,12 @@
 - **F1** `apiClient.ts` missing `window.location.href = '/login'` redirect on 401 — project-context rule requires redirect on unauthorized. Pre-existing from Story 1.2; `clearAuth()` is called but redirect is absent. Address in Story 1.5 (protected routes / auth shell).
 
 
+## Deferred from: code review of 5-1-ai-streaming-spike-spring-ai-ollama-sse-end-to-end (2026-06-18)
+
+- **F2** `AiController.java` — ExecutorService (virtual thread per task) field never shut down; no `@PreDestroy`. Low impact with virtual threads, but should be addressed before production. Add `@PreDestroy void shutdown() { executor.shutdown(); }`.
+- **F8** `OllamaHealthGuard.java` — Creates a new `HttpClient` instance on every `isAvailable()` call. Leaks connections and blocks the Tomcat thread for up to 6 seconds per request. Pre-existing; refactor to a shared/cached `HttpClient` field.
+- **F11** `frontend/src/router/index.tsx` — `/ai-test` route (AiTestPage) is included in the production bundle with no build-time or runtime exclusion. The page is designated dev-only but is accessible to any authenticated user. Add admin-role guard or environment flag before Epic 5 ships to production.
+
 
 ## Deferred from: code review of 1-5-protected-routes-and-application-shell (2026-05-20)
 
@@ -111,6 +117,67 @@
 ## Deferred from: code review of 9-9-code-style-simplified-conditionals-and-idioms (2026-06-12)
 
 - Latent dedup gap in restore guards (`DashboardPage.tsx`, `EditorPage.tsx`) — rapid delete-then-undo-then-delete cycle can reorder the resume list because the restore appends at the end rather than restoring original position. Not introduced by this story (pre-existing with `.find()`); the `.some()` refactor preserves identical behavior.
+
+## Deferred from: code review of 5-2-documentpatchservice-and-useresumestore-applypatch (2026-06-18)
+
+- **F6** `GlobalExceptionHandler.java` — Exception messages echo user-supplied `patch.field()`, `patch.sectionId()`, `patch.itemIndex()` directly into the 422 response body. Reflected content injection risk. Pre-existing pattern for other exceptions in the handler; address in a future API hardening pass.
+- **F7** `DocumentPatchEvent.java` — No `@Size` constraint on `newValue`; arbitrarily large payloads can bloat persisted resumes. Pre-existing validation pattern in project; address in a future input validation hardening pass.
+- **F8** `DocumentPatchService.java` — If `document.sections()` contains two sections with the same `sectionType`, the `stream().map()` will call `applyToSection` on both, potentially throwing `InvalidPatchException` mid-stream. Requires malformed `ResumeDocument`; domain invariant elsewhere prevents this; address if defensive dedup is ever needed.
+- **F9** `useResumeStore.ts` — `applyPatch` uses `itemIndex` for addressing; if a concurrent `addItem`/`deleteItem` fires in the same render cycle, the index refers to the wrong item. SSE concurrent edit is out of scope for v1; address when real-time collaboration or concurrent AI edits are specified.
+- **F10** `DocumentPatchService.java` — `UNKNOWN` section type is patchable via `GenericItem` branch. Intentional design; address with an explicit reject path if AI should not patch unrecognised sections.
+- **F11** `DocumentPatchService.java` — `@NotBlank` / `@Min(0)` on `DocumentPatchEvent` are only enforced via `@Valid` at the controller level; service is not self-validating. Address when `DocumentPatchService.apply()` is first called from a non-web context (messaging consumer, scheduled task).
+
+## Deferred from: code review of 5-7-accessibility-audit-and-focus-management-for-ai-features (2026-06-19)
+
+- **D1** `TailorJobDialog.tsx:35-38` — Silent no-op when `resumeId` is undefined: `onClose()` fires unconditionally then stream is silently skipped; dialog closes with no feedback. Pre-existing from story 5-5; disable button or show error before closing when `resumeId` is falsy.
+- **D2** `TailorJobDialog.tsx:37` — Return value of `startTailorStream` (a cleanup/cancel function) is discarded; no cancel handle for unmount or re-invocation. Pre-existing from story 5-5.
+- **D3** `TailorJobDialog.tsx:41-47` — State reset only on close, not on re-open; Radix portal may stay alive between open/close cycles leaving stale state on reopen. Pre-existing from story 5-5.
+- **D4** `TailorJobDialog.tsx:62` — `autoFocus` may not re-fire on rapid dialog re-open if Radix portal stays mounted. Requires real-browser testing; use `useEffect` + `ref.focus()` on `open` transition if this becomes observable. Pre-existing Radix behavior.
+- **D5** `TailorJobDialog.tsx:83-86` — `isStreaming` disables submit button with no `aria-disabled` or status message; screen reader users cannot determine why the button is non-interactive. Pre-existing from story 5-5.
+- **D6** `EditorPage.tsx:132` — Global `keydown` Escape listener (`fadeAll()`) and Radix Dialog's built-in Escape handler both fire when dialog is open; non-deterministic execution order. Pre-existing from story 5-6.
+
+## Deferred from: code review of 5-3-ai-chat-panel-and-sse-streaming-integration (2026-06-18)
+
+- **F7** `useStreamingChat.ts` `startStreamWithPost` — `applyPatch` errors not caught in the SSE parsing try/catch; an exception thrown by `applyPatch` would propagate out of the loop. Pre-existing `applyPatch` contract from Story 5.2 (lenient no-op on bad patch fields); address in a future streaming robustness pass.
+- **F10** `ChatPanel.tsx` `MessageBubble` not memoized — every token event triggers a full re-render of the message list because `useChatStore` subscription fires for each `messages` array update. Performance optimization; not an AC violation; acceptable at 288px panel width for v1. Address with `React.memo` + content-address selector if token throughput causes visual jank.
+- **F14** No EditorPage test for `clearMessages()` on unmount — the `useChatStore.clearMessages()` call in the EditorPage unmount cleanup is not test-covered. Low priority; `clearMessages` is covered by `useChatStore.test.ts`; add EditorPage unmount test in a future test quality pass.
+
+## Deferred from: code review of 5-5-ai-job-description-tailoring (2026-06-18)
+
+- `resumeId` UUID format not validated in `AiController.tailor` — `UUID.fromString` throws 500 on non-UUID string; `@NotBlank` only validates non-emptiness; pre-existing pattern documented in story dev notes; same deferred issue as `/enhance` and all `ResumeController` endpoints.
+- `buildTailorPrompt` serializes null item fields as `"null"` literal string via `toString()` — LLM prompt mitigates with "skip empty non-empty fields" instruction; same gap exists in `buildEnhancePrompt`; acceptable for v1.
+- Dispose race in `AiController.tailor`: `emitter.onCompletion(disposable::dispose)` registered after `buildEnhanceDisposable` starts subscription; pre-existing pattern identical to `enhance` endpoint; not introduced by story 5-5.
+- `markResumeAsTailored` async PATCH fetch has no cancellation token — can write `setCurrentResumeTailored(true)` to store after user navigates away; cosmetic badge write; acceptable v1 limitation matching existing enhance behavior.
+
+## Deferred from: code review of 5-6-ai-qa-chat-without-document-edits (2026-06-18)
+
+- **F1** `AiConfig.java` / `MessageWindowChatMemory` — Unbounded `conversationId` map in singleton bean; no eviction, TTL, or maximum-conversations limit. Spring AI 2.0.0-M6 limitation; `maxMessages(20)` caps per-conversation depth only. Address when Spring AI provides eviction API or swap to a bounded cache (Caffeine) in a future memory management pass.
+- **F2** `AiController.java` — Client-supplied `conversationId` not bound to authenticated principal; cross-user memory access possible if a UUID is guessed or leaked. Security hardening not in scope for this story (spec explicitly accepts in-memory ephemeral store); add principal-scoped key or ownership validation in a future AI security hardening pass.
+- **F6** `AiControllerTest.java` — `Thread.sleep(100)` timing hack pre-existing from prior stories; replace with `CountDownLatch` or emitter completion callback in a future test quality pass.
+
+## Deferred from: code review of 5-6-ai-qa-chat-without-document-edits round 2 (2026-06-18)
+
+- **R2-D1** `AiController.java:46` — `ExecutorService executor` not shut down on app context close; pre-existing identical pattern in enhance/tailor endpoints. Add `@PreDestroy` shutdown in a future lifecycle hardening pass.
+- **R2-D2** `AiController.java:78-83` — `onCompletion`/`onTimeout` registered after `buildChatDisposable().subscribe()` (race if Flux completes synchronously); pre-existing pattern in enhance/tailor. Address in a future SSE lifecycle hardening pass.
+- **R2-D3** `ChatRequest.java` — `resumeId` accepted but silently dropped; no resume context enrichment in AI prompt. Intentional per spec for story 5-6; wire resume context into the system prompt in a future conversational context enrichment story.
+- **R2-D4** `ChatPanel.test.tsx` — "patch event dispatches to useResumeStore.applyPatch (AC4, AC8)" test mislabels AC tags (tests patch behavior that AC6 forbids for the chat path). Fix label/remove test in a future test quality pass.
+- **R2-D5** `AiController.java` / `buildChatDisposable` — `done` event sends hardcoded `"Stream complete"` summary; produces a duplicate assistant bubble after the token-accumulated bubble. Pre-existing from story 5-3. Address in a future UX polish pass (send accumulated token content as summary or use empty string to suppress the second bubble).
+
+## Deferred from: code review of 6-1-documentrenderer-interface-and-pdfrenderer (2026-06-19)
+
+- **W1** `PdfRenderException` not registered in `GlobalExceptionHandler` — iText font/write failures surface as generic 500 with `"An unexpected error occurred."` and no retry signal. Pre-existing catch-all pattern; acceptable for v1. Add a specific handler or error code when export reliability SLA is defined.
+- **W2** NPE risk in `findSummaryItem` if Jackson bypasses record compact constructor — `section.items()` could be null if Jackson deserializes JSONB directly bypassing the record's compact constructor null-guard. Requires investigation of Jackson 2.18.x record constructor selection with JSONB. Not triggered by any current code path.
+- **W3** Two-column template with `columns: null` in DB silently drops all body sections — `buildSectionOrder` returns empty when `layout.columns` is null for a two-column template. `TemplateService` validates definitions on write; no valid template in DB should have this state.
+- **W4** `parseFontSize`/`parseMargin` silently ignore `rem`, `em`, `pt` CSS units — falls back to hardcoded defaults. `TemplateService` already validates only `px`/`in` units on template creation, so no valid template triggers this.
+- **W5** `buildFallbackTemplate` creates bare `ResumeTemplate` entity with no `id`/`name` — latent JPA risk if fallback object is ever accidentally passed to a persistence operation. No current code path triggers it; add warning comment for story 6-2 implementer.
+- **W6** `URL.revokeObjectURL` called synchronously after `a.click()` — common browser race; modern browsers handle this safely in practice. Address if download failures are reported on specific browser versions.
+
+## Deferred from: code review of 6-2-docxrenderer-and-export-download-ux (2026-06-19)
+
+- **W1** `DashboardPage.tsx` / `EditorPage.tsx` (exportDocx) — `URL.revokeObjectURL` called synchronously after `a.click()`; browser download initiation is async and revocation may race the download on Firefox. Pre-existing identical pattern in `exportPdf`; address with `setTimeout(() => URL.revokeObjectURL(url), 100)` if download failures are reported.
+- **W2** `ExportFormatDialog.tsx` `onClose` handler — backdrop click / Escape during active export silently no-ops; Cancel button is disabled but Backdrop dismissal gives no feedback. Pre-existing design choice; address with a tooltip or `aria-description` in a future UX accessibility pass.
+- **W3** `DashboardPage.tsx` `handleExport` — no AbortController or in-flight deduplication; rapid double-click can fire two parallel export fetch requests before `setIsExporting(true)` re-render. Pre-existing pattern across delete/duplicate handlers; address when global request cancellation strategy is introduced.
+- **W4** `EditorPage.tsx` — `exportDocx` and `exportPdf` share `isExporting` Zustand state with no early-return guard; `isExporting` button-disabled state prevents concurrent clicks in normal usage but not in race conditions between button render and click. Pre-existing shared-state pattern; address if concurrent export bugs are observed in production.
 
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 

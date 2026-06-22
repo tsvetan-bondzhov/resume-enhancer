@@ -29,3 +29,7 @@ class ResizeObserverStub implements ResizeObserverStubInstance {
 }
 
 globalThis.ResizeObserver = ResizeObserverStub
+
+// jsdom does not implement Element.scrollIntoView — stub it as a no-op so
+// components that call scrollIntoView (e.g. ChatPanel auto-scroll) don't throw in tests.
+Element.prototype.scrollIntoView = () => {}

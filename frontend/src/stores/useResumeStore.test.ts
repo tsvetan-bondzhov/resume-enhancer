@@ -279,6 +279,160 @@ describe("useResumeStore — setCurrentResumeTemplateId (lines 146-148)", () => 
   })
 })
 
+describe("useResumeStore — applyPatch", () => {
+  beforeEach(() => {
+    useResumeStore.setState({ currentResume: buildResume() })
+  })
+
+  it("patches the correct field on the correct item", () => {
+    useResumeStore.getState().applyPatch({
+      sectionId: "WORK_EXPERIENCE",
+      itemIndex: 0,
+      field: "jobTitle",
+      newValue: "Senior Engineer",
+    })
+    const item = useResumeStore.getState().currentResume!.content.sections[0].items[0] as WorkExperienceItemDto
+    expect(item.jobTitle).toBe("Senior Engineer")
+  })
+
+  it("does not mutate other fields on the item", () => {
+    const before = useResumeStore.getState().currentResume!.content.sections[0].items[0] as WorkExperienceItemDto
+    useResumeStore.getState().applyPatch({
+      sectionId: "WORK_EXPERIENCE",
+      itemIndex: 0,
+      field: "jobTitle",
+      newValue: "Senior Engineer",
+    })
+    const after = useResumeStore.getState().currentResume!.content.sections[0].items[0] as WorkExperienceItemDto
+    expect(after.company).toBe(before.company)
+    expect(after.id).toBe(before.id)
+    expect(after.type).toBe(before.type)
+  })
+
+  it("does not mutate original state object (immutable update)", () => {
+    const originalResume = useResumeStore.getState().currentResume!
+    const originalSection = originalResume.content.sections[0]
+    useResumeStore.getState().applyPatch({
+      sectionId: "WORK_EXPERIENCE",
+      itemIndex: 0,
+      field: "jobTitle",
+      newValue: "Senior Engineer",
+    })
+    const newResume = useResumeStore.getState().currentResume!
+    // New resume instance created (immutable)
+    expect(newResume).not.toBe(originalResume)
+    // New section instance created
+    expect(newResume.content.sections[0]).not.toBe(originalSection)
+    // Original section object is unchanged
+    expect((originalSection.items[0] as WorkExperienceItemDto).jobTitle).toBe("Dev")
+  })
+
+  it("patches second item (itemIndex=1)", () => {
+    useResumeStore.getState().applyPatch({
+      sectionId: "WORK_EXPERIENCE",
+      itemIndex: 1,
+      field: "company",
+      newValue: "BigCorp",
+    })
+    const item = useResumeStore.getState().currentResume!.content.sections[0].items[1] as WorkExperienceItemDto
+    expect(item.company).toBe("BigCorp")
+  })
+
+  it("is a no-op for unknown sectionId", () => {
+    const before = useResumeStore.getState().currentResume!
+    useResumeStore.getState().applyPatch({
+      sectionId: "NONEXISTENT",
+      itemIndex: 0,
+      field: "jobTitle",
+      newValue: "X",
+    })
+    expect(useResumeStore.getState().currentResume).toBe(before)
+  })
+
+  it("is a no-op for out-of-bounds itemIndex", () => {
+    const before = useResumeStore.getState().currentResume!
+    useResumeStore.getState().applyPatch({
+      sectionId: "WORK_EXPERIENCE",
+      itemIndex: 99,
+      field: "jobTitle",
+      newValue: "X",
+    })
+    expect(useResumeStore.getState().currentResume).toBe(before)
+  })
+
+  it("is a no-op when currentResume is null", () => {
+    useResumeStore.setState({ currentResume: null })
+    expect(() =>
+      useResumeStore.getState().applyPatch({
+        sectionId: "WORK_EXPERIENCE",
+        itemIndex: 0,
+        field: "jobTitle",
+        newValue: "X",
+      })
+    ).not.toThrow()
+    expect(useResumeStore.getState().currentResume).toBeNull()
+  })
+
+  it("ignores patch with reserved field 'type' (no-op)", () => {
+    const before = useResumeStore.getState().currentResume!
+    useResumeStore.getState().applyPatch({
+      sectionId: "WORK_EXPERIENCE",
+      itemIndex: 0,
+      field: "type",
+      newValue: "EDUCATION",
+    })
+    expect(useResumeStore.getState().currentResume).toBe(before)
+  })
+
+  it("ignores patch with reserved field 'id' (no-op)", () => {
+    const before = useResumeStore.getState().currentResume!
+    useResumeStore.getState().applyPatch({
+      sectionId: "WORK_EXPERIENCE",
+      itemIndex: 0,
+      field: "id",
+      newValue: "new-id",
+    })
+    expect(useResumeStore.getState().currentResume).toBe(before)
+  })
+
+  it("is a no-op for unknown field name not present on item (D1 guard)", () => {
+    const before = useResumeStore.getState().currentResume!
+    useResumeStore.getState().applyPatch({
+      sectionId: "WORK_EXPERIENCE",
+      itemIndex: 0,
+      field: "salary",
+      newValue: "100k",
+    })
+    expect(useResumeStore.getState().currentResume).toBe(before)
+  })
+
+  it("preserves unaffected sections after applyPatch (F5 — multi-section fixture)", () => {
+    const educationSection: ResumeSectionDto = {
+      sectionType: "EDUCATION",
+      title: "Education",
+      visible: true,
+      items: [],
+    }
+    const resume = buildResume(buildSection())
+    resume.content.sections.push(educationSection)
+    useResumeStore.setState({ currentResume: resume })
+
+    useResumeStore.getState().applyPatch({
+      sectionId: "WORK_EXPERIENCE",
+      itemIndex: 0,
+      field: "jobTitle",
+      newValue: "Senior Engineer",
+    })
+
+    const sections = useResumeStore.getState().currentResume!.content.sections
+    // The patched section updated correctly
+    expect((sections[0].items[0] as WorkExperienceItemDto).jobTitle).toBe("Senior Engineer")
+    // The unaffected section is unchanged
+    expect(sections[1].sectionType).toBe("EDUCATION")
+    expect(sections[1].items).toHaveLength(0)
+  })
+})
+
 describe("useResumeStore — updateItemField guard (lines 95-97)", () => {
   beforeEach(() => {
     useResumeStore.setState({ currentResume: buildResume() })

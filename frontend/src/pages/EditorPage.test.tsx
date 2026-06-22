@@ -4,7 +4,20 @@ import { apiClient } from "@/lib/apiClient"
 import { toast } from "sonner"
 import type { ResumeDto } from "@/types/api"
 import { useResumeStore } from "@/stores/useResumeStore"
+import { useAuthStore } from "@/stores/useAuthStore"
 import EditorPage from "./EditorPage"
+
+vi.mock("@/components/resume/ChatPanel", () => ({
+  default: ({ resumeId }: { resumeId: string | undefined }) => (
+    <div data-testid="chat-panel" data-resume-id={resumeId ?? ""} />
+  ),
+}))
+
+vi.mock("@/components/resume/AIActionBar", () => ({
+  default: ({ resumeId }: { resumeId: string | undefined }) => (
+    <div data-testid="ai-action-bar" data-resume-id={resumeId ?? ""} />
+  ),
+}))
 
 vi.mock("@/lib/apiClient", () => ({
   apiClient: {
@@ -85,11 +98,14 @@ describe("EditorPage", () => {
     })
     mockNavigate.mockReset()
     useResumeStore.setState({ resumes: [] })
+    // Reset auth store
+    useAuthStore.setState({ token: null, user: null })
   })
 
   afterEach(() => {
     useResumeStore.getState().setCurrentResume(null)
     useResumeStore.getState().setLastSavedDocument(null)
+    vi.unstubAllGlobals()
   })
 
   it("renders skeleton while loading", () => {
@@ -317,6 +333,24 @@ describe("EditorPage", () => {
     expect(screen.getByText("Sidebar Resume")).toBeInTheDocument()
   })
 
+  it("renders ChatPanel with resumeId from route params", async () => {
+    mockGetWithResume(buildResume())
+    render(<EditorPage />)
+    await waitFor(() =>
+      expect(screen.getByTestId("chat-panel")).toBeInTheDocument()
+    )
+    expect(screen.getByTestId("chat-panel")).toHaveAttribute("data-resume-id", "test-resume-id")
+  })
+
+  it("renders skip link to resume canvas as first focusable element (AC4)", () => {
+    render(<EditorPage />)
+    const skipLink = screen.getByRole("link", { name: /skip to resume canvas/i })
+    expect(skipLink).toBeInTheDocument()
+    expect(skipLink).toHaveAttribute("href", "#resume-canvas")
+    // Should have sr-only class when not focused
+    expect(skipLink.className).toContain("sr-only")
+  })
+
   it("handleApplyTemplate — optimistic update sets templateId on store (lines 160-167)", async () => {
     const resume = buildResume({ id: "test-resume-id", templateId: null })
     mockGetWithResume(resume)
@@ -327,5 +361,153 @@ describe("EditorPage", () => {
     // Call setCurrentResumeTemplateId directly (simulates optimistic update in handleApplyTemplate)
     act(() => { useResumeStore.getState().setCurrentResumeTemplateId("template-xyz") })
     expect(useResumeStore.getState().currentResume?.templateId).toBe("template-xyz")
+  })
+
+  async function runExportSuccessTest(format: string, mimeType: string) {
+    const mockBlob = new Blob([format], { type: mimeType })
+
+    mockGetWithResume(buildResume())
+    render(<EditorPage />)
+    await waitFor(() => screen.getByRole("textbox", { name: /resume name/i }))
+
+    // Stub fetch and DOM APIs AFTER initial render so they don't interfere with rendering
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      blob: () => Promise.resolve(mockBlob),
+    }))
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:test")
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {})
+    const appendChildSpy = vi.spyOn(document.body, "appendChild").mockImplementation((node) => node)
+    const removeChildSpy = vi.spyOn(document.body, "removeChild").mockImplementation((node) => node)
+
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`export resume as ${format}`, "i") }))
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        `/api/v1/resumes/test-resume-id/export?format=${format}`,
+        expect.any(Object),
+      ),
+    )
+    await waitFor(() =>
+      expect(vi.mocked(toast.success)).toHaveBeenCalledWith("Download ready", expect.any(Object)),
+    )
+
+    appendChildSpy.mockRestore()
+    removeChildSpy.mockRestore()
+  }
+
+  it("exportPdf success — fetches binary, triggers download, shows toast", async () => {
+    await runExportSuccessTest("pdf", "application/pdf")
+  })
+
+  it("exportPdf failure — shows error toast", async () => {
+    mockGetWithResume(buildResume())
+    render(<EditorPage />)
+    await waitFor(() => screen.getByRole("textbox", { name: /resume name/i }))
+
+    // Stub fetch AFTER initial render
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ detail: "PDF failed" }),
+    }))
+
+    fireEvent.click(screen.getByRole("button", { name: /export resume as pdf/i }))
+
+    await waitFor(() =>
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith("PDF failed", expect.any(Object)),
+    )
+  })
+
+  it("exportDocx success — fetches binary, triggers download, shows toast", async () => {
+    await runExportSuccessTest("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+  })
+
+  it("exportDocx failure — shows error toast", async () => {
+    mockGetWithResume(buildResume())
+    render(<EditorPage />)
+    await waitFor(() => screen.getByRole("textbox", { name: /resume name/i }))
+
+    // Stub fetch AFTER initial render
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ detail: "DOCX failed" }),
+    }))
+
+    fireEvent.click(screen.getByRole("button", { name: /export resume as docx/i }))
+
+    await waitFor(() =>
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith("DOCX failed", expect.any(Object)),
+    )
+  })
+
+  it("handleDeleteFromSidebar when deleting current resume — navigates to first remaining", async () => {
+    const currentResume = buildResume({ id: "test-resume-id", name: "Active Resume" })
+    const otherResume = buildResume({ id: "other-resume-id", name: "Other Resume" })
+    useResumeStore.setState({ resumes: [currentResume, otherResume] })
+    mockGetWithResume(currentResume)
+    render(<EditorPage />)
+
+    // Wait for sidebar to render — the other resume appears in the sidebar list
+    await waitFor(() => screen.getByText("Other Resume"))
+
+    // Delete the currently active resume (Active Resume) from sidebar
+    const deleteBtn = screen.getByRole("button", { name: /delete active resume/i })
+    fireEvent.click(deleteBtn)
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith("/resumes/other-resume-id"),
+    )
+  })
+
+  it("handleDeleteFromSidebar when deleting current resume and no others remain — navigates to /", async () => {
+    const currentResume = buildResume({ id: "test-resume-id", name: "Only Resume" })
+    useResumeStore.setState({ resumes: [currentResume] })
+    mockGetWithResume(currentResume)
+    render(<EditorPage />)
+
+    // Wait for the resume name to appear in the toolbar
+    await waitFor(() => screen.getByRole("textbox", { name: /resume name/i }))
+
+    // Delete the currently active resume from sidebar — aria-label is "Delete Only Resume"
+    const deleteBtn = screen.getByRole("button", { name: /delete only resume/i })
+    fireEvent.click(deleteBtn)
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith("/"),
+    )
+  })
+
+  it("executeDeleteResume failure — restores resume in sidebar when API fails", async () => {
+    vi.useFakeTimers()
+    try {
+      const sidebarResume = buildResume({ id: "sidebar-resume", name: "Sidebar Resume" })
+      useResumeStore.setState({ resumes: [sidebarResume] })
+      vi.mocked(apiClient.delete).mockRejectedValue(new Error("server error"))
+      mockGetWithResume(buildResume())
+      render(<EditorPage />)
+
+      // Flush async fetch (microtasks run even with fake timers)
+      await act(async () => {})
+
+      // Wait for sidebar to render
+      expect(screen.getByText("Sidebar Resume")).toBeInTheDocument()
+
+      // Click delete — optimistic removal
+      act(() => {
+        fireEvent.click(screen.getByRole("button", { name: /delete sidebar resume/i }))
+      })
+      expect(screen.queryByText("Sidebar Resume")).not.toBeInTheDocument()
+
+      // Fire the 5s timeout — the delete API call will fail, restoring the resume
+      await act(async () => {
+        vi.runAllTimers()
+      })
+
+      // Resume should be restored in the sidebar
+      expect(screen.getByText("Sidebar Resume")).toBeInTheDocument()
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith("Delete failed — resume restored")
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

@@ -536,4 +536,88 @@ describe("ResumeSection", () => {
     expect(heading).toBeInTheDocument()
     expect(heading?.getAttribute("contenteditable")).toBe("true")
   })
+
+  // ─── handleTitleFocus / handleTitleBlur edge cases ───────────────────────
+
+  it("handleTitleFocus clears placeholder text when section title is empty", () => {
+    // Build a section with no title — isTitleEmpty=true means onFocus=handleTitleFocus
+    const section = buildSection({ title: "" })
+    const { container } = render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    const heading = container.querySelector("h2")!
+    // The heading should show the placeholder text before focus
+    expect(heading.textContent).toBe("Click to add section title")
+
+    // Simulate focus — heading.textContent matches SECTION_TITLE_PLACEHOLDER so it clears
+    fireEvent.focus(heading)
+
+    // After focus the placeholder text should have been cleared
+    expect(heading.textContent).toBe("")
+  })
+
+  it("handleTitleBlur restores placeholder when blurred with empty text", () => {
+    const section = buildSection({ title: "" })
+    const onTitleChange = vi.fn()
+    const { container } = render(
+      <ResumeSection
+        section={section}
+        onTitleChange={onTitleChange}
+        onFieldChange={vi.fn()}
+      />
+    )
+    const heading = container.querySelector("h2")!
+
+    // Blur with empty text — handler calls onTitleChange and restores placeholder styles
+    fireEvent.blur(heading, { target: { textContent: "" } })
+
+    // onTitleChange is called with empty string
+    expect(onTitleChange).toHaveBeenCalledWith("")
+    // After blur with empty content, the heading's class list gains the placeholder classes
+    expect(heading.classList.contains("text-gray-300")).toBe(true)
+    expect(heading.classList.contains("italic")).toBe(true)
+  })
+
+  it("handleTitleFocus is NOT attached when section title is non-empty", () => {
+    // When isTitleEmpty=false, onFocus is undefined — focusing should not clear the text
+    const section = buildSection({ title: "Work Experience" })
+    const { container } = render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    const heading = container.querySelector("h2")!
+    expect(heading.textContent).toBe("Work Experience")
+
+    // Fire focus — should not mutate the text since onFocus is undefined
+    fireEvent.focus(heading)
+
+    expect(heading.textContent).toBe("Work Experience")
+  })
+
+  it("handleTitleBlur calls onTitleChange with the non-empty blurred text", () => {
+    const section = buildSection({ title: "" })
+    const onTitleChange = vi.fn()
+    const { container } = render(
+      <ResumeSection
+        section={section}
+        onTitleChange={onTitleChange}
+        onFieldChange={vi.fn()}
+      />
+    )
+    const heading = container.querySelector("h2")!
+
+    fireEvent.blur(heading, { target: { textContent: "New Title" } })
+
+    // Non-empty text — onTitleChange should be called but placeholder should NOT be restored
+    expect(onTitleChange).toHaveBeenCalledWith("New Title")
+    // Heading should NOT be set to placeholder when text is non-empty
+    expect(heading.textContent).not.toBe("Click to add section title")
+  })
 })

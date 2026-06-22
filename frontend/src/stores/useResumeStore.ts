@@ -22,6 +22,7 @@ interface ResumeState {
   reorderSections: (newSections: ResumeSectionDto[]) => void
   updateResumeName: (name: string) => void
   setCurrentResumeTemplateId: (templateId: string | null) => void
+  setCurrentResumeTailored: (value: boolean, resumeId?: string) => void
   applyPatch: (patch: {
     sectionId: string
     itemIndex: number
@@ -174,10 +175,49 @@ export const useResumeStore = create<ResumeState>((set) => ({
         currentResume: { ...state.currentResume, templateId },
       }
     }),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  applyPatch: (_patch) => {
-    // No-op stub — fully implemented in Story 4.2
-  },
+  setCurrentResumeTailored: (value, resumeId) =>
+    set((state) => {
+      // Resolve the target ID: prefer explicit resumeId arg, fall back to currentResume
+      const targetId = resumeId ?? state.currentResume?.id
+      return {
+        ...state,
+        currentResume:
+          state.currentResume && (!targetId || state.currentResume.id === targetId)
+            ? { ...state.currentResume, isTailored: value }
+            : state.currentResume,
+        resumes: targetId
+          ? state.resumes.map((r) => (r.id === targetId ? { ...r, isTailored: value } : r))
+          : state.resumes,
+      }
+    }),
+  applyPatch: (patch) =>
+    set((state) => {
+      if (!state.currentResume) return state
+      // Guard: never mutate reserved discriminant fields
+      if (patch.field === "type" || patch.field === "id") return state
+      const sections = state.currentResume.content.sections
+      const sectionIndex = sections.findIndex((s) => s.sectionType === patch.sectionId)
+      if (sectionIndex === -1) return state // unknown section — no-op (same as backend InvalidPatchException but frontend is lenient)
+      const section = sections[sectionIndex]
+      if (patch.itemIndex < 0 || patch.itemIndex >= section.items.length) return state // out-of-bounds — no-op
+      const targetItem = section.items[patch.itemIndex]
+      if (!(patch.field in targetItem)) return state // unknown field — no-op guard (D1 resolution)
+      const updatedItem = { ...targetItem, [patch.field]: patch.newValue }
+      const updatedSection: ResumeSectionDto = {
+        ...section,
+        items: section.items.map((item, idx) => (idx === patch.itemIndex ? updatedItem : item)),
+      }
+      return {
+        ...state,
+        currentResume: {
+          ...state.currentResume,
+          content: {
+            ...state.currentResume.content,
+            sections: sections.map((s, idx) => (idx === sectionIndex ? updatedSection : s)),
+          },
+        },
+      }
+    }),
   addItem: (sectionType, position) =>
     set((state) => {
       if (!state.currentResume) return state
