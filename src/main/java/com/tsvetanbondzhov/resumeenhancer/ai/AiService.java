@@ -220,6 +220,10 @@ public class AiService {
         }
     }
 
+    public void clearConversation(String conversationId, ChatMemory chatMemory) {
+        chatMemory.clear(conversationId);
+    }
+
     String getPromptTemplateName(String sectionType) {
         return switch (sectionType) {
             case "WORK_EXPERIENCE" -> "prompts/resume-extraction-work-experience.st";

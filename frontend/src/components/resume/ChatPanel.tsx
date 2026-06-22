@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react"
+import { Trash2 } from "lucide-react"
 import { useChatStore } from "@/stores/useChatStore"
 import { useStreamingChat } from "@/hooks/useStreamingChat"
+import { apiClient } from "@/lib/apiClient"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import type { ChatMessage, PatchDiff } from "@/types/api"
@@ -97,6 +99,7 @@ export default function ChatPanel({ resumeId, conversationId }: ChatPanelProps) 
   const messages = useChatStore((state) => state.messages)
   const isStreaming = useChatStore((state) => state.isStreaming)
   const addMessage = useChatStore((state) => state.addMessage)
+  const clearMessages = useChatStore((state) => state.clearMessages)
 
   const [inputValue, setInputValue] = useState("")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -137,6 +140,18 @@ export default function ChatPanel({ resumeId, conversationId }: ChatPanelProps) 
       cleanupRef.current?.()
     }
   }, [])
+
+  async function handleClearSession() {
+    if (isStreaming) return
+    const conversationId = conversationIdRef.current
+    clearMessages()
+    conversationIdRef.current = crypto.randomUUID()
+    try {
+      await apiClient.delete(`/api/v1/ai/chat/${conversationId}`)
+    } catch {
+      // Non-critical — local state already cleared
+    }
+  }
 
   function handleSubmit() {
     const prompt = inputValue.trim()
@@ -197,6 +212,19 @@ export default function ChatPanel({ resumeId, conversationId }: ChatPanelProps) 
 
   return (
     <div className="flex flex-col h-full bg-card">
+      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+        <span className="text-xs font-medium text-muted-foreground">AI Chat</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Clear chat session"
+          disabled={isStreaming}
+          onClick={handleClearSession}
+          className="h-6 w-6"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
       {/* Message list */}
       <div
         role="log"
