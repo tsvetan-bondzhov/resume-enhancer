@@ -24,23 +24,16 @@ export default function DiffHighlight({
 
   if (state === "hidden") return null
 
-  const showOld = isHovering && kind === "rewrite" && !!previousValue
+  const showPopup = isHovering && kind === "rewrite" && !!previousValue
 
-  const displayText = showOld ? previousValue : children
-  let bgClass: string
-  if (showOld) {
-    bgClass = "bg-rose-100 text-rose-700"
-  } else if (kind === "addition") {
-    bgClass = "bg-emerald-100 text-emerald-700"
-  } else {
-    bgClass = "bg-amber-100 text-amber-700"
-  }
+  const bgClass =
+    kind === "addition"
+      ? "bg-emerald-100 text-emerald-700"
+      : "bg-amber-100 text-amber-700"
 
   return (
     <section
-      aria-label={kind === "addition" ? "AI addition" : "Modified: hover to see original text"}
-      aria-live="polite"
-      title={kind === "rewrite" && previousValue ? previousValue : undefined}
+      aria-label={kind === "addition" ? "AI addition" : "Modified: hover to compare original and new text"}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       className={[
@@ -51,10 +44,25 @@ export default function DiffHighlight({
         .filter(Boolean)
         .join(" ")}
     >
+      {showPopup && (
+        <span
+          role="tooltip"
+          className="absolute bottom-full left-1/2 z-10 mb-1 flex w-max max-w-xs -translate-x-1/2 flex-col gap-1 rounded-md border border-slate-200 bg-white p-2 text-left text-xs shadow-md"
+        >
+          <span className="flex items-baseline gap-1">
+            <span aria-hidden="true" className="font-semibold text-rose-600">−</span>
+            <span className="text-rose-600 line-through">{previousValue}</span>
+          </span>
+          <span className="flex items-baseline gap-1">
+            <span aria-hidden="true" className="font-semibold text-emerald-600">+</span>
+            <span className="text-emerald-600">{children}</span>
+          </span>
+        </span>
+      )}
       <span aria-hidden="true" className="mr-0.5 text-xs">
         {kind === "addition" ? "+" : "~"}
       </span>
-      {displayText}
+      {children}
       <span className="inline-flex gap-0.5 ml-1 align-middle">
         <button
           type="button"

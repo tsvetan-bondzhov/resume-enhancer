@@ -34,12 +34,44 @@ describe("DiffHighlight", () => {
         updated text
       </DiffHighlight>
     )
-    const mark = screen.getByRole("region", { name: "Modified: hover to see original text" })
+    const mark = screen.getByRole("region", {
+      name: "Modified: hover to compare original and new text",
+    })
     expect(mark).toBeInTheDocument()
     expect(mark.className).toContain("bg-amber-100")
     expect(mark.className).toContain("text-amber-700")
     // ~ icon is present
     expect(mark.textContent).toContain("~")
+  })
+
+  it("rewrite hover — shows tooltip with both old and new values; new value always rendered", async () => {
+    render(
+      <DiffHighlight
+        kind="rewrite"
+        state="visible"
+        previousValue="old text"
+        onAccept={vi.fn()}
+        onReject={vi.fn()}
+      >
+        new text
+      </DiffHighlight>
+    )
+    const mark = screen.getByRole("region", {
+      name: "Modified: hover to compare original and new text",
+    })
+    // new value is always visible (no jitter / text swap)
+    expect(mark.textContent).toContain("new text")
+    // tooltip hidden until hover
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+
+    await userEvent.hover(mark)
+    const tooltip = screen.getByRole("tooltip")
+    expect(tooltip).toBeInTheDocument()
+    expect(tooltip.textContent).toContain("old text")
+    expect(tooltip.textContent).toContain("new text")
+
+    await userEvent.unhover(mark)
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
   })
 
   it("faded state — renders mark with opacity-50 class", () => {
