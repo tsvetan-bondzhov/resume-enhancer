@@ -165,11 +165,20 @@ export interface SaveAsRequest {
   name: string
 }
 
+export interface PatchDiff {
+  kind: "rewrite" | "addition" | "deletion"
+  sectionId: string
+  field: string
+  newValue: string
+}
+
 export interface ChatMessage {
   id: string
   role: "user" | "assistant"
   content: string
   timestamp: string
+  type?: "text" | "patch"
+  diffs?: PatchDiff[]
 }
 
 export interface WorkExperienceDto {

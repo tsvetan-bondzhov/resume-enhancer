@@ -4,7 +4,7 @@ import { useChatStore } from "@/stores/useChatStore"
 import { useAuthStore } from "@/stores/useAuthStore"
 import { useDiffStore } from "@/stores/useDiffStore"
 import { apiClient } from "@/lib/apiClient"
-import type { ResumeDto } from "@/types/api"
+import type { PatchDiff, ResumeDto } from "@/types/api"
 
 export interface UseStreamingChatOptions {
   onDone?: (summary: string) => void
@@ -43,6 +43,7 @@ function handleBasicSseEvent(
   eventName: string,
   parsed: Record<string, unknown>,
   assistantMsgId: string,
+  pendingDiffs: PatchDiff[],
   applyPatch: (patch: PatchEvent) => void,
   setStreaming: (v: boolean) => void,
   options: UseStreamingChatOptions
@@ -50,8 +51,25 @@ function handleBasicSseEvent(
   if (eventName === "token") {
     appendTokenToMessage(assistantMsgId, parsed.token as string)
   } else if (eventName === "patch") {
-    applyPatch(parsed as PatchEvent)
+    const p = parsed as PatchEvent
+    const resumeState = useResumeStore.getState()
+    const sections = resumeState.currentResume?.content.sections ?? []
+    const section = sections.find((s) => s.sectionType === p.sectionId)
+    const item = section?.items[p.itemIndex]
+    const previousValue = item
+      ? ((item as unknown as Record<string, unknown>)[p.field] as string) ?? ""
+      : ""
+    pendingDiffs.push({
+      kind: previousValue ? "rewrite" : "addition",
+      sectionId: p.sectionId,
+      field: p.field,
+      newValue: p.newValue,
+    })
+    applyPatch(p)
   } else if (eventName === "done") {
+    if (pendingDiffs.length > 0) {
+      useChatStore.getState().updateMessage(assistantMsgId, { type: "patch", diffs: [...pendingDiffs] })
+    }
     setStreaming(false)
     options.onDone?.((parsed.summary as string) ?? "")
   } else if (eventName === "error") {
@@ -65,6 +83,7 @@ function dispatchBasicEvent(
   eventName: string,
   dataLine: string,
   assistantMsgId: string,
+  pendingDiffs: PatchDiff[],
   applyPatch: (patch: PatchEvent) => void,
   setStreaming: (v: boolean) => void,
   options: UseStreamingChatOptions
@@ -72,7 +91,7 @@ function dispatchBasicEvent(
   if (!eventName || !dataLine) return
   try {
     const parsed = JSON.parse(dataLine) as Record<string, unknown>
-    handleBasicSseEvent(eventName, parsed, assistantMsgId, applyPatch, setStreaming, options)
+    handleBasicSseEvent(eventName, parsed, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
   } catch {
     // malformed JSON — ignore
   }
@@ -83,6 +102,7 @@ function handleEnhanceSseEvent(
   eventName: string,
   parsed: Record<string, unknown>,
   assistantMsgId: string,
+  pendingDiffs: PatchDiff[],
   applyPatch: (patch: PatchEvent) => void,
   setStreaming: (v: boolean) => void,
   options: UseStreamingChatOptions
@@ -90,8 +110,11 @@ function handleEnhanceSseEvent(
   if (eventName === "token") {
     appendTokenToMessage(assistantMsgId, parsed.token as string)
   } else if (eventName === "patch") {
-    applyEnhancePatch(parsed as PatchEvent, applyPatch)
+    applyEnhancePatch(parsed as PatchEvent, pendingDiffs, applyPatch)
   } else if (eventName === "done") {
+    if (pendingDiffs.length > 0) {
+      useChatStore.getState().updateMessage(assistantMsgId, { type: "patch", diffs: [...pendingDiffs] })
+    }
     setStreaming(false)
     options.onDone?.((parsed.summary as string) ?? "")
   } else if (eventName === "error") {
@@ -101,8 +124,7 @@ function handleEnhanceSseEvent(
 }
 
 /** Apply an enhance patch event including diff store registration. */
-function applyEnhancePatch(patchEvent: PatchEvent, applyPatch: (patch: PatchEvent) => void): void {
-  // Capture previousValue BEFORE applying the patch
+function applyEnhancePatch(patchEvent: PatchEvent, pendingDiffs: PatchDiff[], applyPatch: (patch: PatchEvent) => void): void {
   const resumeState = useResumeStore.getState()
   const sections = resumeState.currentResume?.content.sections ?? []
   const section = sections.find((s) => s.sectionType === patchEvent.sectionId)
@@ -111,7 +133,6 @@ function applyEnhancePatch(patchEvent: PatchEvent, applyPatch: (patch: PatchEven
     ? ((item as unknown as Record<string, unknown>)[patchEvent.field] as string) ?? ""
     : ""
 
-  // Add diff entry BEFORE applying patch
   const diffId = crypto.randomUUID()
   const kind = previousValue ? "rewrite" : "addition"
   useDiffStore.getState().addDiff({
@@ -125,7 +146,8 @@ function applyEnhancePatch(patchEvent: PatchEvent, applyPatch: (patch: PatchEven
     state: "visible",
   })
 
-  // Then apply the patch (live update to ResumeCanvas)
+  pendingDiffs.push({ kind, sectionId: patchEvent.sectionId, field: patchEvent.field, newValue: patchEvent.newValue })
+
   applyPatch(patchEvent)
 }
 
@@ -134,6 +156,7 @@ function dispatchEnhanceEvent(
   eventName: string,
   dataLine: string,
   assistantMsgId: string,
+  pendingDiffs: PatchDiff[],
   applyPatch: (patch: PatchEvent) => void,
   setStreaming: (v: boolean) => void,
   options: UseStreamingChatOptions
@@ -141,7 +164,7 @@ function dispatchEnhanceEvent(
   if (!eventName || !dataLine) return
   try {
     const parsed = JSON.parse(dataLine) as Record<string, unknown>
-    handleEnhanceSseEvent(eventName, parsed, assistantMsgId, applyPatch, setStreaming, options)
+    handleEnhanceSseEvent(eventName, parsed, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
   } catch {
     // malformed JSON — ignore
   }
@@ -243,6 +266,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
 
     const token = useAuthStore.getState().token
     const ref: CancelRef = { cancelled: false, reader: null }
+    const pendingDiffs: PatchDiff[] = []
 
     fetch(url, {
       method: "POST",
@@ -269,7 +293,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
           const result = processBuffer(buffer, chunk, sseState, (en, dl) =>
-            dispatchBasicEvent(en, dl, assistantMsgId, applyPatch, setStreaming, options)
+            dispatchBasicEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
           )
           buffer = result.remaining
           sseState = { eventName: result.eventName, dataLine: result.dataLine }
@@ -278,7 +302,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
         // F3: flush remaining buffer content when stream ends without a trailing newline
         if (!ref.cancelled && buffer.trim()) {
           const { eventName: en, dataLine: dl } = parseSseLine(buffer.trim(), sseState.eventName, sseState.dataLine)
-          dispatchBasicEvent(en, dl, assistantMsgId, applyPatch, setStreaming, options)
+          dispatchBasicEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
         }
         if (!ref.cancelled) setStreaming(false)
       })
@@ -305,6 +329,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
 
     const token = useAuthStore.getState().token
     const ref: CancelRef = { cancelled: false, reader: null }
+    const pendingDiffs: PatchDiff[] = []
 
     fetch("/api/v1/ai/enhance", {
       method: "POST",
@@ -331,7 +356,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
           const result = processBuffer(buffer, chunk, sseState, (en, dl) =>
-            dispatchEnhanceEvent(en, dl, assistantMsgId, applyPatch, setStreaming, options)
+            dispatchEnhanceEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
           )
           buffer = result.remaining
           sseState = { eventName: result.eventName, dataLine: result.dataLine }
@@ -340,7 +365,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
         // Flush remaining buffer content when stream ends without trailing newline
         if (!ref.cancelled && buffer.trim()) {
           const { eventName: en, dataLine: dl } = parseSseLine(buffer.trim(), sseState.eventName, sseState.dataLine)
-          dispatchEnhanceEvent(en, dl, assistantMsgId, applyPatch, setStreaming, options)
+          dispatchEnhanceEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
         }
         if (!ref.cancelled) setStreaming(false)
       })
@@ -377,6 +402,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
 
     const authToken = useAuthStore.getState().token
     const ref: CancelRef = { cancelled: false, reader: null }
+    const pendingDiffs: PatchDiff[] = []
     // F4: track whether a successful `done` SSE event was received
     let tailorDoneReceived = false
     const tailorOptions: UseStreamingChatOptions = {
@@ -413,7 +439,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
           const result = processBuffer(buffer, chunk, sseState, (en, dl) =>
-            dispatchEnhanceEvent(en, dl, assistantMsgId, applyPatch, setStreaming, tailorOptions)
+            dispatchEnhanceEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, tailorOptions)
           )
           buffer = result.remaining
           sseState = { eventName: result.eventName, dataLine: result.dataLine }
@@ -422,7 +448,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
         // Flush remaining buffer content when stream ends without trailing newline
         if (!ref.cancelled && buffer.trim()) {
           const { eventName: en, dataLine: dl } = parseSseLine(buffer.trim(), sseState.eventName, sseState.dataLine)
-          dispatchEnhanceEvent(en, dl, assistantMsgId, applyPatch, setStreaming, tailorOptions)
+          dispatchEnhanceEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, tailorOptions)
         }
         // F4: only mark as tailored when the SSE `done` event was received (not on `error`)
         if (!ref.cancelled && tailorDoneReceived) {

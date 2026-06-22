@@ -3,13 +3,64 @@ import { useChatStore } from "@/stores/useChatStore"
 import { useStreamingChat } from "@/hooks/useStreamingChat"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import type { ChatMessage } from "@/types/api"
+import type { ChatMessage, PatchDiff } from "@/types/api"
 
 export interface ChatPanelProps {
   readonly resumeId: string | undefined
 }
 
+function diffLineStyle(kind: PatchDiff["kind"]): string {
+  if (kind === "addition") return "text-green-600 dark:text-green-400"
+  if (kind === "deletion") return "text-red-600 dark:text-red-400"
+  return "text-amber-600 dark:text-amber-400"
+}
+
+function diffPrefix(kind: PatchDiff["kind"]): string {
+  if (kind === "addition") return "+"
+  if (kind === "deletion") return "-"
+  return "~"
+}
+
+function truncate(value: string, max = 60): string {
+  return value.length > max ? value.slice(0, max) + "…" : value
+}
+
+function PatchMessageBubble({ message }: { readonly message: ChatMessage }) {
+  const diffs = message.diffs ?? []
+  return (
+    <div className="flex flex-col items-start">
+      <div className="max-w-[85%] rounded-2xl px-3 py-2 text-sm bg-muted text-foreground">
+        <span className="inline-block mb-2 rounded px-1.5 py-0.5 text-xs font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+          AI suggested changes
+        </span>
+        {diffs.length > 0 ? (
+          <ul className="font-mono text-xs space-y-0.5">
+            {diffs.map((diff) => (
+              <li key={`${diff.kind}-${diff.sectionId}-${diff.field}`} className={diffLineStyle(diff.kind)}>
+                <span className="font-bold mr-1">{diffPrefix(diff.kind)}</span>
+                <span className="opacity-70 mr-1">{diff.sectionId.toLowerCase()}.{diff.field}:</span>
+                <span>{truncate(diff.newValue)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground">{message.content || "Patch applied."}</p>
+        )}
+      </div>
+      <span className="text-xs text-muted-foreground mt-1 px-1">
+        {new Date(message.timestamp).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </span>
+    </div>
+  )
+}
+
 function MessageBubble({ message }: { readonly message: ChatMessage }) {
+  if (message.type === "patch") {
+    return <PatchMessageBubble message={message} />
+  }
   const isUser = message.role === "user"
   return (
     <div className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
