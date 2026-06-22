@@ -10,8 +10,11 @@ import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StreamUtils;
 import reactor.core.publisher.Flux;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
@@ -20,23 +23,13 @@ public class AiService {
 
     private static final Logger log = LoggerFactory.getLogger(AiService.class);
     private static final String OLLAMA_UNAVAILABLE_PREFIX = "Ollama is unavailable: ";
-    static final String RESUME_ASSISTANT_SYSTEM_PROMPT = """
-            You are a professional resume assistant with deep expertise in career coaching and resume writing.
-            You have access to the user's resume content and must give specific, actionable advice grounded in \
-            their actual experience — not generic tips.
-            When answering questions about the resume, reference specific sections, job titles, companies, \
-            skills, or dates that appear in the resume.
-            When suggesting improvements, explain why the change strengthens the resume (impact, clarity, \
-            relevance, or keyword alignment).
-            Never invent experience or qualifications the user has not listed.
-            Keep responses concise and focused on the user's career goals.
-            """;
-
 
     private final ChatClient chatClient;
+    private final String chatSystemPrompt;
 
     public AiService(ChatClient.Builder chatClientBuilder) {
         this.chatClient = chatClientBuilder.build();
+        this.chatSystemPrompt = loadPrompt("prompts/chat-system.st");
     }
 
     /**
@@ -71,7 +64,6 @@ public class AiService {
                     .user(prompt)
                     .stream()
                     .content()
-                    // F3: map reactive mid-stream errors — try/catch only covers Flux assembly errors
                     .onErrorMap(e -> new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e));
         } catch (Exception e) {
             log.warn("Ollama streaming call failed: {}", e.getMessage());
@@ -91,8 +83,8 @@ public class AiService {
     public Flux<String> streamChat(String prompt, String conversationId, ChatMemory chatMemory, String resumeContext) {
         try {
             String systemPrompt = resumeContext == null || resumeContext.isBlank()
-                    ? RESUME_ASSISTANT_SYSTEM_PROMPT
-                    : RESUME_ASSISTANT_SYSTEM_PROMPT + "\n" + resumeContext;
+                    ? chatSystemPrompt
+                    : chatSystemPrompt + "\n" + resumeContext;
             return chatClient.prompt()
                     .system(systemPrompt)
                     .user(prompt)
@@ -129,7 +121,7 @@ public class AiService {
         try {
             String prompt = buildEnhancePrompt(document);
             return chatClient.prompt()
-                    .system(RESUME_ASSISTANT_SYSTEM_PROMPT)
+                    .system(chatSystemPrompt)
                     .user(prompt)
                     .stream()
                     .content()
@@ -151,7 +143,7 @@ public class AiService {
         try {
             String prompt = buildTailorPrompt(document, jobDescription);
             return chatClient.prompt()
-                    .system(RESUME_ASSISTANT_SYSTEM_PROMPT)
+                    .system(chatSystemPrompt)
                     .user(prompt)
                     .stream()
                     .content()
@@ -163,56 +155,19 @@ public class AiService {
     }
 
     String buildTailorPrompt(ResumeDocument document, String jobDescription) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("""
-                You are an expert resume coach. Rewrite the resume below to align with the job description.
-                For each change, output exactly ONE JSON object on its own line in this format:
-                {"sectionId":"<sectionType>","itemIndex":<0-based index>,"field":"<field name>","newValue":"<tailored text>"}
-
-                Rules:
-                - Output ONLY the JSON objects, one per line — no prose, no markdown, no explanations
-                - sectionId must be the exact sectionType value (e.g. WORK_EXPERIENCE, SUMMARY, SKILLS)
-                - itemIndex is the 0-based position of the item within that section's items array
-                - field is the exact field name to rewrite (e.g. description, jobTitle, name, text)
-                - newValue is the tailored text — aligned with the job's keywords and requirements
-                - Only suggest changes for fields that have existing non-empty text
-                - Limit to the most impactful changes (max 8 total)
-                - Preserve factual accuracy — do not invent experience or qualifications
-
-                Job Description:
-                """);
-        sb.append(jobDescription).append("\n\n");
-        sb.append("Resume:\n");
-        for (var section : document.sections()) {
-            if (!section.visible()) continue;
-            sb.append("Section: ").append(section.sectionType()).append("\n");
-            var items = section.items();
-            for (int i = 0; i < items.size(); i++) {
-                sb.append("  Item ").append(i).append(": ").append(items.get(i)).append("\n");
-            }
-        }
-        return sb.toString();
+        String template = loadPrompt("prompts/tailor-user.st");
+        return template
+                .replace("{jobDescription}", jobDescription)
+                .replace("{resumeContent}", buildResumeContent(document));
     }
 
     String buildEnhancePrompt(ResumeDocument document) {
+        String template = loadPrompt("prompts/enhance-user.st");
+        return template.replace("{resumeContent}", buildResumeContent(document));
+    }
+
+    private String buildResumeContent(ResumeDocument document) {
         StringBuilder sb = new StringBuilder();
-        sb.append("""
-                You are an expert resume coach. Analyze the resume below and suggest improvements.
-                For each improvement, output exactly ONE JSON object on its own line in this format:
-                {"sectionId":"<sectionType>","itemIndex":<0-based index>,"field":"<field name>","newValue":"<improved text>"}
-
-                Rules:
-                - Output ONLY the JSON objects, one per line — no prose, no markdown, no explanations
-                - sectionId must be the exact sectionType value (e.g. WORK_EXPERIENCE, SUMMARY, SKILLS)
-                - itemIndex is the 0-based position of the item within that section's items array
-                - field is the exact field name to improve (e.g. description, jobTitle, name)
-                - newValue is the improved text — concise, impactful, action-verb led
-                - Only suggest changes for fields that have existing non-empty text
-                - Limit suggestions to the most impactful improvements (max 5 total)
-
-                Resume:
-                """);
-
         for (var section : document.sections()) {
             if (!section.visible()) continue;
             sb.append("Section: ").append(section.sectionType()).append("\n");
@@ -221,7 +176,6 @@ public class AiService {
                 sb.append("  Item ").append(i).append(": ").append(items.get(i)).append("\n");
             }
         }
-
         return sb.toString();
     }
 
@@ -243,6 +197,16 @@ public class AiService {
 
                     Return the JSON array now:
                     """, sectionType, sectionText);
+        }
+    }
+
+    private String loadPrompt(String resourcePath) {
+        try {
+            ClassPathResource resource = new ClassPathResource(resourcePath);
+            return StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.warn("Failed to load prompt from {}: {}", resourcePath, e.getMessage());
+            return "";
         }
     }
 

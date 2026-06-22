@@ -25,6 +25,16 @@ function truncate(value: string, max = 60): string {
   return value.length > max ? value.slice(0, max) + "…" : value
 }
 
+function diffLabel(diff: PatchDiff): string {
+  if (diff.kind === "addition" && !diff.field) {
+    return `${diff.sectionId.toLowerCase()}: new item added`
+  }
+  if (diff.kind === "deletion") {
+    return `${diff.sectionId.toLowerCase()}: item removed`
+  }
+  return `${diff.sectionId.toLowerCase()}.${diff.field}: ${truncate(diff.newValue)}`
+}
+
 function PatchMessageBubble({ message }: { readonly message: ChatMessage }) {
   const diffs = message.diffs ?? []
   return (
@@ -35,11 +45,10 @@ function PatchMessageBubble({ message }: { readonly message: ChatMessage }) {
         </span>
         {diffs.length > 0 ? (
           <ul className="font-mono text-xs space-y-0.5">
-            {diffs.map((diff) => (
-              <li key={`${diff.kind}-${diff.sectionId}-${diff.field}`} className={diffLineStyle(diff.kind)}>
+            {diffs.map((diff, i) => (
+              <li key={`${diff.kind}-${diff.sectionId}-${diff.field}-${i}`} className={diffLineStyle(diff.kind)}>
                 <span className="font-bold mr-1">{diffPrefix(diff.kind)}</span>
-                <span className="opacity-70 mr-1">{diff.sectionId.toLowerCase()}.{diff.field}:</span>
-                <span>{truncate(diff.newValue)}</span>
+                <span>{diffLabel(diff)}</span>
               </li>
             ))}
           </ul>

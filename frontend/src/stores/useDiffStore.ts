@@ -7,7 +7,7 @@ export interface DiffEntry {
   field: string
   newValue: string
   previousValue: string
-  kind: "addition" | "rewrite"
+  kind: "addition" | "rewrite" | "deletion"
   state: "visible" | "faded" | "hidden"
 }
 

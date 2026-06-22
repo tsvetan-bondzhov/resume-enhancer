@@ -11,7 +11,16 @@ export interface UseStreamingChatOptions {
   onError?: (detail: string) => void
 }
 
-type PatchEvent = { sectionId: string; itemIndex: number; field: string; newValue: string }
+type PatchEvent = {
+  sectionId: string
+  op?: string
+  itemIndex?: number
+  field?: string
+  newValue?: string
+  item?: Record<string, unknown>
+}
+
+type ModifyPatch = { sectionId: string; itemIndex: number; field: string; newValue: string }
 
 /** Parse a single SSE line, updating eventName/dataLine accumulators. */
 function parseSseLine(
@@ -44,66 +53,7 @@ function handleBasicSseEvent(
   parsed: Record<string, unknown>,
   assistantMsgId: string,
   pendingDiffs: PatchDiff[],
-  applyPatch: (patch: PatchEvent) => void,
-  setStreaming: (v: boolean) => void,
-  options: UseStreamingChatOptions
-): void {
-  if (eventName === "token") {
-    appendTokenToMessage(assistantMsgId, parsed.token as string)
-  } else if (eventName === "patch") {
-    const p = parsed as PatchEvent
-    const resumeState = useResumeStore.getState()
-    const sections = resumeState.currentResume?.content.sections ?? []
-    const section = sections.find((s) => s.sectionType === p.sectionId)
-    const item = section?.items[p.itemIndex]
-    const previousValue = item
-      ? ((item as unknown as Record<string, unknown>)[p.field] as string) ?? ""
-      : ""
-    pendingDiffs.push({
-      kind: previousValue ? "rewrite" : "addition",
-      sectionId: p.sectionId,
-      field: p.field,
-      newValue: p.newValue,
-    })
-    applyPatch(p)
-  } else if (eventName === "done") {
-    if (pendingDiffs.length > 0) {
-      useChatStore.getState().updateMessage(assistantMsgId, { type: "patch", diffs: [...pendingDiffs] })
-    }
-    setStreaming(false)
-    options.onDone?.((parsed.summary as string) ?? "")
-  } else if (eventName === "error") {
-    setStreaming(false)
-    options.onError?.((parsed.detail as string) ?? "AI streaming error — please try again")
-  }
-}
-
-/** Dispatch one complete SSE event block for the basic post stream. */
-function dispatchBasicEvent(
-  eventName: string,
-  dataLine: string,
-  assistantMsgId: string,
-  pendingDiffs: PatchDiff[],
-  applyPatch: (patch: PatchEvent) => void,
-  setStreaming: (v: boolean) => void,
-  options: UseStreamingChatOptions
-): void {
-  if (!eventName || !dataLine) return
-  try {
-    const parsed = JSON.parse(dataLine) as Record<string, unknown>
-    handleBasicSseEvent(eventName, parsed, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
-  } catch {
-    // malformed JSON — ignore
-  }
-}
-
-/** Process SSE lines for the enhance stream including diff tracking. */
-function handleEnhanceSseEvent(
-  eventName: string,
-  parsed: Record<string, unknown>,
-  assistantMsgId: string,
-  pendingDiffs: PatchDiff[],
-  applyPatch: (patch: PatchEvent) => void,
+  applyPatch: (patch: ModifyPatch) => void,
   setStreaming: (v: boolean) => void,
   options: UseStreamingChatOptions
 ): void {
@@ -123,52 +73,100 @@ function handleEnhanceSseEvent(
   }
 }
 
-/** Apply an enhance patch event including diff store registration. */
-function applyEnhancePatch(patchEvent: PatchEvent, pendingDiffs: PatchDiff[], applyPatch: (patch: PatchEvent) => void): void {
-  const resumeState = useResumeStore.getState()
-  const sections = resumeState.currentResume?.content.sections ?? []
-  const section = sections.find((s) => s.sectionType === patchEvent.sectionId)
-  const item = section?.items[patchEvent.itemIndex]
-  const previousValue = item
-    ? ((item as unknown as Record<string, unknown>)[patchEvent.field] as string) ?? ""
-    : ""
-
-  const diffId = crypto.randomUUID()
-  const kind = previousValue ? "rewrite" : "addition"
-  useDiffStore.getState().addDiff({
-    id: diffId,
-    sectionId: patchEvent.sectionId,
-    itemIndex: patchEvent.itemIndex,
-    field: patchEvent.field,
-    newValue: patchEvent.newValue,
-    previousValue,
-    kind,
-    state: "visible",
-  })
-
-  pendingDiffs.push({ kind, sectionId: patchEvent.sectionId, field: patchEvent.field, newValue: patchEvent.newValue })
-
-  applyPatch(patchEvent)
-}
-
-/** Dispatch one complete SSE event block for the enhance stream. */
-function dispatchEnhanceEvent(
+/** Dispatch one complete SSE event block for the basic post stream. */
+function dispatchBasicEvent(
   eventName: string,
   dataLine: string,
   assistantMsgId: string,
   pendingDiffs: PatchDiff[],
-  applyPatch: (patch: PatchEvent) => void,
+  applyPatch: (patch: ModifyPatch) => void,
   setStreaming: (v: boolean) => void,
   options: UseStreamingChatOptions
 ): void {
   if (!eventName || !dataLine) return
   try {
     const parsed = JSON.parse(dataLine) as Record<string, unknown>
-    handleEnhanceSseEvent(eventName, parsed, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
+    handleBasicSseEvent(eventName, parsed, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
   } catch {
     // malformed JSON — ignore
   }
 }
+
+/** Apply an enhance patch event including diff store registration. */
+function applyEnhancePatch(patchEvent: PatchEvent, pendingDiffs: PatchDiff[], applyPatch: (patch: ModifyPatch) => void): void {
+  const op = patchEvent.op ?? "modify"
+  const resumeStore = useResumeStore.getState()
+  const diffId = crypto.randomUUID()
+
+  if (op === "add") {
+    const item = patchEvent.item
+    if (!item) return
+    const sectionType = patchEvent.sectionId as Parameters<typeof resumeStore.addItem>[0]
+    useDiffStore.getState().addDiff({
+      id: diffId,
+      sectionId: patchEvent.sectionId,
+      itemIndex: -1,
+      field: "",
+      newValue: JSON.stringify(item),
+      previousValue: "",
+      kind: "addition",
+      state: "visible",
+    })
+    pendingDiffs.push({ kind: "addition", sectionId: patchEvent.sectionId, field: "", newValue: JSON.stringify(item) })
+    const sections = resumeStore.currentResume?.content.sections ?? []
+    const section = sections.find((s) => s.sectionType === patchEvent.sectionId)
+    const insertAt = patchEvent.itemIndex ?? (section?.items.length ?? 0)
+    resumeStore.addItem(sectionType, insertAt)
+    return
+  }
+
+  if (op === "delete") {
+    const sections = resumeStore.currentResume?.content.sections ?? []
+    const section = sections.find((s) => s.sectionType === patchEvent.sectionId)
+    const idx = patchEvent.itemIndex ?? -1
+    const deletedItem = section?.items[idx]
+    if (!deletedItem) return
+    useDiffStore.getState().addDiff({
+      id: diffId,
+      sectionId: patchEvent.sectionId,
+      itemIndex: idx,
+      field: "",
+      newValue: "",
+      previousValue: JSON.stringify(deletedItem),
+      kind: "deletion",
+      state: "visible",
+    })
+    pendingDiffs.push({ kind: "deletion", sectionId: patchEvent.sectionId, field: "", newValue: "" })
+    resumeStore.deleteItem(patchEvent.sectionId as Parameters<typeof resumeStore.deleteItem>[0], deletedItem.id)
+    return
+  }
+
+  const sections = resumeStore.currentResume?.content.sections ?? []
+  const section = sections.find((s) => s.sectionType === patchEvent.sectionId)
+  const item = section?.items[patchEvent.itemIndex ?? -1]
+  const field = patchEvent.field ?? ""
+  const newValue = patchEvent.newValue ?? ""
+  const previousValue = item
+    ? ((item as unknown as Record<string, unknown>)[field] as string) ?? ""
+    : ""
+
+  const kind = previousValue ? "rewrite" : "addition"
+  useDiffStore.getState().addDiff({
+    id: diffId,
+    sectionId: patchEvent.sectionId,
+    itemIndex: patchEvent.itemIndex ?? -1,
+    field,
+    newValue,
+    previousValue,
+    kind,
+    state: "visible",
+  })
+
+  pendingDiffs.push({ kind, sectionId: patchEvent.sectionId, field, newValue })
+
+  applyPatch({ sectionId: patchEvent.sectionId, itemIndex: patchEvent.itemIndex ?? -1, field, newValue })
+}
+
 
 /** Process all complete SSE lines from a buffer chunk, returning the remaining partial line.
  *  `dispatchFn` is called for each complete event (blank-line separator). */
@@ -356,7 +354,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
           const result = processBuffer(buffer, chunk, sseState, (en, dl) =>
-            dispatchEnhanceEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
+            dispatchBasicEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
           )
           buffer = result.remaining
           sseState = { eventName: result.eventName, dataLine: result.dataLine }
@@ -365,7 +363,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
         // Flush remaining buffer content when stream ends without trailing newline
         if (!ref.cancelled && buffer.trim()) {
           const { eventName: en, dataLine: dl } = parseSseLine(buffer.trim(), sseState.eventName, sseState.dataLine)
-          dispatchEnhanceEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
+          dispatchBasicEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, options)
         }
         if (!ref.cancelled) setStreaming(false)
       })
@@ -439,7 +437,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
           const result = processBuffer(buffer, chunk, sseState, (en, dl) =>
-            dispatchEnhanceEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, tailorOptions)
+            dispatchBasicEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, tailorOptions)
           )
           buffer = result.remaining
           sseState = { eventName: result.eventName, dataLine: result.dataLine }
@@ -448,7 +446,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}) {
         // Flush remaining buffer content when stream ends without trailing newline
         if (!ref.cancelled && buffer.trim()) {
           const { eventName: en, dataLine: dl } = parseSseLine(buffer.trim(), sseState.eventName, sseState.dataLine)
-          dispatchEnhanceEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, tailorOptions)
+          dispatchBasicEvent(en, dl, assistantMsgId, pendingDiffs, applyPatch, setStreaming, tailorOptions)
         }
         // F4: only mark as tailored when the SSE `done` event was received (not on `error`)
         if (!ref.cancelled && tailorDoneReceived) {
