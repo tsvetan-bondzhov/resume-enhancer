@@ -1,3 +1,5 @@
+import { useState } from "react"
+
 type DiffHighlightKind = "addition" | "rewrite"
 type DiffHighlightState = "visible" | "faded" | "hidden"
 
@@ -5,6 +7,7 @@ interface DiffHighlightProps {
   readonly kind: DiffHighlightKind
   readonly state: DiffHighlightState
   readonly children: React.ReactNode
+  readonly previousValue?: string
   readonly onAccept: () => void
   readonly onReject: () => void
 }
@@ -13,31 +16,45 @@ export default function DiffHighlight({
   kind,
   state,
   children,
+  previousValue,
   onAccept,
   onReject,
 }: DiffHighlightProps) {
+  const [isHovering, setIsHovering] = useState(false)
+
   if (state === "hidden") return null
 
+  const showOld = isHovering && kind === "rewrite" && !!previousValue
+
+  const displayText = showOld ? previousValue : children
+  let bgClass: string
+  if (showOld) {
+    bgClass = "bg-rose-100 text-rose-700"
+  } else if (kind === "addition") {
+    bgClass = "bg-emerald-100 text-emerald-700"
+  } else {
+    bgClass = "bg-amber-100 text-amber-700"
+  }
+
   return (
-    <mark
-      role="mark"
-      aria-label={kind === "addition" ? "AI addition" : "AI rewrite"}
+    <section
+      aria-label={kind === "addition" ? "AI addition" : "Modified: hover to see original text"}
+      aria-live="polite"
+      title={kind === "rewrite" && previousValue ? previousValue : undefined}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
       className={[
-        kind === "addition"
-          ? "bg-emerald-100 text-emerald-700"
-          : "bg-amber-100 text-amber-700",
+        bgClass,
         state === "faded" ? "opacity-50" : "",
         "relative inline-block rounded-sm px-0.5",
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      {/* Icon — never color-only (UX-DR4, AC3) */}
       <span aria-hidden="true" className="mr-0.5 text-xs">
         {kind === "addition" ? "+" : "~"}
       </span>
-      {children}
-      {/* Accept/Reject controls */}
+      {displayText}
       <span className="inline-flex gap-0.5 ml-1 align-middle">
         <button
           type="button"
@@ -62,6 +79,6 @@ export default function DiffHighlight({
           ✕
         </button>
       </span>
-    </mark>
+    </section>
   )
 }

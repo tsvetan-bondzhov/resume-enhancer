@@ -5,12 +5,18 @@ import DiffHighlight from "@/components/resume/DiffHighlight"
 
 interface DiffOverlayProps {
   readonly sectionId: string
+  readonly itemIndex?: number
 }
 
-export default function DiffOverlay({ sectionId }: DiffOverlayProps) {
+export default function DiffOverlay({ sectionId, itemIndex }: DiffOverlayProps) {
   const diffs = useDiffStore(
     useShallow((state) =>
-      state.diffs.filter((d) => d.sectionId === sectionId && d.state !== "hidden")
+      state.diffs.filter(
+        (d) =>
+          d.sectionId === sectionId &&
+          d.state !== "hidden" &&
+          (itemIndex === undefined || d.itemIndex === itemIndex)
+      )
     )
   )
   const acceptDiff = useDiffStore((state) => state.acceptDiff)
@@ -26,6 +32,7 @@ export default function DiffOverlay({ sectionId }: DiffOverlayProps) {
           key={diff.id}
           kind={diff.kind}
           state={diff.state}
+          previousValue={diff.previousValue}
           onAccept={() => acceptDiff(diff.id)}
           onReject={() => {
             applyPatch({

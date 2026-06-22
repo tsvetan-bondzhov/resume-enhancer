@@ -34,13 +34,14 @@ export default function SkillsSectionRenderer({
 }: SkillsSectionRendererProps) {
   const content = (
     <div className="flex flex-wrap gap-1 items-center group/section">
-      {items.map((item) => {
+      {items.map((item, index) => {
         // In read-only mode skip items with no name; in editor mode always render
         if (item.name == null && !onFieldChange) return null
         return (
           <SortableItemWrapper
             key={item.id}
             id={item.id}
+            itemIndex={index}
             onDeleteItem={onDeleteItem}
             className = "absolute left-[-8px] top-0 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab touch-none"
             containerClassName="relative group/item inline-flex break-inside-avoid"

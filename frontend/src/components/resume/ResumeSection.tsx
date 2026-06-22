@@ -1,6 +1,6 @@
 import React, { useRef } from "react"
 import type { ResumeSectionDto, ResumeItemDto } from "@/types/api"
-import DiffOverlay from "@/components/resume/DiffOverlay"
+import { SectionIdContext } from "@/components/resume/sections/sectionRendererShared"
 import WorkExperienceSectionRenderer from "@/components/resume/sections/WorkExperienceSectionRenderer"
 import EducationSectionRenderer from "@/components/resume/sections/EducationSectionRenderer"
 import SkillsSectionRenderer from "@/components/resume/sections/SkillsSectionRenderer"
@@ -188,21 +188,22 @@ export default function ResumeSection({
     : section
 
   return (
-    <section aria-labelledby={`section-title-${section.sectionType}`} className="mb-6" data-section-type={section.sectionType}>
-        <h2
-          ref={titleRef}
-          id={`section-title-${section.sectionType}`}
-          contentEditable
-          suppressContentEditableWarning
-          onFocus={isTitleEmpty ? handleTitleFocus : undefined}
-          onBlur={handleTitleBlur}
-          className={`text-base font-semibold border-b-2 border-[var(--accent-color,theme(colors.zinc.200))] pb-1 mb-2 uppercase tracking-wide outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text${isTitleEmpty ? " text-gray-300 italic" : ""}`}
-          aria-label={`Edit section title: ${section.title}`}
-        >
-          {isTitleEmpty ? SECTION_TITLE_PLACEHOLDER : section.title}
-        </h2>
-      {renderSectionContent(filteredSection, onFieldChange, onAddItem, onDeleteItem, onReorderItems)}
-      <DiffOverlay sectionId={section.sectionType} />
-    </section>
+    <SectionIdContext.Provider value={section.sectionType}>
+      <section aria-labelledby={`section-title-${section.sectionType}`} className="mb-6" data-section-type={section.sectionType}>
+          <h2
+            ref={titleRef}
+            id={`section-title-${section.sectionType}`}
+            contentEditable
+            suppressContentEditableWarning
+            onFocus={isTitleEmpty ? handleTitleFocus : undefined}
+            onBlur={handleTitleBlur}
+            className={`text-base font-semibold border-b-2 border-[var(--accent-color,theme(colors.zinc.200))] pb-1 mb-2 uppercase tracking-wide outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text${isTitleEmpty ? " text-gray-300 italic" : ""}`}
+            aria-label={`Edit section title: ${section.title}`}
+          >
+            {isTitleEmpty ? SECTION_TITLE_PLACEHOLDER : section.title}
+          </h2>
+        {renderSectionContent(filteredSection, onFieldChange, onAddItem, onDeleteItem, onReorderItems)}
+      </section>
+    </SectionIdContext.Provider>
   )
 }
