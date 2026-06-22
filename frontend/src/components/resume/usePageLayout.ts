@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useRef } from "react"
 import type { ResumeSectionDto } from "@/types/api"
 import { PAGE_HEIGHT_PX } from "./resumeConstants"
 
@@ -175,12 +175,6 @@ export function usePageLayout(
     },
     [],
   )
-
-  useEffect(() => {
-    if (containerRef.current) {
-      measure(containerRef.current)
-    }
-  }, [sections, marginTop, marginBottom, measure])
 
   const measureRef = useCallback(
     (el: HTMLDivElement | null) => {
