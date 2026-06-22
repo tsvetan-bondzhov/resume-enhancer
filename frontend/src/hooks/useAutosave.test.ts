@@ -224,6 +224,37 @@ describe("useAutosave", () => {
     )
   })
 
+  it("saveNow fires PUT even when snapshot matches (no dirty changes)", async () => {
+    const resume = buildResume()
+    mockPut.mockResolvedValue(resume)
+
+    useResumeStore.setState({
+      currentResume: resume,
+      lastSavedDocument: resume.content,
+    })
+
+    const { result } = renderHook(() => useAutosave("resume-1"))
+
+    // Let the debounce fire so the snapshot is established after the initial load
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+    })
+
+    mockPut.mockClear()
+
+    // Manually save with no changes — snapshot matches, but PUT should still fire
+    await act(async () => {
+      result.current.saveNow()
+      await Promise.resolve()
+    })
+
+    expect(mockPut).toHaveBeenCalledTimes(1)
+    expect(mockPut).toHaveBeenCalledWith(
+      "/api/v1/resumes/resume-1",
+      expect.objectContaining({ name: "Test Resume" })
+    )
+  })
+
   it("does not fire PUT when resumeId is undefined", async () => {
     const resume = buildResume()
     useResumeStore.setState({
