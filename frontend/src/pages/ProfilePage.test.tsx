@@ -9,6 +9,8 @@ import type { ProfileDto, ProfileUpdateRequest } from "@/types/api"
 
 // Mock apiClient — GET returns a non-empty profile so the stepper renders
 const mockProfile: ProfileDto = {
+  firstName: null,
+  lastName: null,
   summary: "Experienced developer",
   linkedInUrl: null,
   personalPageUrl: null,
