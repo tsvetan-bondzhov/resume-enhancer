@@ -2,7 +2,7 @@ package com.tsvetanbondzhov.resumeenhancer.resume.domain;
 
 public enum ResumeSectionType {
     WORK_EXPERIENCE, EDUCATION, SKILLS, CERTIFICATIONS,
-    PROJECTS, SUMMARY, LANGUAGES, VOLUNTEERING, UNKNOWN;
+    PROJECTS, SUMMARY, FULL_NAME, LANGUAGES, VOLUNTEERING, UNKNOWN;
 
     /**
      * Maps a normalized section header to a type.
@@ -21,6 +21,7 @@ public enum ResumeSectionType {
                  "open source", "key projects" -> PROJECTS;
             case "summary", "professional summary", "profile",
                  "about me", "objective", "career objective" -> SUMMARY;
+            case "name", "full name", "candidate name" -> FULL_NAME;
             case "languages", "language skills" -> LANGUAGES;
             case "volunteering", "volunteer", "volunteer experience",
                  "community involvement" -> VOLUNTEERING;

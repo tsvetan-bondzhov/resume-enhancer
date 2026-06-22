@@ -51,6 +51,7 @@ class ParsingServiceTest {
             List.of(),
             List.of(),
             List.of(),
+            null,
             null
         );
         MockMultipartFile file = new MockMultipartFile(
@@ -70,7 +71,7 @@ class ParsingServiceTest {
     void parse_ollamaAvailable_returnsLlmDto() {
         ParsedResumeDto heuristic = new ParsedResumeDto(
             "raw text", List.of(), List.of(), List.of(),
-            List.of(), List.of(), List.of(), List.of(), null);
+            List.of(), List.of(), List.of(), List.of(), null, null);
         WorkExperienceItem llmWorkItem = new WorkExperienceItem(
             "llm-id", "Software Engineer", "Acme Corp", null, null, false, "Built services");
         ParsedResumeDto llmDto = new ParsedResumeDto(
@@ -82,6 +83,7 @@ class ParsingServiceTest {
             List.of(),
             List.of(),
             List.of(),
+            null,
             null
         );
         MockMultipartFile file = new MockMultipartFile(
@@ -115,6 +117,7 @@ class ParsingServiceTest {
             List.of(),
             List.of(),
             List.of(),
+            null,
             null
         );
         MockMultipartFile file = new MockMultipartFile(
@@ -135,7 +138,7 @@ class ParsingServiceTest {
     void parse_docxFile_ollamaUnavailable_returnsHeuristicDto() {
         ParsedResumeDto heuristic = new ParsedResumeDto(
             "raw docx text", List.of(), List.of(), List.of(),
-            List.of(), List.of(), List.of(), List.of(), null);
+            List.of(), List.of(), List.of(), List.of(), null, null);
         MockMultipartFile file = new MockMultipartFile(
             "file", "resume.docx",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -167,7 +170,7 @@ class ParsingServiceTest {
     void parse_ollamaAvailable_llmInterrupted_returnsHeuristicDto() throws InterruptedException {
         ParsedResumeDto heuristic = new ParsedResumeDto(
             "raw text", List.of(), List.of(), List.of(),
-            List.of(), List.of(), List.of(), List.of(), null);
+            List.of(), List.of(), List.of(), List.of(), null, null);
         MockMultipartFile file = new MockMultipartFile(
             "file", "resume.pdf", "application/pdf", new byte[]{1, 2, 3});
 

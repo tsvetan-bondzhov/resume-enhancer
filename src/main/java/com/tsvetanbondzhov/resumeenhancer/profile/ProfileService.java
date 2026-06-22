@@ -51,6 +51,8 @@ public class ProfileService {
             return p;
         });
 
+        profile.setFirstName(request.firstName());
+        profile.setLastName(request.lastName());
         profile.setSummary(request.summary());
         profile.setLinkedInUrl(request.linkedInUrl());
         profile.setPersonalPageUrl(request.personalPageUrl());
@@ -108,7 +110,7 @@ public class ProfileService {
     }
 
     private ProfileDto emptyProfileDto() {
-        return new ProfileDto(null, null, null, null, null, null, null,
+        return new ProfileDto(null, null, null, null, null, null, null, null, null,
                 Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyList());

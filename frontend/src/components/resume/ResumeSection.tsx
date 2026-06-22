@@ -9,6 +9,7 @@ import LanguagesSectionRenderer from "@/components/resume/sections/LanguagesSect
 import ProjectsSectionRenderer from "@/components/resume/sections/ProjectsSectionRenderer"
 import VolunteeringSectionRenderer from "@/components/resume/sections/VolunteeringSectionRenderer"
 import SummarySectionRenderer from "@/components/resume/sections/SummarySectionRenderer"
+import FullNameSectionRenderer from "@/components/resume/sections/FullNameSectionRenderer"
 import GenericSectionRenderer from "@/components/resume/sections/GenericSectionRenderer"
 
 interface ResumeSectionProps {
@@ -126,6 +127,19 @@ function renderSectionContent(
         <SummarySectionRenderer
           items={section.items.filter((i) => i.type === "SUMMARY").map((i) => {
             if (i.type === "SUMMARY") return i
+            throw new Error("unexpected item type")
+          })}
+          onFieldChange={onFieldChange}
+          onAddItem={onAddItem}
+          onDeleteItem={onDeleteItem}
+          onReorderItems={onReorderItems}
+        />
+      )
+    case "FULL_NAME":
+      return (
+        <FullNameSectionRenderer
+          items={section.items.filter((i) => i.type === "FULL_NAME").map((i) => {
+            if (i.type === "FULL_NAME") return i
             throw new Error("unexpected item type")
           })}
           onFieldChange={onFieldChange}

@@ -232,6 +232,7 @@ public class AiService {
             case "CERTIFICATIONS"  -> "prompts/resume-extraction-certifications.st";
             case "PROJECTS"        -> "prompts/resume-extraction-projects.st";
             case "SUMMARY"         -> "prompts/resume-extraction-summary.st";
+            case "FULL_NAME"       -> "prompts/resume-extraction-full-name.st";
             case "LANGUAGES"       -> "prompts/resume-extraction-languages.st";
             case "VOLUNTEERING"    -> "prompts/resume-extraction-volunteering.st";
             default                -> "prompts/resume-extraction-default.st";

@@ -20,6 +20,7 @@ import com.tsvetanbondzhov.resumeenhancer.resume.domain.Resume;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeSectionType;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.SkillItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.FullNameItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.SummaryItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.VolunteeringItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem;
@@ -150,25 +151,29 @@ class ResumeServiceTest {
         resumeService.createResume(EMAIL, new CreateResumeRequest("Profile Resume", null));
 
         Resume saved = captor.getValue();
-        // buildFromProfile now always produces 8 sections in canonical order
-        assertThat(saved.getResumeContent().sections()).hasSize(8);
-        // SUMMARY at index 0 — visible: false (no summary set on this profile)
+        // buildFromProfile now always produces 9 sections in canonical order
+        assertThat(saved.getResumeContent().sections()).hasSize(9);
+        // FULL_NAME at index 0 — visible: false (no name set on this profile)
         assertThat(saved.getResumeContent().sections().get(0).sectionType())
-                .isEqualTo(ResumeSectionType.SUMMARY);
+                .isEqualTo(ResumeSectionType.FULL_NAME);
         assertThat(saved.getResumeContent().sections().get(0).visible()).isFalse();
-        // WORK_EXPERIENCE at index 1 — has 1 item
+        // SUMMARY at index 1 — visible: false (no summary set on this profile)
         assertThat(saved.getResumeContent().sections().get(1).sectionType())
+                .isEqualTo(ResumeSectionType.SUMMARY);
+        assertThat(saved.getResumeContent().sections().get(1).visible()).isFalse();
+        // WORK_EXPERIENCE at index 2 — has 1 item
+        assertThat(saved.getResumeContent().sections().get(2).sectionType())
                 .isEqualTo(ResumeSectionType.WORK_EXPERIENCE);
-        assertThat(saved.getResumeContent().sections().get(1).items()).hasSize(1);
-        assertThat(saved.getResumeContent().sections().get(1).items().get(0))
+        assertThat(saved.getResumeContent().sections().get(2).items()).hasSize(1);
+        assertThat(saved.getResumeContent().sections().get(2).items().get(0))
                 .isInstanceOf(WorkExperienceItem.class);
         assertThat(((WorkExperienceItem)
-                saved.getResumeContent().sections().get(1).items().get(0)).jobTitle())
+                saved.getResumeContent().sections().get(2).items().get(0)).jobTitle())
                 .isEqualTo("Engineer");
-        // SKILLS at index 3 — has 1 item
-        assertThat(saved.getResumeContent().sections().get(3).sectionType())
+        // SKILLS at index 4 — has 1 item
+        assertThat(saved.getResumeContent().sections().get(4).sectionType())
                 .isEqualTo(ResumeSectionType.SKILLS);
-        assertThat(saved.getResumeContent().sections().get(3).items()).hasSize(1);
+        assertThat(saved.getResumeContent().sections().get(4).items()).hasSize(1);
     }
 
     @Test
@@ -176,6 +181,8 @@ class ResumeServiceTest {
         User user = buildUser();
         Profile profile = new Profile();
         profile.setUser(user);
+        profile.setFirstName("Jane");
+        profile.setLastName("Doe");
         profile.setSummary("Experienced Java developer");
         profile.setLinkedInUrl("https://linkedin.com/in/test");
         profile.setContactEmail("user@example.com");
@@ -233,51 +240,58 @@ class ResumeServiceTest {
         resumeService.createResume(EMAIL, new CreateResumeRequest("All Sections Resume", null));
 
         Resume saved = captor.getValue();
-        assertThat(saved.getResumeContent().sections()).hasSize(8);
+        assertThat(saved.getResumeContent().sections()).hasSize(9);
 
         // Canonical order assertions
-        assertThat(saved.getResumeContent().sections().get(0).sectionType()).isEqualTo(ResumeSectionType.SUMMARY);
-        assertThat(saved.getResumeContent().sections().get(1).sectionType()).isEqualTo(ResumeSectionType.WORK_EXPERIENCE);
-        assertThat(saved.getResumeContent().sections().get(2).sectionType()).isEqualTo(ResumeSectionType.EDUCATION);
-        assertThat(saved.getResumeContent().sections().get(3).sectionType()).isEqualTo(ResumeSectionType.SKILLS);
-        assertThat(saved.getResumeContent().sections().get(4).sectionType()).isEqualTo(ResumeSectionType.CERTIFICATIONS);
-        assertThat(saved.getResumeContent().sections().get(5).sectionType()).isEqualTo(ResumeSectionType.PROJECTS);
-        assertThat(saved.getResumeContent().sections().get(6).sectionType()).isEqualTo(ResumeSectionType.LANGUAGES);
-        assertThat(saved.getResumeContent().sections().get(7).sectionType()).isEqualTo(ResumeSectionType.VOLUNTEERING);
+        assertThat(saved.getResumeContent().sections().get(0).sectionType()).isEqualTo(ResumeSectionType.FULL_NAME);
+        assertThat(saved.getResumeContent().sections().get(1).sectionType()).isEqualTo(ResumeSectionType.SUMMARY);
+        assertThat(saved.getResumeContent().sections().get(2).sectionType()).isEqualTo(ResumeSectionType.WORK_EXPERIENCE);
+        assertThat(saved.getResumeContent().sections().get(3).sectionType()).isEqualTo(ResumeSectionType.EDUCATION);
+        assertThat(saved.getResumeContent().sections().get(4).sectionType()).isEqualTo(ResumeSectionType.SKILLS);
+        assertThat(saved.getResumeContent().sections().get(5).sectionType()).isEqualTo(ResumeSectionType.CERTIFICATIONS);
+        assertThat(saved.getResumeContent().sections().get(6).sectionType()).isEqualTo(ResumeSectionType.PROJECTS);
+        assertThat(saved.getResumeContent().sections().get(7).sectionType()).isEqualTo(ResumeSectionType.LANGUAGES);
+        assertThat(saved.getResumeContent().sections().get(8).sectionType()).isEqualTo(ResumeSectionType.VOLUNTEERING);
 
-        // All sections visible (each has 1 item / non-blank summary)
+        // All sections visible (each has 1 item / non-blank summary / name set)
         saved.getResumeContent().sections().forEach(s ->
                 assertThat(s.visible()).as("section %s should be visible", s.sectionType()).isTrue());
 
         // Each section has exactly 1 item of the correct subclass
         assertThat(saved.getResumeContent().sections().get(0).items()).hasSize(1);
-        assertThat(saved.getResumeContent().sections().get(0).items().get(0)).isInstanceOf(SummaryItem.class);
+        assertThat(saved.getResumeContent().sections().get(0).items().get(0)).isInstanceOf(FullNameItem.class);
         assertThat(saved.getResumeContent().sections().get(1).items()).hasSize(1);
-        assertThat(saved.getResumeContent().sections().get(1).items().get(0)).isInstanceOf(WorkExperienceItem.class);
+        assertThat(saved.getResumeContent().sections().get(1).items().get(0)).isInstanceOf(SummaryItem.class);
         assertThat(saved.getResumeContent().sections().get(2).items()).hasSize(1);
-        assertThat(saved.getResumeContent().sections().get(2).items().get(0)).isInstanceOf(EducationItem.class);
+        assertThat(saved.getResumeContent().sections().get(2).items().get(0)).isInstanceOf(WorkExperienceItem.class);
         assertThat(saved.getResumeContent().sections().get(3).items()).hasSize(1);
-        assertThat(saved.getResumeContent().sections().get(3).items().get(0)).isInstanceOf(SkillItem.class);
+        assertThat(saved.getResumeContent().sections().get(3).items().get(0)).isInstanceOf(EducationItem.class);
         assertThat(saved.getResumeContent().sections().get(4).items()).hasSize(1);
-        assertThat(saved.getResumeContent().sections().get(4).items().get(0)).isInstanceOf(CertificationItem.class);
+        assertThat(saved.getResumeContent().sections().get(4).items().get(0)).isInstanceOf(SkillItem.class);
         assertThat(saved.getResumeContent().sections().get(5).items()).hasSize(1);
-        assertThat(saved.getResumeContent().sections().get(5).items().get(0)).isInstanceOf(ProjectItem.class);
+        assertThat(saved.getResumeContent().sections().get(5).items().get(0)).isInstanceOf(CertificationItem.class);
         assertThat(saved.getResumeContent().sections().get(6).items()).hasSize(1);
-        assertThat(saved.getResumeContent().sections().get(6).items().get(0)).isInstanceOf(LanguageItem.class);
+        assertThat(saved.getResumeContent().sections().get(6).items().get(0)).isInstanceOf(ProjectItem.class);
         assertThat(saved.getResumeContent().sections().get(7).items()).hasSize(1);
-        assertThat(saved.getResumeContent().sections().get(7).items().get(0)).isInstanceOf(VolunteeringItem.class);
+        assertThat(saved.getResumeContent().sections().get(7).items().get(0)).isInstanceOf(LanguageItem.class);
+        assertThat(saved.getResumeContent().sections().get(8).items()).hasSize(1);
+        assertThat(saved.getResumeContent().sections().get(8).items().get(0)).isInstanceOf(VolunteeringItem.class);
 
         // Spot-check key mapped fields
-        SummaryItem summaryItem = (SummaryItem) saved.getResumeContent().sections().get(0).items().get(0);
+        FullNameItem nameItem = (FullNameItem) saved.getResumeContent().sections().get(0).items().get(0);
+        assertThat(nameItem.firstName()).isEqualTo("Jane");
+        assertThat(nameItem.lastName()).isEqualTo("Doe");
+
+        SummaryItem summaryItem = (SummaryItem) saved.getResumeContent().sections().get(1).items().get(0);
         assertThat(summaryItem.text()).isEqualTo("Experienced Java developer");
         assertThat(summaryItem.linkedInUrl()).isEqualTo("https://linkedin.com/in/test");
         assertThat(summaryItem.contactEmail()).isEqualTo("user@example.com");
 
-        CertificationItem certItem = (CertificationItem) saved.getResumeContent().sections().get(4).items().get(0);
+        CertificationItem certItem = (CertificationItem) saved.getResumeContent().sections().get(5).items().get(0);
         assertThat(certItem.name()).isEqualTo("AWS Solutions Architect");
         assertThat(certItem.issuer()).isEqualTo("Amazon");
 
-        LanguageItem langItem = (LanguageItem) saved.getResumeContent().sections().get(6).items().get(0);
+        LanguageItem langItem = (LanguageItem) saved.getResumeContent().sections().get(7).items().get(0);
         assertThat(langItem.language()).isEqualTo("Spanish");
         assertThat(langItem.proficiency()).isEqualTo("ADVANCED");
     }
@@ -301,19 +315,26 @@ class ResumeServiceTest {
         resumeService.createResume(EMAIL, new CreateResumeRequest("Empty Profile Resume", null));
 
         Resume saved = captor.getValue();
-        assertThat(saved.getResumeContent().sections()).hasSize(8);
+        assertThat(saved.getResumeContent().sections()).hasSize(9);
 
         // All sections visible: false
         saved.getResumeContent().sections().forEach(s ->
                 assertThat(s.visible()).as("section %s should be invisible", s.sectionType()).isFalse());
 
-        // SUMMARY has 1 SummaryItem with empty text; all other sections have empty item lists
-        assertThat(saved.getResumeContent().sections().get(0).sectionType()).isEqualTo(ResumeSectionType.SUMMARY);
+        // FULL_NAME has 1 FullNameItem with null name fields
+        assertThat(saved.getResumeContent().sections().get(0).sectionType()).isEqualTo(ResumeSectionType.FULL_NAME);
         assertThat(saved.getResumeContent().sections().get(0).items()).hasSize(1);
-        SummaryItem emptySummary = (SummaryItem) saved.getResumeContent().sections().get(0).items().get(0);
+        FullNameItem emptyName = (FullNameItem) saved.getResumeContent().sections().get(0).items().get(0);
+        assertThat(emptyName.firstName()).isNull();
+        assertThat(emptyName.lastName()).isNull();
+
+        // SUMMARY has 1 SummaryItem with empty text; all remaining sections have empty item lists
+        assertThat(saved.getResumeContent().sections().get(1).sectionType()).isEqualTo(ResumeSectionType.SUMMARY);
+        assertThat(saved.getResumeContent().sections().get(1).items()).hasSize(1);
+        SummaryItem emptySummary = (SummaryItem) saved.getResumeContent().sections().get(1).items().get(0);
         assertThat(emptySummary.text()).isEmpty();
 
-        for (int i = 1; i < 8; i++) {
+        for (int i = 2; i < 9; i++) {
             assertThat(saved.getResumeContent().sections().get(i).items())
                     .as("section at index %d should have empty items", i)
                     .isEmpty();

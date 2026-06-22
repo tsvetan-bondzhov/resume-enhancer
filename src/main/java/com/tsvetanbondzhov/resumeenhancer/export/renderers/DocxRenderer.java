@@ -5,6 +5,7 @@ import com.tsvetanbondzhov.resumeenhancer.export.TemplateDefinition;
 import com.tsvetanbondzhov.resumeenhancer.export.TemplateDefinitionService;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.CertificationItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.EducationItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.FullNameItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.GenericItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.LanguageItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ProjectItem;
@@ -185,8 +186,22 @@ public class DocxRenderer implements DocumentRenderer {
             case ProjectItem p -> renderProject(document, p);
             case VolunteeringItem v -> renderVolunteering(document, v);
             case SummaryItem ignored -> { /* already rendered as header */ }
+            case FullNameItem n -> renderFullName(document, n);
             case SkillItem ignored -> { /* handled in renderSkillsSection */ }
             case GenericItem g -> renderGeneric(document, g);
+        }
+    }
+
+    private void renderFullName(XWPFDocument document, FullNameItem n) {
+        String fullName = java.util.stream.Stream.of(n.firstName(), n.lastName())
+                .filter(v -> v != null && !v.isBlank())
+                .collect(Collectors.joining(" "));
+        if (!fullName.isBlank()) {
+            XWPFParagraph para = document.createParagraph();
+            XWPFRun run = para.createRun();
+            run.setText(fullName);
+            run.setBold(true);
+            run.setFontSize(16);
         }
     }
 

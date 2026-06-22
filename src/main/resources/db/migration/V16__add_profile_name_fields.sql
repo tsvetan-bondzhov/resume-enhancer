@@ -1,0 +1,2 @@
+ALTER TABLE profiles ADD COLUMN first_name VARCHAR(100);
+ALTER TABLE profiles ADD COLUMN last_name  VARCHAR(100);

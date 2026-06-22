@@ -105,6 +105,13 @@ export interface SummaryItemDto {
   locationCity: string | null
 }
 
+export interface FullNameItemDto {
+  type: "FULL_NAME"
+  id: string
+  firstName: string | null
+  lastName: string | null
+}
+
 export interface GenericItemDto {
   type: "UNKNOWN"
   id: string
@@ -120,6 +127,7 @@ export type ResumeItemDto =
   | ProjectItemDto
   | VolunteeringItemDto
   | SummaryItemDto
+  | FullNameItemDto
   | GenericItemDto
 
 export type ResumeSectionType =
@@ -129,6 +137,7 @@ export type ResumeSectionType =
   | "CERTIFICATIONS"
   | "PROJECTS"
   | "SUMMARY"
+  | "FULL_NAME"
   | "LANGUAGES"
   | "VOLUNTEERING"
   | "UNKNOWN"
@@ -242,6 +251,8 @@ export interface VolunteeringDto {
 }
 
 export interface ProfileDto {
+  firstName: string | null
+  lastName: string | null
   summary: string | null
   linkedInUrl: string | null
   personalPageUrl: string | null
@@ -307,6 +318,8 @@ export interface VolunteeringRequest {
 }
 
 export interface ProfileUpdateRequest {
+  firstName: string | null
+  lastName: string | null
   summary: string | null
   linkedInUrl: string | null
   personalPageUrl: string | null
@@ -377,6 +390,11 @@ export interface ParsedResumeDtoVolunteering {
   isCurrent: boolean
 }
 
+export interface ParsedResumeDtoFullName {
+  firstName: string | null
+  lastName: string | null
+}
+
 export interface ParsedResumeDtoSummary {
   text: string | null
   linkedInUrl: string | null
@@ -397,6 +415,7 @@ export interface ParsedResumeDtoResponse {
   projects: ParsedResumeDtoProject[]
   volunteering: ParsedResumeDtoVolunteering[]
   summary: ParsedResumeDtoSummary | null
+  fullName: ParsedResumeDtoFullName | null
 }
 
 export interface TemplateCssVariables {

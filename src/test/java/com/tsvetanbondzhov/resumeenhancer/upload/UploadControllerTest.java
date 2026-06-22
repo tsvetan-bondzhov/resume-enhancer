@@ -30,7 +30,7 @@ class UploadControllerTest {
                 "file", "resume.pdf", "application/pdf", new byte[]{1, 2, 3});
         ParsedResumeDto expected = new ParsedResumeDto(
                 "raw text", List.of(), List.of(), List.of(),
-                List.of(), List.of(), List.of(), List.of(), null);
+                List.of(), List.of(), List.of(), List.of(), null, null);
 
         when(parsingService.parse(file)).thenReturn(expected);
 

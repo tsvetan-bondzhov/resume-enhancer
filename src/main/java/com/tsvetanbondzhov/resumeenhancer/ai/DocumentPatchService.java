@@ -133,6 +133,7 @@ public class DocumentPatchService {
             case ProjectItem p         -> new ProjectItem(id, p.name(), p.description(), p.technologies(), p.link(), p.startDate(), p.endDate(), p.isCurrent());
             case VolunteeringItem v    -> new VolunteeringItem(id, v.role(), v.organization(), v.description(), v.startDate(), v.endDate(), v.isCurrent());
             case SummaryItem s         -> new SummaryItem(id, s.text(), s.linkedInUrl(), s.personalPageUrl(), s.blogUrl(), s.contactEmail(), s.locationCountry(), s.locationCity());
+            case FullNameItem n        -> new FullNameItem(id, n.firstName(), n.lastName());
             case GenericItem g         -> new GenericItem(id, g.fields());
         };
     }
@@ -190,6 +191,11 @@ public class DocumentPatchService {
                 case "locationCountry" -> new SummaryItem(s.id(), s.text(), s.linkedInUrl(), s.personalPageUrl(), s.blogUrl(), s.contactEmail(), newValue, s.locationCity());
                 case "locationCity"    -> new SummaryItem(s.id(), s.text(), s.linkedInUrl(), s.personalPageUrl(), s.blogUrl(), s.contactEmail(), s.locationCountry(), newValue);
                 default -> throw new InvalidPatchException("Unknown field '" + field + "' for SUMMARY");
+            };
+            case FullNameItem n -> switch (field) {
+                case "firstName" -> new FullNameItem(n.id(), newValue, n.lastName());
+                case "lastName"  -> new FullNameItem(n.id(), n.firstName(), newValue);
+                default -> throw new InvalidPatchException("Unknown field '" + field + "' for FULL_NAME");
             };
             case GenericItem g -> {
                 var updatedFields = new java.util.HashMap<>(g.fields());

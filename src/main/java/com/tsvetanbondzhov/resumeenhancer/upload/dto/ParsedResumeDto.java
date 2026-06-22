@@ -2,6 +2,7 @@ package com.tsvetanbondzhov.resumeenhancer.upload.dto;
 
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.CertificationItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.EducationItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.FullNameItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.LanguageItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ProjectItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.SkillItem;
@@ -32,6 +33,7 @@ import java.util.List;
  * @param projects        typed project items (empty list when none found)
  * @param volunteering    typed volunteering items (empty list when none found)
  * @param summary         single summary item, or {@code null} when no summary section found
+ * @param fullName        single full-name item, or {@code null} when no name section found
  */
 public record ParsedResumeDto(
         String rawText,
@@ -42,5 +44,6 @@ public record ParsedResumeDto(
         List<LanguageItem> languages,
         List<ProjectItem> projects,
         List<VolunteeringItem> volunteering,
-        SummaryItem summary
+        SummaryItem summary,
+        FullNameItem fullName
 ) {}

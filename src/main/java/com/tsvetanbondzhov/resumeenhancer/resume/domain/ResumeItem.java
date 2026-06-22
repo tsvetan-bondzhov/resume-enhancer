@@ -13,8 +13,9 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
     @JsonSubTypes.Type(value = ProjectItem.class,         name = "PROJECTS"),
     @JsonSubTypes.Type(value = VolunteeringItem.class,    name = "VOLUNTEERING"),
     @JsonSubTypes.Type(value = SummaryItem.class,         name = "SUMMARY"),
+    @JsonSubTypes.Type(value = FullNameItem.class,        name = "FULL_NAME"),
     @JsonSubTypes.Type(value = GenericItem.class,         name = "UNKNOWN")
 })
 public sealed interface ResumeItem
     permits WorkExperienceItem, EducationItem, SkillItem, CertificationItem,
-            LanguageItem, ProjectItem, VolunteeringItem, SummaryItem, GenericItem {}
+            LanguageItem, ProjectItem, VolunteeringItem, SummaryItem, FullNameItem, GenericItem {}

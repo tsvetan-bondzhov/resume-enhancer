@@ -9,6 +9,7 @@ import type {
   ProjectItemDto,
   VolunteeringItemDto,
   SummaryItemDto,
+  FullNameItemDto,
   GenericItemDto,
 } from "@/types/api"
 
@@ -45,6 +46,10 @@ export function createEmptyItem(sectionType: ResumeSectionType): ResumeItemDto {
     }
     case "SUMMARY": {
       const item: SummaryItemDto = { type: "SUMMARY", id, text: "", linkedInUrl: null, personalPageUrl: null, blogUrl: null, contactEmail: null, locationCountry: null, locationCity: null }
+      return item
+    }
+    case "FULL_NAME": {
+      const item: FullNameItemDto = { type: "FULL_NAME", id, firstName: "", lastName: "" }
       return item
     }
     case "UNKNOWN": {
