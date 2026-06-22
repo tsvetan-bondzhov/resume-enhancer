@@ -136,7 +136,7 @@ export default function ChatPanel({ resumeId }: ChatPanelProps) {
   }
 
   return (
-    <div className="flex flex-col h-full border-l border-border bg-card">
+    <div className="flex flex-col h-full bg-card">
       {/* Message list */}
       <div
         role="log"
