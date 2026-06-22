@@ -279,8 +279,9 @@ describe("useStreamingChat", () => {
       act(() => { result.current.startEnhanceStream("resume-123") })
 
       expect(useChatStore.getState().isStreaming).toBe(true)
-      expect(useChatStore.getState().messages).toHaveLength(1)
-      expect(useChatStore.getState().messages[0].role).toBe("assistant")
+      expect(useChatStore.getState().messages).toHaveLength(2)
+      expect(useChatStore.getState().messages[0].role).toBe("user")
+      expect(useChatStore.getState().messages[1].role).toBe("assistant")
     })
 
     it("posts to /api/v1/ai/enhance with resumeId in body", async () => {
@@ -358,7 +359,7 @@ describe("useStreamingChat", () => {
         await new Promise((r) => setTimeout(r, 50))
       })
 
-      expect(useChatStore.getState().messages[0].content).toBe("Enhanced")
+      expect(useChatStore.getState().messages[1].content).toBe("Enhanced")
     })
 
     it("processes patch events and registers diff + applies patch", async () => {
@@ -464,8 +465,9 @@ describe("useStreamingChat", () => {
       act(() => { result.current.startTailorStream("resume-tailor-1", "Senior Java Developer role") })
 
       expect(useChatStore.getState().isStreaming).toBe(true)
-      expect(useChatStore.getState().messages).toHaveLength(1)
-      expect(useChatStore.getState().messages[0].role).toBe("assistant")
+      expect(useChatStore.getState().messages).toHaveLength(2)
+      expect(useChatStore.getState().messages[0].role).toBe("user")
+      expect(useChatStore.getState().messages[1].role).toBe("assistant")
     })
 
     it("posts to /api/v1/ai/tailor with resumeId and jobDescription", async () => {
@@ -580,7 +582,7 @@ describe("useStreamingChat", () => {
         await new Promise((r) => setTimeout(r, 80))
       })
 
-      expect(useChatStore.getState().messages[0].content).toBe("Tailored!")
+      expect(useChatStore.getState().messages[1].content).toBe("Tailored!")
     })
 
     it("processes patch events and registers diff + applies patch", async () => {
@@ -648,7 +650,7 @@ describe("useStreamingChat", () => {
       })
 
       // Should have appended the token to the assistant message
-      expect(useChatStore.getState().messages[0].content).toBe("partial")
+      expect(useChatStore.getState().messages[1].content).toBe("partial")
     })
   })
 

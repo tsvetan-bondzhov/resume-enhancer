@@ -105,7 +105,7 @@ describe("DiffOverlay", () => {
       diffs: [buildDiff({ kind: "addition", newValue: "New bullet point" })],
     })
     render(<DiffOverlay sectionId="WORK_EXPERIENCE" />)
-    expect(screen.getByRole("mark", { name: /ai addition/i })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: /ai addition/i })).toBeInTheDocument()
   })
 
   it("renders rewrite kind diff with correct aria-label", () => {
@@ -113,7 +113,7 @@ describe("DiffOverlay", () => {
       diffs: [buildDiff({ kind: "rewrite", newValue: "Rewritten text" })],
     })
     render(<DiffOverlay sectionId="WORK_EXPERIENCE" />)
-    expect(screen.getByRole("mark", { name: /ai rewrite/i })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: /modified/i })).toBeInTheDocument()
   })
 
   it("only shows diffs matching the given sectionId", () => {

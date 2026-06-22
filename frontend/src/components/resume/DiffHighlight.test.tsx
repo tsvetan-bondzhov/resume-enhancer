@@ -15,9 +15,8 @@ describe("DiffHighlight", () => {
         new text
       </DiffHighlight>
     )
-    const mark = screen.getByRole("mark")
+    const mark = screen.getByRole("region", { name: "AI addition" })
     expect(mark).toBeInTheDocument()
-    expect(mark).toHaveAttribute("aria-label", "AI addition")
     expect(mark.className).toContain("bg-emerald-100")
     expect(mark.className).toContain("text-emerald-700")
     // + icon is present
@@ -35,9 +34,8 @@ describe("DiffHighlight", () => {
         updated text
       </DiffHighlight>
     )
-    const mark = screen.getByRole("mark")
+    const mark = screen.getByRole("region", { name: "Modified: hover to see original text" })
     expect(mark).toBeInTheDocument()
-    expect(mark).toHaveAttribute("aria-label", "AI rewrite")
     expect(mark.className).toContain("bg-amber-100")
     expect(mark.className).toContain("text-amber-700")
     // ~ icon is present
@@ -55,7 +53,7 @@ describe("DiffHighlight", () => {
         faded text
       </DiffHighlight>
     )
-    const mark = screen.getByRole("mark")
+    const mark = screen.getByRole("region", { name: "AI addition" })
     expect(mark).toBeInTheDocument()
     expect(mark.className).toContain("opacity-50")
   })
@@ -71,7 +69,7 @@ describe("DiffHighlight", () => {
         hidden text
       </DiffHighlight>
     )
-    expect(screen.queryByRole("mark")).not.toBeInTheDocument()
+    expect(screen.queryByRole("region", { name: "AI addition" })).not.toBeInTheDocument()
     expect(screen.queryByText("hidden text")).not.toBeInTheDocument()
   })
 
