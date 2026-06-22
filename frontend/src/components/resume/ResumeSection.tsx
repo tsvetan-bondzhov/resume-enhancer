@@ -19,6 +19,7 @@ interface ResumeSectionProps {
   readonly onDeleteItem?: (itemId: string) => void
   readonly onReorderItems?: (newItems: ResumeItemDto[]) => void
   readonly visibleItemIds?: ReadonlySet<string>
+  readonly showTitle?: boolean
 }
 
 function renderSectionContent(
@@ -163,6 +164,7 @@ export default function ResumeSection({
   onDeleteItem,
   onReorderItems,
   visibleItemIds,
+  showTitle = true,
 }: ResumeSectionProps) {
   const titleRef = useRef<HTMLHeadingElement>(null)
   const isTitleEmpty = !section.title
@@ -190,18 +192,20 @@ export default function ResumeSection({
   return (
     <SectionIdContext.Provider value={section.sectionType}>
       <section aria-labelledby={`section-title-${section.sectionType}`} className="mb-6" data-section-type={section.sectionType}>
-          <h2
-            ref={titleRef}
-            id={`section-title-${section.sectionType}`}
-            contentEditable
-            suppressContentEditableWarning
-            onFocus={isTitleEmpty ? handleTitleFocus : undefined}
-            onBlur={handleTitleBlur}
-            className={`text-base font-semibold border-b-2 border-[var(--accent-color,theme(colors.zinc.200))] pb-1 mb-2 uppercase tracking-wide outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text${isTitleEmpty ? " text-gray-300 italic" : ""}`}
-            aria-label={`Edit section title: ${section.title}`}
-          >
-            {isTitleEmpty ? SECTION_TITLE_PLACEHOLDER : section.title}
-          </h2>
+          {showTitle && (
+            <h2
+              ref={titleRef}
+              id={`section-title-${section.sectionType}`}
+              contentEditable
+              suppressContentEditableWarning
+              onFocus={isTitleEmpty ? handleTitleFocus : undefined}
+              onBlur={handleTitleBlur}
+              className={`text-base font-semibold border-b-2 border-[var(--accent-color,theme(colors.zinc.200))] pb-1 mb-2 uppercase tracking-wide outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text${isTitleEmpty ? " text-gray-300 italic" : ""}`}
+              aria-label={`Edit section title: ${section.title}`}
+            >
+              {isTitleEmpty ? SECTION_TITLE_PLACEHOLDER : section.title}
+            </h2>
+          )}
         {renderSectionContent(filteredSection, onFieldChange, onAddItem, onDeleteItem, onReorderItems)}
       </section>
     </SectionIdContext.Provider>

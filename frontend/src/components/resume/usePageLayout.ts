@@ -4,6 +4,7 @@ import { PAGE_HEIGHT_PX } from "./resumeConstants"
 
 export interface PageSectionSlice {
   sectionType: string
+  showTitle: boolean
   visibleItemIds: ReadonlySet<string>
 }
 
@@ -15,82 +16,134 @@ interface UsePageLayoutResult {
   measureRef: React.RefCallback<HTMLDivElement>
 }
 
-interface ItemMeasurement {
-  id: string
+interface FlowUnit {
+  sectionType: string
+  itemId: string | null
   height: number
 }
 
-interface PageState {
-  layout: PageLayout
-  currentPage: PageSectionSlice[]
-  cursor: number
+interface SliceAccumulator {
+  sectionType: string
+  showTitle: boolean
+  itemIds: Set<string>
 }
 
-function measureTitleHeight(sectionEl: HTMLElement): number {
-  const titleEl = sectionEl.querySelector("h2")
-  return titleEl ? titleEl.getBoundingClientRect().height : 0
-}
+// Builds an ordered list of measurable units (one per section title, one per item)
+// with margin-inclusive heights derived from the distance between consecutive flow
+// positions. Using deltas captures the margins/gaps that getBoundingClientRect omits.
+function buildFlowUnits(container: HTMLElement, sections: ResumeSectionDto[]): FlowUnit[] {
+  const points: { sectionType: string; itemId: string | null; top: number }[] = []
 
-function measureItems(
-  sectionEl: HTMLElement,
-  section: ResumeSectionDto,
-): { measurements: ItemMeasurement[]; totalHeight: number } {
-  const measurements: ItemMeasurement[] = []
-  let totalHeight = 0
-  for (const item of section.items) {
-    const el = sectionEl.querySelector<HTMLElement>(`[data-item-id="${item.id}"]`)
-    const h = el ? el.getBoundingClientRect().height : 0
-    measurements.push({ id: item.id, height: h })
-    totalHeight += h
-  }
-  return { measurements, totalHeight }
-}
+  for (const section of sections) {
+    const sectionEl = container.querySelector<HTMLElement>(
+      `[data-section-type="${section.sectionType}"]`,
+    )
+    if (!sectionEl) continue
 
-function commitPage(state: PageState, marginTop: number): void {
-  state.layout.push(state.currentPage)
-  state.currentPage = []
-  state.cursor = marginTop
-}
-
-function placeEmptySection(
-  state: PageState,
-  section: ResumeSectionDto,
-  sectionHeight: number,
-  usableHeight: number,
-  marginTop: number,
-): void {
-  if (state.cursor + sectionHeight > usableHeight && state.cursor > marginTop) {
-    commitPage(state, marginTop)
-  }
-  state.currentPage.push({ sectionType: section.sectionType, visibleItemIds: new Set() })
-  state.cursor += sectionHeight
-}
-
-function collectPageItems(
-  state: PageState,
-  remainingItems: ItemMeasurement[],
-  titleHeight: number,
-  usableHeight: number,
-  marginTop: number,
-): { pageItemIds: Set<string>; consumed: number } {
-  const firstItemHeight = remainingItems[0]?.height ?? 0
-  if (state.cursor + titleHeight + firstItemHeight > usableHeight && state.cursor > marginTop) {
-    commitPage(state, marginTop)
-  }
-
-  const pageItemIds = new Set<string>()
-  state.cursor += titleHeight
-
-  let consumed = 0
-  for (const item of remainingItems) {
-    if (state.cursor + item.height > usableHeight && pageItemIds.size > 0) {
-      break
+    const titleEl = sectionEl.querySelector("h2")
+    if (titleEl) {
+      points.push({
+        sectionType: section.sectionType,
+        itemId: null,
+        top: titleEl.getBoundingClientRect().top,
+      })
     }
-    pageItemIds.add(item.id)
-    state.cursor += item.height
-    consumed++
+
+    for (const item of section.items) {
+      const el = sectionEl.querySelector<HTMLElement>(`[data-item-id="${item.id}"]`)
+      if (el) {
+        points.push({
+          sectionType: section.sectionType,
+          itemId: item.id,
+          top: el.getBoundingClientRect().top,
+        })
+      }
+    }
   }
-  return { pageItemIds, consumed }
+
+  if (points.length === 0) return []
+
+  const padBottom = Number.parseFloat(getComputedStyle(container).paddingBottom) || 0
+  const contentBottom = container.getBoundingClientRect().bottom - padBottom
+
+  return points.map((point, i) => {
+    const nextTop = i + 1 < points.length ? points[i + 1].top : contentBottom
+    return {
+      sectionType: point.sectionType,
+      itemId: point.itemId,
+      height: Math.max(0, nextTop - point.top),
+    }
+  })
+}
+
+function commitAccumulators(
+  layout: PageLayout,
+  accumulators: Map<string, SliceAccumulator>,
+): void {
+  if (accumulators.size === 0) return
+  const slices: PageSectionSlice[] = []
+  for (const acc of accumulators.values()) {
+    slices.push({
+      sectionType: acc.sectionType,
+      showTitle: acc.showTitle,
+      visibleItemIds: acc.itemIds,
+    })
+  }
+  layout.push(slices)
+}
+
+function placeUnit(accumulators: Map<string, SliceAccumulator>, unit: FlowUnit): void {
+  let acc = accumulators.get(unit.sectionType)
+  if (!acc) {
+    acc = { sectionType: unit.sectionType, showTitle: false, itemIds: new Set() }
+    accumulators.set(unit.sectionType, acc)
+  }
+  if (unit.itemId === null) {
+    acc.showTitle = true
+  } else {
+    acc.itemIds.add(unit.itemId)
+  }
+}
+
+// Returns true when placing this unit requires breaking to a new page first.
+function shouldBreakBefore(
+  unit: FlowUnit,
+  nextUnit: FlowUnit | undefined,
+  cursor: number,
+  usableHeight: number,
+): boolean {
+  if (cursor <= 0) return false
+
+  if (unit.itemId === null) {
+    // Title: must not be orphaned — require room for the title plus its first item.
+    const nextIsFirstItem =
+      nextUnit?.sectionType === unit.sectionType && nextUnit?.itemId !== null
+    const firstItemHeight = nextIsFirstItem ? (nextUnit?.height ?? 0) : 0
+    return cursor + unit.height + firstItemHeight > usableHeight
+  }
+
+  // Item: never split — push the whole item to the next page if it does not fit.
+  return cursor + unit.height > usableHeight
+}
+
+function paginateUnits(units: FlowUnit[], usableHeight: number): PageLayout {
+  const layout: PageLayout = []
+  let accumulators = new Map<string, SliceAccumulator>()
+  let cursor = 0
+
+  for (let i = 0; i < units.length; i++) {
+    const unit = units[i]
+    if (shouldBreakBefore(unit, units[i + 1], cursor, usableHeight)) {
+      commitAccumulators(layout, accumulators)
+      accumulators = new Map()
+      cursor = 0
+    }
+    placeUnit(accumulators, unit)
+    cursor += unit.height
+  }
+
+  commitAccumulators(layout, accumulators)
+  return layout
 }
 
 function computePageLayout(
@@ -100,44 +153,14 @@ function computePageLayout(
   marginBottom: number,
 ): { layout: PageLayout; measuredHeight: number } {
   const usableHeight = PAGE_HEIGHT_PX - marginTop - marginBottom
-  const state: PageState = { layout: [], currentPage: [], cursor: marginTop }
-  let totalMeasuredHeight = 0
+  const units = buildFlowUnits(container, sections)
+  const measuredHeight = units.reduce((sum, u) => sum + u.height, 0)
 
-  for (const section of sections) {
-    const sectionEl = container.querySelector<HTMLElement>(
-      `[data-section-type="${section.sectionType}"]`,
-    )
-    if (!sectionEl) continue
-
-    const titleHeight = measureTitleHeight(sectionEl)
-
-    if (section.items.length === 0) {
-      const sectionHeight = sectionEl.getBoundingClientRect().height
-      totalMeasuredHeight += sectionHeight
-      placeEmptySection(state, section, sectionHeight, usableHeight, marginTop)
-      continue
-    }
-
-    const { measurements, totalHeight } = measureItems(sectionEl, section)
-    totalMeasuredHeight += totalHeight + titleHeight
-
-    let firstItemIndex = 0
-    while (firstItemIndex < measurements.length) {
-      const remaining = measurements.slice(firstItemIndex)
-      const { pageItemIds, consumed } = collectPageItems(state, remaining, titleHeight, usableHeight, marginTop)
-      firstItemIndex += consumed
-      state.currentPage.push({ sectionType: section.sectionType, visibleItemIds: pageItemIds })
-      if (firstItemIndex < measurements.length) {
-        commitPage(state, marginTop)
-      }
-    }
+  if (measuredHeight <= 0) {
+    return { layout: [], measuredHeight: 0 }
   }
 
-  if (state.currentPage.length > 0) {
-    state.layout.push(state.currentPage)
-  }
-
-  return { layout: state.layout, measuredHeight: totalMeasuredHeight }
+  return { layout: paginateUnits(units, usableHeight), measuredHeight }
 }
 
 export function usePageLayout(

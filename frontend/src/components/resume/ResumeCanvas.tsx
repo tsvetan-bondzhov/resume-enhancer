@@ -4,7 +4,7 @@ import { apiClient } from "@/lib/apiClient"
 import { getOrderedSections } from "@/lib/templateUtils"
 import ResumeSection from "@/components/resume/ResumeSection"
 import type { ResumeDocumentDto, ResumeItemDto, ResumeSectionType, TemplateCssVariables, TemplateDto } from "@/types/api"
-import { usePageLayout } from "./usePageLayout"
+import { usePageLayout, type PageSectionSlice } from "./usePageLayout"
 export { PAGE_HEIGHT_PX } from "./resumeConstants"
 import { PAGE_HEIGHT_PX } from "./resumeConstants"
 
@@ -96,49 +96,61 @@ export default function ResumeCanvas({
   )
 
   // Memoised render helper — renders resume section content for both the hidden
-  // measurement container and each visible page article.
+  // measurement container (no slices → all sections) and each visible page article
+  // (slices → only the sections/items assigned to that page).
   const renderSections = useCallback(
-    (pageSliceMap?: Map<string, ReadonlySet<string>>): React.ReactNode => {
+    (pageSlices?: PageSectionSlice[]): React.ReactNode => {
       if (document === null) return null
 
-      const renderSection = (
-        section: (typeof orderedSections)[number],
-        visibleItemIds?: ReadonlySet<string>,
-      ) => (
-        <ResumeSection
-          key={section.sectionType}
-          section={section}
-          onTitleChange={(title) => onTitleChange?.(section.sectionType, title)}
-          onFieldChange={
-            onFieldChange
-              ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
-              : undefined
-          }
-          onAddItem={onAddItem ? (position) => onAddItem(section.sectionType, position) : undefined}
-          onDeleteItem={onDeleteItem ? (itemId) => onDeleteItem(section.sectionType, itemId) : undefined}
-          onReorderItems={onReorderItems ? (newItems) => onReorderItems(section.sectionType, newItems) : undefined}
-          visibleItemIds={visibleItemIds}
-        />
-      )
+      const sliceMap = pageSlices
+        ? new Map(pageSlices.map((s) => [s.sectionType, s]))
+        : null
+
+      // When slicing, only render sections present on this page — rendering every
+      // section on every page would duplicate content across pages.
+      const sectionsForRender = sliceMap
+        ? orderedSections.filter((s) => sliceMap.has(s.sectionType))
+        : orderedSections
+
+      const renderSection = (section: (typeof orderedSections)[number]) => {
+        const slice = sliceMap?.get(section.sectionType)
+        return (
+          <ResumeSection
+            key={section.sectionType}
+            section={section}
+            onTitleChange={(title) => onTitleChange?.(section.sectionType, title)}
+            onFieldChange={
+              onFieldChange
+                ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
+                : undefined
+            }
+            onAddItem={onAddItem ? (position) => onAddItem(section.sectionType, position) : undefined}
+            onDeleteItem={onDeleteItem ? (itemId) => onDeleteItem(section.sectionType, itemId) : undefined}
+            onReorderItems={onReorderItems ? (newItems) => onReorderItems(section.sectionType, newItems) : undefined}
+            visibleItemIds={slice?.visibleItemIds}
+            showTitle={slice ? slice.showTitle : true}
+          />
+        )
+      }
 
       if (isTwoColumn) {
-        const leftSections = orderedSections.filter((s) => leftColumnIds.has(s.sectionType))
-        const rightSections = orderedSections.filter((s) => rightColumnIds.has(s.sectionType))
+        const leftSections = sectionsForRender.filter((s) => leftColumnIds.has(s.sectionType))
+        const rightSections = sectionsForRender.filter((s) => rightColumnIds.has(s.sectionType))
 
         return (
           <div className="flex gap-6">
             <div className="flex flex-col gap-4 basis-1/3">
-              {leftSections.map((s) => renderSection(s, pageSliceMap?.get(s.sectionType)))}
+              {leftSections.map(renderSection)}
             </div>
             <div className="flex flex-col gap-4 flex-1">
-              {rightSections.map((s) => renderSection(s, pageSliceMap?.get(s.sectionType)))}
+              {rightSections.map(renderSection)}
             </div>
           </div>
         )
       }
 
       // Single-column, modern-accent, or two-column graceful degradation when column arrays are empty.
-      return orderedSections.map((s) => renderSection(s, pageSliceMap?.get(s.sectionType)))
+      return sectionsForRender.map(renderSection)
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [document, template, onTitleChange, onFieldChange, onAddItem, onDeleteItem, onReorderItems],
@@ -213,9 +225,6 @@ export default function ResumeCanvas({
         <div id="resume-canvas" tabIndex={-1} className="flex flex-col items-center gap-4 w-full">
           {Array.from({ length: pageCount }, (_, i) => {
             const pageSlices = pageLayout?.[i]
-            const pageSliceMap = pageSlices
-              ? new Map(pageSlices.map((s) => [s.sectionType, s.visibleItemIds]))
-              : undefined
 
             return (
               <article
@@ -224,7 +233,7 @@ export default function ResumeCanvas({
                 style={{ ...rootStyle, height: PAGE_HEIGHT_PX, overflow: "hidden", position: "relative" }}
                 className="bg-white shadow-lg w-[794px] max-w-full"
               >
-                <div className="p-8">
+                <div style={{ paddingTop: marginTop, paddingBottom: marginBottom, paddingLeft: 32, paddingRight: 32 }}>
                   {/* ARIA live region stub — only on page 1 to avoid duplication */}
                   {i === 0 && (
                     <div
@@ -242,8 +251,8 @@ export default function ResumeCanvas({
                     <div aria-hidden="true" className="bg-[var(--accent-color)] p-4 mb-6" />
                   )}
 
-                  {pageSliceMap
-                    ? renderSections(pageSliceMap)
+                  {pageSlices
+                    ? renderSections(pageSlices)
                     : renderSections()}
                 </div>
               </article>
