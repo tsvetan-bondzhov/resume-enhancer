@@ -10,6 +10,7 @@ import SectionsPanel from "@/components/resume/SectionsPanel"
 import ResumeCanvas from "@/components/resume/ResumeCanvas"
 import EditorToolbar from "@/components/resume/EditorToolbar"
 import SaveAsDialog from "@/components/resume/SaveAsDialog"
+import ExportFormatDialog from "@/components/resume/ExportFormatDialog"
 import TemplateGallery from "@/components/resume/TemplateGallery"
 import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
 import ChatPanel from "@/components/resume/ChatPanel"
@@ -73,6 +74,8 @@ export default function EditorPage() {
 
   const [sidebarResumes, setSidebarResumes] = useState<ResumeDto[]>(() => resumes)
   const [duplicatingSidebarId, setDuplicatingSidebarId] = useState<string | null>(null)
+  const [exportingResume, setExportingResume] = useState<ResumeDto | null>(null)
+  const [isSidebarExporting, setIsSidebarExporting] = useState(false)
   const pendingSidebarDeletes = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   // Keep sidebar in sync with the Zustand resumes list (updated by add/remove/sync actions)
@@ -333,6 +336,41 @@ export default function EditorPage() {
     })
   }, [id, resumes, navigate, removeResume])
 
+  const handleSidebarExportClick = useCallback((resume: ResumeDto) => {
+    setExportingResume(resume)
+  }, [])
+
+  const handleSidebarExport = useCallback(async (format: "pdf" | "docx") => {
+    if (!exportingResume) return
+    setIsSidebarExporting(true)
+    try {
+      const token = useAuthStore.getState().token
+      const res = await fetch(
+        `/api/v1/resumes/${exportingResume.id}/export?format=${format}`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+      )
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { detail?: string }
+        throw new Error(body.detail ?? "Export failed")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${exportingResume.name ?? "resume"}.${format}`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast.success("Download ready", { duration: 4000 })
+      setExportingResume(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed", { duration: 8000 })
+    } finally {
+      setIsSidebarExporting(false)
+    }
+  }, [exportingResume])
+
   return (
     <>
       <a
@@ -356,6 +394,7 @@ export default function EditorPage() {
                     resume={r}
                     isActive={r.id === id}
                     onOpen={() => navigate(`/resumes/${r.id}`)}
+                    onExport={() => handleSidebarExportClick(r)}
                     onDuplicate={() => handleDuplicateFromSidebar(r)}
                     onDelete={() => handleDeleteFromSidebar(r)}
                     isDuplicating={duplicatingSidebarId === r.id}
@@ -427,6 +466,13 @@ export default function EditorPage() {
         isSaving={isSavingAs}
         onConfirm={handleSaveAs}
         onClose={() => setIsSaveAsOpen(false)}
+      />
+      <ExportFormatDialog
+        open={exportingResume !== null}
+        resumeName={exportingResume?.name ?? ""}
+        isExporting={isSidebarExporting}
+        onExport={handleSidebarExport}
+        onClose={() => { if (!isSidebarExporting) setExportingResume(null) }}
       />
     </>
   )

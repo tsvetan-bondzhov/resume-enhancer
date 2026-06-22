@@ -1,5 +1,4 @@
 import { Download, Copy, Trash2, Loader2 } from "lucide-react"
-import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import type { ResumeDto } from "@/types/api"
 
@@ -7,6 +6,7 @@ interface ResumeSidebarItemProps {
   readonly resume: ResumeDto
   readonly isActive: boolean
   readonly onOpen: () => void
+  readonly onExport: () => void
   readonly onDuplicate: () => void
   readonly onDelete: () => void
   readonly isDuplicating?: boolean
@@ -16,6 +16,7 @@ export default function ResumeSidebarItem({
   resume,
   isActive,
   onOpen,
+  onExport,
   onDuplicate,
   onDelete,
   isDuplicating = false,
@@ -58,10 +59,7 @@ export default function ResumeSidebarItem({
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            toast("Export coming soon")
-          }}
+          onClick={(e) => { e.stopPropagation(); onExport() }}
           aria-label={`Export ${resume.name}`}
           className="p-1 rounded hover:bg-muted"
         >
