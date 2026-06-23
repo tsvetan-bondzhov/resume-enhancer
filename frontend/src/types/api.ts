@@ -19,6 +19,23 @@ export interface UserDto {
   role: "USER" | "ADMIN"
 }
 
+export interface AdminUserDto {
+  id: string
+  email: string
+  role: "USER" | "ADMIN"
+  status: "ACTIVE" | "INACTIVE"
+  createdAt: string
+}
+
+/** Mirrors Spring Data's serialized Page<T> JSON shape. */
+export interface Page<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+}
+
 export interface ApiErrorResponse {
   type: string
   title: string

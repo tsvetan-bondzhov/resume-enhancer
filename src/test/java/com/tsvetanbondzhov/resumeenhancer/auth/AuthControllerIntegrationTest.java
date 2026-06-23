@@ -155,6 +155,38 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
+    void login_deactivatedUser_returns401WithAccountDeactivatedDetail() throws Exception {
+        userRepository.deleteAll();
+
+        // Register a user (created enabled=true)
+        SignupRequest signup = new SignupRequest("deactivated@example.com", "Password1");
+        webTestClient().post()
+                .uri("/api/v1/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(objectMapper.writeValueAsString(signup))
+                .exchange()
+                .expectStatus().isCreated();
+
+        // Deactivate the account directly (simulates admin deactivation)
+        com.tsvetanbondzhov.resumeenhancer.auth.domain.User user =
+                userRepository.findByEmail("deactivated@example.com").orElseThrow();
+        user.setEnabled(false);
+        userRepository.save(user);
+
+        // Login with valid credentials must be blocked with exactly "Account is deactivated"
+        LoginRequest login = new LoginRequest("deactivated@example.com", "Password1");
+        webTestClient().post()
+                .uri("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(objectMapper.writeValueAsString(login))
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Unauthorized")
+                .jsonPath("$.detail").isEqualTo("Account is deactivated");
+    }
+
+    @Test
     void login_unknownEmail_returns401ProblemDetail() throws Exception {
         userRepository.deleteAll();
 

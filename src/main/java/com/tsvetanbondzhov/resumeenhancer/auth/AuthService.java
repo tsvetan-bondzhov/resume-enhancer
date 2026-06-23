@@ -43,6 +43,12 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
+        // Block login for deactivated accounts. Checked AFTER password verification so
+        // it cannot be used as an account-existence/active-state oracle by an attacker.
+        if (!user.isEnabled()) {
+            throw new AccountDeactivatedException();
+        }
+
         String token = tokenService.generateToken(user);
         return new AuthResponse(token);
     }

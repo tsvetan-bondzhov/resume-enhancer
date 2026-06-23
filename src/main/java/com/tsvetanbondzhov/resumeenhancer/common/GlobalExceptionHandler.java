@@ -1,5 +1,6 @@
 package com.tsvetanbondzhov.resumeenhancer.common;
 
+import com.tsvetanbondzhov.resumeenhancer.admin.UserNotFoundException;
 import com.tsvetanbondzhov.resumeenhancer.ai.InvalidPatchException;
 import com.tsvetanbondzhov.resumeenhancer.ai.OllamaUnavailableException;
 import com.tsvetanbondzhov.resumeenhancer.auth.InvalidCurrentPasswordException;
@@ -96,6 +97,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResumeNotFoundException.class)
     public ProblemDetail handleResumeNotFound(ResumeNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Not Found");
+        return problem;
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ProblemDetail handleUserNotFound(UserNotFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Not Found");
