@@ -68,7 +68,11 @@ class AuthControllerIntegrationTest {
                 .exchange()
                 .expectStatus().isCreated()
                 .expectBody()
-                .jsonPath("$.token").isNotEmpty();
+                .jsonPath("$.token").isNotEmpty()
+                .jsonPath("$.user.email").isNotEmpty()
+                .jsonPath("$.user.role").isEqualTo("USER")
+                .jsonPath("$.user.enabled").isEqualTo(true)
+                .jsonPath("$.user.passwordHash").doesNotExist();
     }
 
     @Test
@@ -151,7 +155,11 @@ class AuthControllerIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.token").isNotEmpty();
+                .jsonPath("$.token").isNotEmpty()
+                .jsonPath("$.user.email").isNotEmpty()
+                .jsonPath("$.user.role").isEqualTo("USER")
+                .jsonPath("$.user.enabled").isEqualTo(true)
+                .jsonPath("$.user.passwordHash").doesNotExist();
     }
 
     @Test

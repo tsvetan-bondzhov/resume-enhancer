@@ -57,6 +57,10 @@ class AuthServiceTest {
 
         // Then
         assertThat(response.token()).isEqualTo("jwt-token-value");
+        assertThat(response.user()).isNotNull();
+        assertThat(response.user().email()).isEqualTo("test@example.com");
+        assertThat(response.user().role()).isEqualTo("USER");
+        assertThat(response.user().enabled()).isTrue();
         verify(tokenService).generateToken(user);
     }
 
@@ -139,6 +143,11 @@ class AuthServiceTest {
 
         // Then
         assertThat(response.token()).isEqualTo("jwt-token-value");
+
+        assertThat(response.user()).isNotNull();
+        assertThat(response.user().email()).isEqualTo("test@example.com");
+        assertThat(response.user().role()).isEqualTo("USER");
+        assertThat(response.user().enabled()).isTrue();
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
