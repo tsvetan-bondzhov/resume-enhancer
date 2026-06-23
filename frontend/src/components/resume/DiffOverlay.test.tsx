@@ -64,14 +64,6 @@ describe("DiffOverlay", () => {
     expect(screen.getByText("Second change")).toBeInTheDocument()
   })
 
-  it("renders faded diffs (state=faded) as well", () => {
-    useDiffStore.setState({
-      diffs: [buildDiff({ state: "faded", newValue: "Faded content" })],
-    })
-    render(<DiffOverlay sectionId="WORK_EXPERIENCE" />)
-    expect(screen.getByText("Faded content")).toBeInTheDocument()
-  })
-
   it("clicking Accept calls acceptDiff with the diff id", () => {
     useDiffStore.setState({ diffs: [buildDiff({ id: "diff-abc" })] })
     render(<DiffOverlay sectionId="WORK_EXPERIENCE" />)

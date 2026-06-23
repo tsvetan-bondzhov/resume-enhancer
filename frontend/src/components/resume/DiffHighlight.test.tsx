@@ -74,22 +74,6 @@ describe("DiffHighlight", () => {
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
   })
 
-  it("faded state — renders mark with opacity-50 class", () => {
-    render(
-      <DiffHighlight
-        kind="addition"
-        state="faded"
-        onAccept={vi.fn()}
-        onReject={vi.fn()}
-      >
-        faded text
-      </DiffHighlight>
-    )
-    const mark = screen.getByRole("region", { name: "AI addition" })
-    expect(mark).toBeInTheDocument()
-    expect(mark.className).toContain("opacity-50")
-  })
-
   it("hidden state — renders nothing; mark not in DOM", () => {
     render(
       <DiffHighlight

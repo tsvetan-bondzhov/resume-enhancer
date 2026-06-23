@@ -1,7 +1,7 @@
 import { useState } from "react"
 
 type DiffHighlightKind = "addition" | "rewrite" | "deletion"
-type DiffHighlightState = "visible" | "faded" | "hidden"
+type DiffHighlightState = "visible" | "hidden"
 
 interface DiffHighlightProps {
   readonly kind: DiffHighlightKind
@@ -38,7 +38,6 @@ export default function DiffHighlight({
       onMouseLeave={() => setIsHovering(false)}
       className={[
         bgClass,
-        state === "faded" ? "opacity-50" : "",
         "relative inline-block rounded-sm px-0.5",
       ]
         .filter(Boolean)

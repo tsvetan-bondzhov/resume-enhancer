@@ -75,31 +75,6 @@ describe("useDiffStore", () => {
     expect(useDiffStore.getState().diffs[0].state).toBe("visible")
   })
 
-  it("fadeAll sets all visible diffs to faded", () => {
-    const diff1 = buildDiff({ id: "diff-1", state: "visible" })
-    const diff2 = buildDiff({ id: "diff-2", state: "visible" })
-    useDiffStore.getState().addDiff(diff1)
-    useDiffStore.getState().addDiff(diff2)
-    useDiffStore.getState().fadeAll()
-    const { diffs } = useDiffStore.getState()
-    expect(diffs[0].state).toBe("faded")
-    expect(diffs[1].state).toBe("faded")
-  })
-
-  it("fadeAll does not change already-hidden diffs", () => {
-    const diff = buildDiff({ id: "diff-1", state: "hidden" })
-    useDiffStore.getState().addDiff(diff)
-    useDiffStore.getState().fadeAll()
-    expect(useDiffStore.getState().diffs[0].state).toBe("hidden")
-  })
-
-  it("fadeAll leaves faded diffs as faded", () => {
-    const diff = buildDiff({ id: "diff-1", state: "faded" })
-    useDiffStore.getState().addDiff(diff)
-    useDiffStore.getState().fadeAll()
-    expect(useDiffStore.getState().diffs[0].state).toBe("faded")
-  })
-
   it("clearAll empties the diffs array", () => {
     useDiffStore.getState().addDiff(buildDiff({ id: "diff-1" }))
     useDiffStore.getState().addDiff(buildDiff({ id: "diff-2" }))
