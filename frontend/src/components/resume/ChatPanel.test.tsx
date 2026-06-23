@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react"
 import { toast } from "sonner"
 import { useChatStore } from "@/stores/useChatStore"
 import { useResumeStore } from "@/stores/useResumeStore"
+import { apiClient } from "@/lib/apiClient"
 import type { ChatMessage } from "@/types/api"
 import ChatPanel from "./ChatPanel"
 
@@ -31,6 +32,13 @@ vi.mock("@/stores/useResumeStore", () => ({
 // Mock sonner — verify toast.error is NOT called for AI errors
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
+}))
+
+// Mock apiClient — handleClearSession issues a DELETE we want to observe
+vi.mock("@/lib/apiClient", () => ({
+  apiClient: {
+    delete: vi.fn(() => Promise.resolve()),
+  },
 }))
 
 // Mock react-router-dom (not used in ChatPanel directly but may be transitively imported)
@@ -238,6 +246,94 @@ describe("ChatPanel", () => {
     const [, body2] = mockStartStreamWithPost.mock.calls[1] as [string, Record<string, unknown>]
 
     expect(body1.conversationId).toBe(body2.conversationId)
+  })
+
+  // ─── Patch message bubble rendering (diff helpers) ───────────────────────
+
+  it("renders a patch message with diffs — addition, deletion, rewrite styles/prefixes", () => {
+    const patchMsg = buildMessage({
+      role: "assistant",
+      type: "patch",
+      content: "",
+      diffs: [
+        { kind: "addition", sectionId: "SKILLS", field: "", newValue: "" },
+        { kind: "deletion", sectionId: "EXPERIENCE", field: "", newValue: "" },
+        { kind: "rewrite", sectionId: "SUMMARY", field: "text", newValue: "An updated summary" },
+      ],
+    })
+    act(() => {
+      useChatStore.setState({ messages: [patchMsg], isStreaming: false })
+    })
+    render(<ChatPanel resumeId="test-resume-id" />)
+
+    expect(screen.getByText("AI suggested changes")).toBeInTheDocument()
+    // addition without field → "skills: new item added"
+    expect(screen.getByText("skills: new item added")).toBeInTheDocument()
+    // deletion → "experience: item removed"
+    expect(screen.getByText("experience: item removed")).toBeInTheDocument()
+    // rewrite → "summary.text: An updated summary"
+    expect(screen.getByText("summary.text: An updated summary")).toBeInTheDocument()
+  })
+
+  it("truncates long rewrite values in the diff label", () => {
+    const longValue = "x".repeat(80)
+    const patchMsg = buildMessage({
+      role: "assistant",
+      type: "patch",
+      content: "",
+      diffs: [{ kind: "rewrite", sectionId: "SUMMARY", field: "text", newValue: longValue }],
+    })
+    act(() => {
+      useChatStore.setState({ messages: [patchMsg], isStreaming: false })
+    })
+    render(<ChatPanel resumeId="test-resume-id" />)
+    // Value is truncated to 60 chars + ellipsis
+    const expected = `summary.text: ${"x".repeat(60)}…`
+    expect(screen.getByText(expected)).toBeInTheDocument()
+  })
+
+  it("renders a patch message with no diffs — falls back to content text", () => {
+    const patchMsg = buildMessage({
+      role: "assistant",
+      type: "patch",
+      content: "Patch applied.",
+      diffs: [],
+    })
+    act(() => {
+      useChatStore.setState({ messages: [patchMsg], isStreaming: false })
+    })
+    render(<ChatPanel resumeId="test-resume-id" />)
+    expect(screen.getByText("Patch applied.")).toBeInTheDocument()
+  })
+
+  // ─── handleClearSession ──────────────────────────────────────────────────
+
+  it("clear session button clears messages and issues a DELETE for the conversation", async () => {
+    const existing = buildMessage({ content: "old message" })
+    act(() => {
+      useChatStore.setState({ messages: [existing], isStreaming: false })
+    })
+    render(<ChatPanel resumeId="test-resume-id" />)
+    expect(screen.getByText("old message")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: /clear chat session/i }))
+
+    expect(screen.queryByText("old message")).not.toBeInTheDocument()
+    expect(vi.mocked(apiClient.delete)).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/api\/v1\/ai\/chat\//),
+    )
+  })
+
+  it("clear session is a no-op while streaming", () => {
+    act(() => {
+      useChatStore.setState({ messages: [buildMessage({ content: "msg" })], isStreaming: true })
+    })
+    render(<ChatPanel resumeId="test-resume-id" />)
+    // Button is disabled while streaming; invoking the handler path is guarded
+    const clearBtn = screen.getByRole("button", { name: /clear chat session/i })
+    expect(clearBtn).toBeDisabled()
+    fireEvent.click(clearBtn)
+    expect(vi.mocked(apiClient.delete)).not.toHaveBeenCalled()
   })
 
   it("patch event dispatches to useResumeStore.applyPatch (AC4, AC8)", () => {

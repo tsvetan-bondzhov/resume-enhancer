@@ -443,4 +443,65 @@ class AiControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         Thread.sleep(300);
     }
+
+    // ─── /chat — allowEdits patch-aware path ─────────────────────────────────
+
+    @Test
+    void chat_withAllowEdits_loadsResume_andUsesPatchAwarePipeline() throws InterruptedException {
+        UUID resumeId = UUID.randomUUID();
+        ResumeDocument document = new ResumeDocument(List.of());
+        ResumeDto resumeDto = new ResumeDto(resumeId, "My Resume", null, document, false,
+                Instant.now(), Instant.now());
+
+        when(healthGuard.isAvailable()).thenReturn(true);
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("user@example.com");
+        when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
+
+        // Prose + a patch JSON line; with a real document the patch is validated then emitted/discarded
+        String patchJson = "{\"sectionId\":\"WORK_EXPERIENCE\",\"itemIndex\":0,\"field\":\"jobTitle\",\"newValue\":\"Senior\"}";
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any(), anyBoolean()))
+                .thenReturn(Flux.just("Some prose\n", patchJson + "\n"));
+
+        ChatRequest request = new ChatRequest("Improve my title", resumeId.toString(), "conv-edit", true);
+        ResponseEntity<?> response = aiController.chat(request, authentication);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isInstanceOf(SseEmitter.class);
+        Thread.sleep(200);
+        // allowEdits=true is only honoured when a document loads — verify it was passed through
+        verify(aiService).streamChat(eq("Improve my title"), eq("conv-edit"), any(ChatMemory.class), any(), eq(true));
+    }
+
+    @Test
+    void chat_withAllowEdits_butResumeLoadFails_fallsBackToPlainChat() throws InterruptedException {
+        UUID resumeId = UUID.randomUUID();
+
+        when(healthGuard.isAvailable()).thenReturn(true);
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("user@example.com");
+        // resolveResumeDocument swallows the exception and returns null → allowEdits becomes false
+        when(resumeService.getResume(anyString(), any(UUID.class)))
+                .thenThrow(new RuntimeException("resume not found"));
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any(), anyBoolean()))
+                .thenReturn(Flux.just("token"));
+
+        ChatRequest request = new ChatRequest("Improve my title", resumeId.toString(), "conv-x", true);
+        ResponseEntity<?> response = aiController.chat(request, authentication);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Thread.sleep(200);
+        // Document failed to load → allowEdits coerced to false
+        verify(aiService).streamChat(eq("Improve my title"), eq("conv-x"), any(ChatMemory.class), any(), eq(false));
+    }
+
+    // ─── /chat/{conversationId} — clear conversation ─────────────────────────
+
+    @Test
+    void clearConversation_returnsNoContent_andDelegatesToService() {
+        ResponseEntity<Void> response = aiController.clearConversation("conv-to-clear");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        verify(aiService).clearConversation(eq("conv-to-clear"), any(ChatMemory.class));
+    }
 }

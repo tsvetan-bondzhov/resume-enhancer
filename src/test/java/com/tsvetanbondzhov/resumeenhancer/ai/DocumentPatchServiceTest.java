@@ -1,5 +1,6 @@
 package com.tsvetanbondzhov.resumeenhancer.ai;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -537,5 +538,207 @@ class DocumentPatchServiceTest {
         GenericItem updated = (GenericItem) result.sections().get(0).items().get(0);
         assertThat(updated.fields()).containsEntry("newField", "newValue");
         assertThat(updated.fields()).containsEntry("existingField", "value");
+    }
+
+    // --- FullNameItem patches ---
+
+    @Test
+    void apply_patches_fullName_firstName() {
+        FullNameItem name = new FullNameItem("name-0", "Jane", "Doe");
+        ResumeDocument doc = documentWith(name, ResumeSectionType.FULL_NAME, "Name");
+
+        var patch = DocumentPatchEvent.modify("FULL_NAME", 0, "firstName", "John");
+        ResumeDocument result = service.apply(doc, patch);
+
+        FullNameItem updated = (FullNameItem) result.sections().get(0).items().get(0);
+        assertThat(updated.firstName()).isEqualTo("John");
+        assertThat(updated.lastName()).isEqualTo("Doe");
+    }
+
+    @Test
+    void apply_patches_fullName_lastName() {
+        FullNameItem name = new FullNameItem("name-0", "Jane", "Doe");
+        ResumeDocument doc = documentWith(name, ResumeSectionType.FULL_NAME, "Name");
+
+        var patch = DocumentPatchEvent.modify("FULL_NAME", 0, "lastName", "Smith");
+        ResumeDocument result = service.apply(doc, patch);
+
+        FullNameItem updated = (FullNameItem) result.sections().get(0).items().get(0);
+        assertThat(updated.lastName()).isEqualTo("Smith");
+    }
+
+    @Test
+    void apply_throws_InvalidPatchException_for_unknown_field_on_fullName() {
+        FullNameItem name = new FullNameItem("name-0", "Jane", "Doe");
+        ResumeDocument doc = documentWith(name, ResumeSectionType.FULL_NAME, "Name");
+
+        var patch = DocumentPatchEvent.modify("FULL_NAME", 0, "middleName", "X");
+        assertThatThrownBy(() -> service.apply(doc, patch))
+                .isInstanceOf(InvalidPatchException.class)
+                .hasMessageContaining("FULL_NAME");
+    }
+
+    // --- "add" operation ---
+
+    private DocumentPatchEvent addPatch(String sectionId, Integer itemIndex, JsonNode item) {
+        return new DocumentPatchEvent(sectionId, "add", itemIndex, null, null, item);
+    }
+
+    @Test
+    void apply_add_appends_new_item_with_generated_id_when_no_index() throws Exception {
+        JsonNode item = new ObjectMapper().readTree(
+                "{\"type\":\"WORK_EXPERIENCE\",\"jobTitle\":\"Architect\",\"company\":\"BigCo\"}");
+        var patch = addPatch("WORK_EXPERIENCE", null, item);
+
+        ResumeDocument result = service.apply(document, patch);
+
+        List<ResumeItem> items = result.sections().get(0).items();
+        assertThat(items).hasSize(3);
+        WorkExperienceItem added = (WorkExperienceItem) items.get(2);
+        assertThat(added.jobTitle()).isEqualTo("Architect");
+        assertThat(added.company()).isEqualTo("BigCo");
+        // A fresh id is generated rather than reusing any incoming id
+        assertThat(added.id()).isNotBlank();
+    }
+
+    @Test
+    void apply_add_inserts_at_clamped_index() throws Exception {
+        JsonNode item = new ObjectMapper().readTree(
+                "{\"type\":\"WORK_EXPERIENCE\",\"jobTitle\":\"Intern\",\"company\":\"FirstCo\"}");
+        var patch = addPatch("WORK_EXPERIENCE", 0, item);
+
+        ResumeDocument result = service.apply(document, patch);
+
+        List<ResumeItem> items = result.sections().get(0).items();
+        assertThat(items).hasSize(3);
+        assertThat(((WorkExperienceItem) items.get(0)).jobTitle()).isEqualTo("Intern");
+    }
+
+    @Test
+    void apply_add_clamps_out_of_range_index_to_end() throws Exception {
+        JsonNode item = new ObjectMapper().readTree(
+                "{\"type\":\"WORK_EXPERIENCE\",\"jobTitle\":\"Last\",\"company\":\"LastCo\"}");
+        var patch = addPatch("WORK_EXPERIENCE", 999, item);
+
+        ResumeDocument result = service.apply(document, patch);
+
+        List<ResumeItem> items = result.sections().get(0).items();
+        assertThat(items).hasSize(3);
+        assertThat(((WorkExperienceItem) items.get(2)).jobTitle()).isEqualTo("Last");
+    }
+
+    @Test
+    void apply_add_clamps_negative_index_to_zero() throws Exception {
+        JsonNode item = new ObjectMapper().readTree(
+                "{\"type\":\"WORK_EXPERIENCE\",\"jobTitle\":\"Neg\",\"company\":\"NegCo\"}");
+        var patch = addPatch("WORK_EXPERIENCE", -5, item);
+
+        ResumeDocument result = service.apply(document, patch);
+
+        List<ResumeItem> items = result.sections().get(0).items();
+        assertThat(items).hasSize(3);
+        assertThat(((WorkExperienceItem) items.get(0)).jobTitle()).isEqualTo("Neg");
+    }
+
+    @Test
+    void apply_add_generates_new_id_for_skill_item() throws Exception {
+        SkillItem skill = new SkillItem("skill-0", "Java");
+        ResumeDocument doc = documentWith(skill, ResumeSectionType.SKILLS, "Skills");
+
+        JsonNode item = new ObjectMapper().readTree("{\"type\":\"SKILLS\",\"name\":\"Kotlin\"}");
+        var patch = addPatch("SKILLS", null, item);
+
+        ResumeDocument result = service.apply(doc, patch);
+        List<ResumeItem> items = result.sections().get(0).items();
+        assertThat(items).hasSize(2);
+        SkillItem added = (SkillItem) items.get(1);
+        assertThat(added.name()).isEqualTo("Kotlin");
+        assertThat(added.id()).isNotBlank();
+    }
+
+    @Test
+    void apply_add_throws_when_item_missing() {
+        var patch = addPatch("WORK_EXPERIENCE", null, null);
+        assertThatThrownBy(() -> service.apply(document, patch))
+                .isInstanceOf(InvalidPatchException.class)
+                .hasMessageContaining("'item'");
+    }
+
+    @Test
+    void apply_add_throws_when_item_cannot_be_deserialized() throws Exception {
+        JsonNode item = new ObjectMapper().readTree("{\"type\":\"NOT_A_REAL_TYPE\"}");
+        var patch = addPatch("WORK_EXPERIENCE", null, item);
+        assertThatThrownBy(() -> service.apply(document, patch))
+                .isInstanceOf(InvalidPatchException.class)
+                .hasMessageContaining("deserialize");
+    }
+
+    // --- "delete" operation ---
+
+    private DocumentPatchEvent deletePatch(String sectionId, Integer itemIndex) {
+        return new DocumentPatchEvent(sectionId, "delete", itemIndex, null, null, null);
+    }
+
+    @Test
+    void apply_delete_removes_item_at_index() {
+        var patch = deletePatch("WORK_EXPERIENCE", 0);
+        ResumeDocument result = service.apply(document, patch);
+
+        List<ResumeItem> items = result.sections().get(0).items();
+        assertThat(items).hasSize(1);
+        assertThat(((WorkExperienceItem) items.get(0)).jobTitle()).isEqualTo("Junior Dev");
+    }
+
+    @Test
+    void apply_delete_throws_for_missing_itemIndex() {
+        var patch = deletePatch("WORK_EXPERIENCE", null);
+        assertThatThrownBy(() -> service.apply(document, patch))
+                .isInstanceOf(InvalidPatchException.class)
+                .hasMessageContaining("itemIndex is required");
+    }
+
+    @Test
+    void apply_delete_throws_for_out_of_bounds_index() {
+        var patch = deletePatch("WORK_EXPERIENCE", 99);
+        assertThatThrownBy(() -> service.apply(document, patch))
+                .isInstanceOf(InvalidPatchException.class)
+                .hasMessageContaining("out of bounds");
+    }
+
+    // --- isValid ---
+
+    @Test
+    void isValid_returns_true_for_valid_patch() {
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 0, "jobTitle", "X");
+        assertThat(service.isValid(document, patch)).isTrue();
+    }
+
+    @Test
+    void isValid_returns_false_for_null_document() {
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 0, "jobTitle", "X");
+        assertThat(service.isValid(null, patch)).isFalse();
+    }
+
+    @Test
+    void isValid_returns_false_for_null_patch() {
+        assertThat(service.isValid(document, null)).isFalse();
+    }
+
+    @Test
+    void isValid_returns_false_for_null_sectionId() {
+        var patch = new DocumentPatchEvent(null, "modify", 0, "jobTitle", "X", null);
+        assertThat(service.isValid(document, patch)).isFalse();
+    }
+
+    @Test
+    void isValid_returns_false_for_blank_sectionId() {
+        var patch = new DocumentPatchEvent("   ", "modify", 0, "jobTitle", "X", null);
+        assertThat(service.isValid(document, patch)).isFalse();
+    }
+
+    @Test
+    void isValid_returns_false_when_apply_throws() {
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 99, "jobTitle", "X");
+        assertThat(service.isValid(document, patch)).isFalse();
     }
 }
