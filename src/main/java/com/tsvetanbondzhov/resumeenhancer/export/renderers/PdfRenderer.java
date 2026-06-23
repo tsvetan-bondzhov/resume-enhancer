@@ -14,6 +14,7 @@ import com.tsvetanbondzhov.resumeenhancer.export.TemplateDefinition;
 import com.tsvetanbondzhov.resumeenhancer.export.TemplateDefinitionService;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.CertificationItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.EducationItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.FullNameItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.GenericItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.LanguageItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ProjectItem;
@@ -245,6 +246,7 @@ public class PdfRenderer implements DocumentRenderer {
             case ProjectItem p -> renderProject(document, p, boldFont, regularFont, baseFontSize);
             case VolunteeringItem v -> renderVolunteering(document, v, boldFont, regularFont, baseFontSize);
             case SummaryItem ignored -> { /* already rendered as header */ }
+            case FullNameItem n -> renderFullName(document, n, boldFont, baseFontSize);
             case SkillItem ignored -> { /* handled in renderSkillsSection */ }
             case GenericItem g -> renderGeneric(document, g, regularFont, baseFontSize);
         }
@@ -381,6 +383,19 @@ public class PdfRenderer implements DocumentRenderer {
                         .setFontSize(baseFontSize)
                         .setMarginBottom(4f));
             }
+        }
+    }
+
+    private void renderFullName(Document document, FullNameItem n,
+                                PdfFont boldFont, float baseFontSize) {
+        String fullName = java.util.stream.Stream.of(n.firstName(), n.lastName())
+                .filter(v -> v != null && !v.isBlank())
+                .collect(Collectors.joining(" "));
+        if (!fullName.isBlank()) {
+            document.add(new Paragraph(fullName)
+                    .setFont(boldFont)
+                    .setFontSize(baseFontSize + 4f)
+                    .setMarginBottom(4f));
         }
     }
 

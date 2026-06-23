@@ -51,4 +51,29 @@ describe("useChatStore", () => {
     useChatStore.getState().clearMessages()
     expect(useChatStore.getState().messages).toHaveLength(0)
   })
+
+  it("updateMessage patches the matching message by id", () => {
+    const msg = buildMessage({ id: "msg-1", content: "original" })
+    useChatStore.setState({ messages: [msg] })
+    useChatStore.getState().updateMessage("msg-1", { content: "updated" })
+    expect(useChatStore.getState().messages[0].content).toBe("updated")
+    expect(useChatStore.getState().messages[0].id).toBe("msg-1")
+  })
+
+  it("updateMessage leaves non-matching messages untouched", () => {
+    const msg1 = buildMessage({ id: "msg-1", content: "first" })
+    const msg2 = buildMessage({ id: "msg-2", content: "second" })
+    useChatStore.setState({ messages: [msg1, msg2] })
+    useChatStore.getState().updateMessage("msg-2", { content: "changed" })
+    const { messages } = useChatStore.getState()
+    expect(messages[0].content).toBe("first")
+    expect(messages[1].content).toBe("changed")
+  })
+
+  it("updateMessage is a no-op when no message matches the id", () => {
+    const msg = buildMessage({ id: "msg-1", content: "first" })
+    useChatStore.setState({ messages: [msg] })
+    useChatStore.getState().updateMessage("missing", { content: "changed" })
+    expect(useChatStore.getState().messages[0].content).toBe("first")
+  })
 })

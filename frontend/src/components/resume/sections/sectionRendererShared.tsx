@@ -1,10 +1,13 @@
-﻿import React from "react"
+﻿import React, { createContext, useContext } from "react"
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy, rectSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { Trash2, GripVertical, Plus } from "lucide-react"
 import type { ResumeItemDto } from "@/types/api"
 import { formatMonthYear, toEditableDate, parseDateInput } from "@/lib/dateUtils"
+import DiffOverlay from "@/components/resume/DiffOverlay"
+
+export const SectionIdContext = createContext<string | undefined>(undefined)
 
 // ─── Shared editable field primitives ────────────────────────────────────────
 
@@ -147,6 +150,7 @@ export function DateRangeDisplay(props: DateRangeDisplayProps) {
 
 interface SortableItemWrapperProps {
   readonly id: string
+  readonly itemIndex?: number
   readonly children: React.ReactNode
   readonly onDeleteItem?: (itemId: string) => void
   readonly containerClassName?: string
@@ -157,6 +161,7 @@ interface SortableItemWrapperProps {
 
 export function SortableItemWrapper({
   id,
+  itemIndex,
   children,
   onDeleteItem,
   containerClassName = "relative group/item break-inside-avoid",
@@ -164,6 +169,8 @@ export function SortableItemWrapper({
   deleteIconClassName = "h-3.5 w-3.5",
   className = "absolute left-[-20px] top-0 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab touch-none",
 }: SortableItemWrapperProps) {
+  const sectionId = useContext(SectionIdContext)
+
   const {
     attributes,
     listeners,
@@ -180,7 +187,7 @@ export function SortableItemWrapper({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={containerClassName}>
+    <div ref={setNodeRef} style={style} className={containerClassName} data-item-id={id}>
       <button
         type="button"
         className={className}
@@ -202,6 +209,9 @@ export function SortableItemWrapper({
         </button>
       )}
       {children}
+      {sectionId !== undefined && itemIndex !== undefined && (
+        <DiffOverlay sectionId={sectionId} itemIndex={itemIndex} />
+      )}
     </div>
   )
 }
@@ -211,7 +221,7 @@ export function AddItemButton({ onClick, isLast = false }: Readonly<{ onClick: (
     <div className="relative h-0 overflow-visible">
       <button
         type="button"
-        className={`absolute left-1/2 -translate-x-1/2 z-20 flex items-center justify-center w-full h-4 cursor-pointer group/btn${isLast ? "-translate-y-1" : " -translate-y-1/2 invisible group-hover/section:visible opacity-0 group-hover/section:opacity-100 transition-opacity"}`}
+        className={`absolute left-1/2 -translate-x-1/2 z-20 flex items-center justify-center p-1 cursor-pointer group/btn${isLast ? "-translate-y-1" : " -translate-y-1/2 invisible group-hover/section:visible opacity-0 group-hover/section:opacity-100 transition-opacity"}`}
         aria-label="Add item here"
         title="Add item"
         onClick={onClick}

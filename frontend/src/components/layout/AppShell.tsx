@@ -1,15 +1,28 @@
 import { NavLink } from "react-router-dom"
+import { Sun, Moon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuthStore } from "@/stores/useAuthStore"
 import { useSignOut } from "@/hooks/useSignOut"
+import { useTheme } from "@/components/theme-provider"
 
 interface AppShellProps {
   readonly children: React.ReactNode
 }
 
+function getSystemTheme(): "dark" | "light" {
+  return globalThis.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+}
+
 export default function AppShell({ children }: AppShellProps) {
   const user = useAuthStore((state) => state.user)
   const signOut = useSignOut()
+  const { theme, setTheme } = useTheme()
+
+  const resolvedTheme: "dark" | "light" = theme === "system" ? getSystemTheme() : theme
+
+  function toggleTheme() {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark")
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -64,6 +77,22 @@ export default function AppShell({ children }: AppShellProps) {
                 </NavLink>
               )}
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              aria-label={
+                resolvedTheme === "dark"
+                  ? "Switch to light mode"
+                  : "Switch to dark mode"
+              }
+            >
+              {resolvedTheme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Button>
             <Button variant="ghost" size="sm" onClick={signOut}>
               Sign Out
             </Button>

@@ -69,6 +69,7 @@ export function useAutosave(resumeId: string | undefined): {
       // not be skipped by a content-only comparison.
       const snapshot = lastSavedSnapshotRef.current
       if (
+        !isManualSaveRef.current &&
         snapshot !== null &&
         lastSaved !== null &&
         doc.name === snapshot.name &&

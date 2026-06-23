@@ -19,6 +19,17 @@ vi.mock("@/components/resume/AIActionBar", () => ({
   ),
 }))
 
+// Mock TemplateGallery to expose its onApply callback as a simple button, so we can
+// drive EditorPage.handleApplyTemplate (which performs the real PUT) without needing
+// a fully-fetched template list with a templateDefinition.
+vi.mock("@/components/resume/TemplateGallery", () => ({
+  default: ({ onApply }: { onApply: (templateId: string) => void }) => (
+    <button type="button" aria-label="apply test template" onClick={() => onApply("tmpl-applied")}>
+      apply
+    </button>
+  ),
+}))
+
 vi.mock("@/lib/apiClient", () => ({
   apiClient: {
     get: vi.fn(),
@@ -474,6 +485,108 @@ describe("EditorPage", () => {
 
     await waitFor(() =>
       expect(mockNavigate).toHaveBeenCalledWith("/"),
+    )
+  })
+
+  // ─── handleApplyTemplate API path (lines 187-196) ────────────────────────
+
+  it("handleApplyTemplate success — optimistic update + PUT + success toast", async () => {
+    const resume = buildResume({ id: "test-resume-id", templateId: null, name: "My Resume" })
+    mockGetWithResume(resume)
+    vi.mocked(apiClient.put).mockResolvedValueOnce(resume)
+    render(<EditorPage />)
+    await waitFor(() => screen.getByRole("heading", { name: /edit section title/i }))
+
+    fireEvent.click(screen.getByRole("button", { name: /apply test template/i }))
+
+    // Optimistic update sets the new templateId immediately
+    expect(useResumeStore.getState().currentResume?.templateId).toBe("tmpl-applied")
+    await waitFor(() =>
+      expect(vi.mocked(apiClient.put)).toHaveBeenCalledWith(
+        "/api/v1/resumes/test-resume-id",
+        expect.objectContaining({ templateId: "tmpl-applied", name: "My Resume" }),
+      ),
+    )
+    await waitFor(() =>
+      expect(vi.mocked(toast.success)).toHaveBeenCalledWith("Template applied"),
+    )
+  })
+
+  it("handleApplyTemplate failure — reverts templateId and shows error toast (lines 195-196)", async () => {
+    const resume = buildResume({ id: "test-resume-id", templateId: "original-tmpl", name: "My Resume" })
+    mockGetWithResume(resume)
+    vi.mocked(apiClient.put).mockRejectedValueOnce(new Error("server error"))
+    render(<EditorPage />)
+    await waitFor(() => screen.getByRole("heading", { name: /edit section title/i }))
+
+    fireEvent.click(screen.getByRole("button", { name: /apply test template/i }))
+
+    await waitFor(() =>
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith("Failed to apply template — please try again"),
+    )
+    // Reverted back to the original templateId
+    expect(useResumeStore.getState().currentResume?.templateId).toBe("original-tmpl")
+  })
+
+  // ─── handleSidebarExport success + failure (lines 333-359) ───────────────
+
+  it("handleSidebarExport success — fetches binary and shows download toast", async () => {
+    const sidebarResume = buildResume({ id: "sidebar-resume", name: "Sidebar Resume" })
+    useResumeStore.setState({ resumes: [sidebarResume] })
+    mockGetWithResume(buildResume())
+    render(<EditorPage />)
+    await waitFor(() => screen.getByText("Sidebar Resume"))
+
+    // Open the export-format dialog for the sidebar resume
+    fireEvent.click(screen.getByRole("button", { name: /export sidebar resume/i }))
+    await waitFor(() => screen.getByRole("dialog"))
+
+    // Stub fetch + DOM download APIs
+    const mockBlob = new Blob(["pdf"], { type: "application/pdf" })
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      blob: () => Promise.resolve(mockBlob),
+    }))
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:test")
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {})
+    const appendChildSpy = vi.spyOn(document.body, "appendChild").mockImplementation((node) => node)
+    const removeChildSpy = vi.spyOn(document.body, "removeChild").mockImplementation((node) => node)
+
+    fireEvent.click(screen.getByRole("button", { name: /export as pdf/i }))
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/v1/resumes/sidebar-resume/export?format=pdf",
+        expect.any(Object),
+      ),
+    )
+    await waitFor(() =>
+      expect(vi.mocked(toast.success)).toHaveBeenCalledWith("Download ready", expect.any(Object)),
+    )
+
+    appendChildSpy.mockRestore()
+    removeChildSpy.mockRestore()
+  })
+
+  it("handleSidebarExport failure — shows error toast (lines 356-357)", async () => {
+    const sidebarResume = buildResume({ id: "sidebar-resume", name: "Sidebar Resume" })
+    useResumeStore.setState({ resumes: [sidebarResume] })
+    mockGetWithResume(buildResume())
+    render(<EditorPage />)
+    await waitFor(() => screen.getByText("Sidebar Resume"))
+
+    fireEvent.click(screen.getByRole("button", { name: /export sidebar resume/i }))
+    await waitFor(() => screen.getByRole("dialog"))
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ detail: "Sidebar export failed" }),
+    }))
+
+    fireEvent.click(screen.getByRole("button", { name: /export as docx/i }))
+
+    await waitFor(() =>
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith("Sidebar export failed", expect.any(Object)),
     )
   })
 

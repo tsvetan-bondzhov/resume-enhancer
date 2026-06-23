@@ -15,6 +15,8 @@ export default function SummaryStep({ onSaveAndContinue }: SummaryStepProps) {
   const isSaving = useProfileStore((s) => s.isSaving)
   const user = useAuthStore((s) => s.user)
 
+  const [firstName, setFirstName] = useState(profile?.firstName ?? "")
+  const [lastName, setLastName] = useState(profile?.lastName ?? "")
   const [summary, setSummary] = useState(profile?.summary ?? "")
   const [contactEmail, setContactEmail] = useState(profile?.contactEmail ?? user?.email ?? "")
   const [linkedInUrl, setLinkedInUrl] = useState(profile?.linkedInUrl ?? "")
@@ -26,6 +28,8 @@ export default function SummaryStep({ onSaveAndContinue }: SummaryStepProps) {
   // Sync local form state when profile is replaced externally (e.g. resume upload
   // while already on this step — setProfile fires but the component isn't remounted).
   useEffect(() => {
+    setFirstName(profile?.firstName ?? "")
+    setLastName(profile?.lastName ?? "")
     setSummary(profile?.summary ?? "")
     setContactEmail(profile?.contactEmail ?? user?.email ?? "")
     setLinkedInUrl(profile?.linkedInUrl ?? "")
@@ -37,6 +41,8 @@ export default function SummaryStep({ onSaveAndContinue }: SummaryStepProps) {
 
   async function handleSaveAndContinue() {
     await onSaveAndContinue({
+      firstName: firstName || null,
+      lastName: lastName || null,
       summary: summary || null,
       contactEmail: contactEmail || null,
       linkedInUrl: linkedInUrl || null,
@@ -53,6 +59,30 @@ export default function SummaryStep({ onSaveAndContinue }: SummaryStepProps) {
       <p className="text-sm text-zinc-500">
         Optional — write a brief summary about yourself.
       </p>
+
+      <div className="space-y-2">
+        <label htmlFor="firstName" className="text-sm font-medium">
+          First Name
+        </label>
+        <Input
+          id="firstName"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          placeholder="First name"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="lastName" className="text-sm font-medium">
+          Last Name
+        </label>
+        <Input
+          id="lastName"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          placeholder="Last name"
+        />
+      </div>
 
       <div className="space-y-2">
         <label htmlFor="summary" className="text-sm font-medium">

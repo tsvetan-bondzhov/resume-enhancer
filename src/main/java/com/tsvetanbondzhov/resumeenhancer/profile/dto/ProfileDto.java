@@ -3,6 +3,8 @@ package com.tsvetanbondzhov.resumeenhancer.profile.dto;
 import java.util.List;
 
 public record ProfileDto(
+        String firstName,
+        String lastName,
         String summary,
         String linkedInUrl,
         String personalPageUrl,

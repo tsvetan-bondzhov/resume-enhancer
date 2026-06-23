@@ -23,7 +23,7 @@ export default function EducationSectionRenderer({
       {onAddItem && <AddItemButton onClick={() => onAddItem(0)} isLast={items.length === 0} />}
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
-          <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
+          <SortableItemWrapper id={item.id} itemIndex={index} onDeleteItem={onDeleteItem}>
             <div>
               {(item.degree != null || item.fieldOfStudy != null || onFieldChange) && (
                 <p className="font-semibold text-sm">

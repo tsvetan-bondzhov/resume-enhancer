@@ -7,8 +7,8 @@ export interface DiffEntry {
   field: string
   newValue: string
   previousValue: string
-  kind: "addition" | "rewrite"
-  state: "visible" | "faded" | "hidden"
+  kind: "addition" | "rewrite" | "deletion"
+  state: "visible" | "hidden"
 }
 
 interface DiffState {
@@ -16,7 +16,6 @@ interface DiffState {
   addDiff: (entry: DiffEntry) => void
   acceptDiff: (id: string) => void
   rejectDiff: (id: string) => void
-  fadeAll: () => void
   clearAll: () => void
 }
 
@@ -36,13 +35,6 @@ export const useDiffStore = create<DiffState>((set) => ({
       ...state,
       diffs: state.diffs.map((d) =>
         d.id === id ? { ...d, state: "hidden" } : d
-      ),
-    })),
-  fadeAll: () =>
-    set((state) => ({
-      ...state,
-      diffs: state.diffs.map((d) =>
-        d.state === "visible" ? { ...d, state: "faded" } : d
       ),
     })),
   clearAll: () => set((state) => ({ ...state, diffs: [] })),

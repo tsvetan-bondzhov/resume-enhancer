@@ -16,6 +16,7 @@ import type {
   LanguageItemDto,
   ProjectItemDto,
   VolunteeringItemDto,
+  FullNameItemDto,
 } from "@/types/api"
 
 vi.mock("@/lib/apiClient", () => ({
@@ -520,6 +521,31 @@ describe("ResumeSection", () => {
       />
     )
     expect(screen.getByText("Mentor")).toBeInTheDocument()
+  })
+
+  it("sectionType FULL_NAME dispatches to FullNameSectionRenderer", () => {
+    const item: FullNameItemDto = {
+      type: "FULL_NAME",
+      id: "name-1",
+      firstName: "Ada",
+      lastName: "Lovelace",
+    }
+    const section: ResumeSectionDto = {
+      sectionType: "FULL_NAME",
+      title: "Name",
+      visible: true,
+      items: [item],
+    }
+    render(
+      <ResumeSection
+        section={section}
+        onTitleChange={vi.fn()}
+        onFieldChange={vi.fn()}
+      />
+    )
+    // Editor mode (onFieldChange provided) renders editable firstName/lastName fields
+    expect(screen.getByText("Ada")).toBeInTheDocument()
+    expect(screen.getByText("Lovelace")).toBeInTheDocument()
   })
 
   it("renders title heading with contentEditable regardless of onTitleChange", () => {

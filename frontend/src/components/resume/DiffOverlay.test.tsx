@@ -64,14 +64,6 @@ describe("DiffOverlay", () => {
     expect(screen.getByText("Second change")).toBeInTheDocument()
   })
 
-  it("renders faded diffs (state=faded) as well", () => {
-    useDiffStore.setState({
-      diffs: [buildDiff({ state: "faded", newValue: "Faded content" })],
-    })
-    render(<DiffOverlay sectionId="WORK_EXPERIENCE" />)
-    expect(screen.getByText("Faded content")).toBeInTheDocument()
-  })
-
   it("clicking Accept calls acceptDiff with the diff id", () => {
     useDiffStore.setState({ diffs: [buildDiff({ id: "diff-abc" })] })
     render(<DiffOverlay sectionId="WORK_EXPERIENCE" />)
@@ -105,7 +97,7 @@ describe("DiffOverlay", () => {
       diffs: [buildDiff({ kind: "addition", newValue: "New bullet point" })],
     })
     render(<DiffOverlay sectionId="WORK_EXPERIENCE" />)
-    expect(screen.getByRole("mark", { name: /ai addition/i })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: /ai addition/i })).toBeInTheDocument()
   })
 
   it("renders rewrite kind diff with correct aria-label", () => {
@@ -113,7 +105,7 @@ describe("DiffOverlay", () => {
       diffs: [buildDiff({ kind: "rewrite", newValue: "Rewritten text" })],
     })
     render(<DiffOverlay sectionId="WORK_EXPERIENCE" />)
-    expect(screen.getByRole("mark", { name: /ai rewrite/i })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: /modified/i })).toBeInTheDocument()
   })
 
   it("only shows diffs matching the given sectionId", () => {

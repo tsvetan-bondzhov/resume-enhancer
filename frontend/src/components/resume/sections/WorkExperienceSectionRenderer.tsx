@@ -22,7 +22,7 @@ export default function WorkExperienceSectionRenderer({
       {onAddItem && <AddItemButton onClick={() => onAddItem(0)} isLast={items.length === 0} />}
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
-          <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
+          <SortableItemWrapper id={item.id} itemIndex={index} onDeleteItem={onDeleteItem}>
             <div>
               <EditableTitleField itemId={item.id} field="jobTitle" value={item.jobTitle} onFieldChange={onFieldChange} placeholder="Click to add job title" />
               {(item.company != null || item.startDate != null || item.endDate != null || item.isCurrent || onFieldChange) && (

@@ -19,6 +19,8 @@ const STEPS = ["Summary", "Experience", "Education", "Skills", "Certifications",
 const LAST_STEP = STEPS.length - 1 // 7 — VolunteeringStep is now last
 
 const EMPTY_PROFILE: ProfileDto = {
+  firstName: null,
+  lastName: null,
   summary: null,
   contactEmail: null,
   linkedInUrl: null,
@@ -42,6 +44,8 @@ function mergeProfilePayload(
   return {
     // String fields: use === undefined so an explicit null (field cleared by user) passes through.
     // ?? would treat null as missing and fall back to the current value, silently refusing to clear.
+    firstName: partial.firstName === undefined ? current.firstName : partial.firstName,
+    lastName: partial.lastName === undefined ? current.lastName : partial.lastName,
     summary: partial.summary === undefined ? current.summary : partial.summary,
     contactEmail: partial.contactEmail === undefined ? current.contactEmail : partial.contactEmail,
     linkedInUrl: partial.linkedInUrl === undefined ? current.linkedInUrl : partial.linkedInUrl,

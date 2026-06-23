@@ -14,11 +14,18 @@ vi.mock('@/hooks/useSignOut', () => ({
   useSignOut: vi.fn(),
 }))
 
+// Mock useTheme
+vi.mock('@/components/theme-provider', () => ({
+  useTheme: vi.fn(),
+}))
+
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useSignOut } from '@/hooks/useSignOut'
+import { useTheme } from '@/components/theme-provider'
 
 const mockUseAuthStore = vi.mocked(useAuthStore)
 const mockUseSignOut = vi.mocked(useSignOut)
+const mockUseTheme = vi.mocked(useTheme)
 
 function renderAppShell(role: 'USER' | 'ADMIN' = 'USER') {
   mockUseAuthStore.mockReturnValue(
@@ -40,6 +47,11 @@ describe('AppShell', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseSignOut.mockReturnValue(vi.fn())
+    mockUseTheme.mockReturnValue({ theme: 'light', setTheme: vi.fn() })
+    Object.defineProperty(globalThis, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockReturnValue({ matches: false }),
+    })
   })
 
   it('renders nav links for USER role (Dashboard and Profile visible, Admin NOT visible)', () => {
@@ -79,5 +91,50 @@ describe('AppShell', () => {
     renderAppShell('USER')
 
     expect(screen.getByRole('navigation', { name: /main navigation/i })).toBeInTheDocument()
+  })
+
+  it('renders Moon icon and "Switch to dark mode" label when theme is light', () => {
+    mockUseTheme.mockReturnValue({ theme: 'light', setTheme: vi.fn() })
+    renderAppShell('USER')
+
+    expect(screen.getByRole('button', { name: /switch to dark mode/i })).toBeInTheDocument()
+  })
+
+  it('renders Sun icon and "Switch to light mode" label when theme is dark', () => {
+    mockUseTheme.mockReturnValue({ theme: 'dark', setTheme: vi.fn() })
+    renderAppShell('USER')
+
+    expect(screen.getByRole('button', { name: /switch to light mode/i })).toBeInTheDocument()
+  })
+
+  it('calls setTheme with "dark" when toggle is clicked in light mode', async () => {
+    const setTheme = vi.fn()
+    mockUseTheme.mockReturnValue({ theme: 'light', setTheme })
+    renderAppShell('USER')
+
+    await userEvent.click(screen.getByRole('button', { name: /switch to dark mode/i }))
+
+    expect(setTheme).toHaveBeenCalledWith('dark')
+  })
+
+  it('calls setTheme with "light" when toggle is clicked in dark mode', async () => {
+    const setTheme = vi.fn()
+    mockUseTheme.mockReturnValue({ theme: 'dark', setTheme })
+    renderAppShell('USER')
+
+    await userEvent.click(screen.getByRole('button', { name: /switch to light mode/i }))
+
+    expect(setTheme).toHaveBeenCalledWith('light')
+  })
+
+  it('resolves system theme via matchMedia and renders correct label', () => {
+    Object.defineProperty(globalThis, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockReturnValue({ matches: true }),
+    })
+    mockUseTheme.mockReturnValue({ theme: 'system', setTheme: vi.fn() })
+    renderAppShell('USER')
+
+    expect(screen.getByRole('button', { name: /switch to light mode/i })).toBeInTheDocument()
   })
 })

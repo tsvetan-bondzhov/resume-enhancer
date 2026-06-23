@@ -10,8 +10,11 @@ import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StreamUtils;
 import reactor.core.publisher.Flux;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,9 +25,13 @@ public class AiService {
     private static final String OLLAMA_UNAVAILABLE_PREFIX = "Ollama is unavailable: ";
 
     private final ChatClient chatClient;
+    private final String chatSystemPrompt;
+    private final String chatPatchInstructions;
 
     public AiService(ChatClient.Builder chatClientBuilder) {
         this.chatClient = chatClientBuilder.build();
+        this.chatSystemPrompt = loadPrompt("prompts/chat-system.st");
+        this.chatPatchInstructions = loadPrompt("prompts/chat-patch-instructions.st");
     }
 
     /**
@@ -59,7 +66,6 @@ public class AiService {
                     .user(prompt)
                     .stream()
                     .content()
-                    // F3: map reactive mid-stream errors — try/catch only covers Flux assembly errors
                     .onErrorMap(e -> new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e));
         } catch (Exception e) {
             log.warn("Ollama streaming call failed: {}", e.getMessage());
@@ -71,12 +77,34 @@ public class AiService {
      * Streams a chat response with MessageWindowChatMemory for multi-turn Q&A.
      * The conversationId scopes the memory so each session keeps its own history.
      * Memory is ephemeral (in-memory only, not persisted to DB — AC4).
+     * When resumeContext is non-empty it is prepended to the system prompt so the
+     * LLM can give resume-specific answers rather than generic advice.
      *
      * AiService is the ONLY class in the codebase that calls ChatClient directly.
      */
-    public Flux<String> streamChat(String prompt, String conversationId, ChatMemory chatMemory) {
+    public Flux<String> streamChat(String prompt, String conversationId, ChatMemory chatMemory, String resumeContext) {
+        return streamChat(prompt, conversationId, chatMemory, resumeContext, false);
+    }
+
+    /**
+     * Streaming chat overload that optionally allows the AI to emit resume patch
+     * modifications. When allowEdits is true the patch instructions are appended to
+     * the system prompt so the model may produce patch JSON lines alongside prose;
+     * when false the prompt is unchanged and ONLY normal text is produced.
+     *
+     * AiService is the ONLY class in the codebase that calls ChatClient directly.
+     */
+    public Flux<String> streamChat(String prompt, String conversationId, ChatMemory chatMemory,
+                                   String resumeContext, boolean allowEdits) {
         try {
+            String systemPrompt = resumeContext == null || resumeContext.isBlank()
+                    ? chatSystemPrompt
+                    : chatSystemPrompt + "\n" + resumeContext;
+            if (allowEdits) {
+                systemPrompt = systemPrompt + "\n" + chatPatchInstructions;
+            }
             return chatClient.prompt()
+                    .system(systemPrompt)
                     .user(prompt)
                     .advisors(a -> a
                             .param(ChatMemory.CONVERSATION_ID, conversationId)
@@ -97,21 +125,27 @@ public class AiService {
      */
     Flux<String> streamChatNoMemory(String prompt) {
         return streamChat(prompt, UUID.randomUUID().toString(),
-                MessageWindowChatMemory.builder().maxMessages(1).build());
+                MessageWindowChatMemory.builder().maxMessages(1).build(), null);
     }
 
     /**
      * Streams AI-generated enhancement suggestions for the given resume document.
      * The AI is instructed to emit one DocumentPatchEvent JSON object per line —
      * the controller parses each line into a patch SSE event.
+     * When conversationId and chatMemory are provided the exchange is stored in
+     * the shared chat memory so the user can follow up in the chat panel.
      *
      * AiService is the ONLY class in the codebase that calls ChatClient directly.
      */
-    public Flux<String> streamEnhance(ResumeDocument document) {
+    public Flux<String> streamEnhance(ResumeDocument document, String conversationId, ChatMemory chatMemory) {
         try {
             String prompt = buildEnhancePrompt(document);
             return chatClient.prompt()
+                    .system(chatSystemPrompt)
                     .user(prompt)
+                    .advisors(a -> a
+                            .param(ChatMemory.CONVERSATION_ID, conversationId)
+                            .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build()))
                     .stream()
                     .content()
                     .onErrorMap(e -> new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e));
@@ -125,14 +159,20 @@ public class AiService {
      * Streams AI-generated tailoring suggestions aligned to the provided job description.
      * The AI is instructed to emit one DocumentPatchEvent JSON object per line —
      * the controller parses each line into a patch SSE event.
+     * When conversationId and chatMemory are provided the exchange is stored in
+     * the shared chat memory so the user can follow up in the chat panel.
      *
      * AiService is the ONLY class in the codebase that calls ChatClient directly.
      */
-    public Flux<String> streamTailor(ResumeDocument document, String jobDescription) {
+    public Flux<String> streamTailor(ResumeDocument document, String jobDescription, String conversationId, ChatMemory chatMemory) {
         try {
             String prompt = buildTailorPrompt(document, jobDescription);
             return chatClient.prompt()
+                    .system(chatSystemPrompt)
                     .user(prompt)
+                    .advisors(a -> a
+                            .param(ChatMemory.CONVERSATION_ID, conversationId)
+                            .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build()))
                     .stream()
                     .content()
                     .onErrorMap(e -> new OllamaUnavailableException(OLLAMA_UNAVAILABLE_PREFIX + e.getMessage(), e));
@@ -143,56 +183,19 @@ public class AiService {
     }
 
     String buildTailorPrompt(ResumeDocument document, String jobDescription) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("""
-                You are an expert resume coach. Rewrite the resume below to align with the job description.
-                For each change, output exactly ONE JSON object on its own line in this format:
-                {"sectionId":"<sectionType>","itemIndex":<0-based index>,"field":"<field name>","newValue":"<tailored text>"}
-
-                Rules:
-                - Output ONLY the JSON objects, one per line — no prose, no markdown, no explanations
-                - sectionId must be the exact sectionType value (e.g. WORK_EXPERIENCE, SUMMARY, SKILLS)
-                - itemIndex is the 0-based position of the item within that section's items array
-                - field is the exact field name to rewrite (e.g. description, jobTitle, name, text)
-                - newValue is the tailored text — aligned with the job's keywords and requirements
-                - Only suggest changes for fields that have existing non-empty text
-                - Limit to the most impactful changes (max 8 total)
-                - Preserve factual accuracy — do not invent experience or qualifications
-
-                Job Description:
-                """);
-        sb.append(jobDescription).append("\n\n");
-        sb.append("Resume:\n");
-        for (var section : document.sections()) {
-            if (!section.visible()) continue;
-            sb.append("Section: ").append(section.sectionType()).append("\n");
-            var items = section.items();
-            for (int i = 0; i < items.size(); i++) {
-                sb.append("  Item ").append(i).append(": ").append(items.get(i)).append("\n");
-            }
-        }
-        return sb.toString();
+        String template = loadPrompt("prompts/tailor-user.st");
+        return template
+                .replace("{jobDescription}", jobDescription)
+                .replace("{resumeContent}", buildResumeContent(document));
     }
 
     String buildEnhancePrompt(ResumeDocument document) {
+        String template = loadPrompt("prompts/enhance-user.st");
+        return template.replace("{resumeContent}", buildResumeContent(document));
+    }
+
+    private String buildResumeContent(ResumeDocument document) {
         StringBuilder sb = new StringBuilder();
-        sb.append("""
-                You are an expert resume coach. Analyze the resume below and suggest improvements.
-                For each improvement, output exactly ONE JSON object on its own line in this format:
-                {"sectionId":"<sectionType>","itemIndex":<0-based index>,"field":"<field name>","newValue":"<improved text>"}
-
-                Rules:
-                - Output ONLY the JSON objects, one per line — no prose, no markdown, no explanations
-                - sectionId must be the exact sectionType value (e.g. WORK_EXPERIENCE, SUMMARY, SKILLS)
-                - itemIndex is the 0-based position of the item within that section's items array
-                - field is the exact field name to improve (e.g. description, jobTitle, name)
-                - newValue is the improved text — concise, impactful, action-verb led
-                - Only suggest changes for fields that have existing non-empty text
-                - Limit suggestions to the most impactful improvements (max 5 total)
-
-                Resume:
-                """);
-
         for (var section : document.sections()) {
             if (!section.visible()) continue;
             sb.append("Section: ").append(section.sectionType()).append("\n");
@@ -201,7 +204,6 @@ public class AiService {
                 sb.append("  Item ").append(i).append(": ").append(items.get(i)).append("\n");
             }
         }
-
         return sb.toString();
     }
 
@@ -226,6 +228,20 @@ public class AiService {
         }
     }
 
+    private String loadPrompt(String resourcePath) {
+        try {
+            ClassPathResource resource = new ClassPathResource(resourcePath);
+            return StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.warn("Failed to load prompt from {}: {}", resourcePath, e.getMessage());
+            return "";
+        }
+    }
+
+    public void clearConversation(String conversationId, ChatMemory chatMemory) {
+        chatMemory.clear(conversationId);
+    }
+
     String getPromptTemplateName(String sectionType) {
         return switch (sectionType) {
             case "WORK_EXPERIENCE" -> "prompts/resume-extraction-work-experience.st";
@@ -234,6 +250,7 @@ public class AiService {
             case "CERTIFICATIONS"  -> "prompts/resume-extraction-certifications.st";
             case "PROJECTS"        -> "prompts/resume-extraction-projects.st";
             case "SUMMARY"         -> "prompts/resume-extraction-summary.st";
+            case "FULL_NAME"       -> "prompts/resume-extraction-full-name.st";
             case "LANGUAGES"       -> "prompts/resume-extraction-languages.st";
             case "VOLUNTEERING"    -> "prompts/resume-extraction-volunteering.st";
             default                -> "prompts/resume-extraction-default.st";

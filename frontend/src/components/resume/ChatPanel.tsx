@@ -1,15 +1,80 @@
 import { useEffect, useRef, useState } from "react"
+import { Trash2 } from "lucide-react"
 import { useChatStore } from "@/stores/useChatStore"
 import { useStreamingChat } from "@/hooks/useStreamingChat"
+import { apiClient } from "@/lib/apiClient"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import type { ChatMessage } from "@/types/api"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import type { ChatMessage, PatchDiff } from "@/types/api"
 
 export interface ChatPanelProps {
   readonly resumeId: string | undefined
+  readonly conversationId?: string
+}
+
+function diffLineStyle(kind: PatchDiff["kind"]): string {
+  if (kind === "addition") return "text-green-600 dark:text-green-400"
+  if (kind === "deletion") return "text-red-600 dark:text-red-400"
+  return "text-amber-600 dark:text-amber-400"
+}
+
+function diffPrefix(kind: PatchDiff["kind"]): string {
+  if (kind === "addition") return "+"
+  if (kind === "deletion") return "-"
+  return "~"
+}
+
+function truncate(value: string, max = 60): string {
+  return value.length > max ? value.slice(0, max) + "…" : value
+}
+
+function diffLabel(diff: PatchDiff): string {
+  if (diff.kind === "addition" && !diff.field) {
+    return `${diff.sectionId.toLowerCase()}: new item added`
+  }
+  if (diff.kind === "deletion") {
+    return `${diff.sectionId.toLowerCase()}: item removed`
+  }
+  return `${diff.sectionId.toLowerCase()}.${diff.field}: ${truncate(diff.newValue)}`
+}
+
+function PatchMessageBubble({ message }: { readonly message: ChatMessage }) {
+  const diffs = message.diffs ?? []
+  return (
+    <div className="flex flex-col items-start">
+      <div className="max-w-[85%] rounded-2xl px-3 py-2 text-sm bg-muted text-foreground">
+        <span className="inline-block mb-2 rounded px-1.5 py-0.5 text-xs font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+          AI suggested changes
+        </span>
+        {diffs.length > 0 ? (
+          <ul className="font-mono text-xs space-y-0.5">
+            {diffs.map((diff, i) => (
+              <li key={`${diff.kind}-${diff.sectionId}-${diff.field}-${i}`} className={diffLineStyle(diff.kind)}>
+                <span className="font-bold mr-1">{diffPrefix(diff.kind)}</span>
+                <span>{diffLabel(diff)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground">{message.content || "Patch applied."}</p>
+        )}
+      </div>
+      <span className="text-xs text-muted-foreground mt-1 px-1">
+        {new Date(message.timestamp).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </span>
+    </div>
+  )
 }
 
 function MessageBubble({ message }: { readonly message: ChatMessage }) {
+  if (message.type === "patch") {
+    return <PatchMessageBubble message={message} />
+  }
   const isUser = message.role === "user"
   return (
     <div className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
@@ -32,20 +97,21 @@ function MessageBubble({ message }: { readonly message: ChatMessage }) {
   )
 }
 
-export default function ChatPanel({ resumeId }: ChatPanelProps) {
+export default function ChatPanel({ resumeId, conversationId }: ChatPanelProps) {
   const messages = useChatStore((state) => state.messages)
   const isStreaming = useChatStore((state) => state.isStreaming)
   const addMessage = useChatStore((state) => state.addMessage)
+  const clearMessages = useChatStore((state) => state.clearMessages)
 
   const [inputValue, setInputValue] = useState("")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [lastPrompt, setLastPrompt] = useState<string>("")
+  const [allowEdits, setAllowEdits] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
-  // AC3: session-scoped conversationId — stable across re-renders, new on each component mount (AC4)
-  const conversationIdRef = useRef<string>(crypto.randomUUID())
+  const conversationIdRef = useRef<string>(conversationId ?? crypto.randomUUID())
 
   const { startStreamWithPost } = useStreamingChat({
     onDone: (summary) => {
@@ -78,6 +144,18 @@ export default function ChatPanel({ resumeId }: ChatPanelProps) {
     }
   }, [])
 
+  async function handleClearSession() {
+    if (isStreaming) return
+    const conversationId = conversationIdRef.current
+    clearMessages()
+    conversationIdRef.current = crypto.randomUUID()
+    try {
+      await apiClient.delete(`/api/v1/ai/chat/${conversationId}`)
+    } catch {
+      // Non-critical — local state already cleared
+    }
+  }
+
   function handleSubmit() {
     const prompt = inputValue.trim()
     if (!prompt || isStreaming) return
@@ -99,6 +177,7 @@ export default function ChatPanel({ resumeId }: ChatPanelProps) {
       prompt,
       resumeId: resumeId ?? null,
       conversationId: conversationIdRef.current,  // AC3: consistent per session
+      allowEdits,
     })
     cleanupRef.current = cleanup
   }
@@ -124,6 +203,7 @@ export default function ChatPanel({ resumeId }: ChatPanelProps) {
       prompt: lastPrompt,
       resumeId: resumeId ?? null,
       conversationId: conversationIdRef.current,  // AC3: consistent per session
+      allowEdits,
     })
     cleanupRef.current = cleanup
   }
@@ -136,7 +216,20 @@ export default function ChatPanel({ resumeId }: ChatPanelProps) {
   }
 
   return (
-    <div className="flex flex-col h-full border-l border-border bg-card">
+    <div className="flex flex-col h-full bg-card">
+      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+        <span className="text-xs font-medium text-muted-foreground">AI Chat</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Clear chat session"
+          disabled={isStreaming}
+          onClick={handleClearSession}
+          className="h-6 w-6"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
       {/* Message list */}
       <div
         role="log"
@@ -196,14 +289,26 @@ export default function ChatPanel({ resumeId }: ChatPanelProps) {
             rows={3}
             aria-label="Chat message input"
           />
-          <Button
-            type="submit"
-            disabled={isStreaming || !inputValue.trim()}
-            className="self-end"
-            size="sm"
-          >
-            Send
-          </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="allow-resume-edits"
+                checked={allowEdits}
+                onCheckedChange={(checked) => setAllowEdits(checked === true)}
+                disabled={isStreaming}
+              />
+              <Label htmlFor="allow-resume-edits" className="text-xs text-muted-foreground">
+                Allow resume edits
+              </Label>
+            </div>
+            <Button
+              type="submit"
+              disabled={isStreaming || !inputValue.trim()}
+              size="sm"
+            >
+              Send
+            </Button>
+          </div>
         </form>
       </div>
     </div>

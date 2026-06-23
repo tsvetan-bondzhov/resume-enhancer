@@ -1,14 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { apiClient } from "@/lib/apiClient"
 import { getOrderedSections } from "@/lib/templateUtils"
 import ResumeSection from "@/components/resume/ResumeSection"
 import type { ResumeDocumentDto, ResumeItemDto, ResumeSectionType, TemplateCssVariables, TemplateDto } from "@/types/api"
-
-// A4: 210mm × 297mm. max-w-[794px] ≈ 210mm at 96dpi.
-// Page height in px = 794 * (297 / 210) ≈ 1123
-// eslint-disable-next-line react-refresh/only-export-components
-export const PAGE_HEIGHT_PX = Math.round(794 * (297 / 210)) // 1123
+import { usePageLayout, type PageSectionSlice } from "./usePageLayout"
+export { PAGE_HEIGHT_PX } from "./resumeConstants"
+import { PAGE_HEIGHT_PX } from "./resumeConstants"
 
 interface ResumeCanvasProps {
   readonly document: ResumeDocumentDto | null
@@ -34,8 +32,6 @@ export default function ResumeCanvas({
   onReorderItems,
 }: ResumeCanvasProps) {
   const [template, setTemplate] = useState<TemplateDto | null>(null)
-  const [pageCount, setPageCount] = useState(1)
-  const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -89,59 +85,91 @@ export default function ResumeCanvas({
     leftColumnDef.length > 0 &&
     rightColumnDef.length > 0
 
-  // Memoised render helper — renders resume section content for both the hidden
-  // measurement container and each visible page article.
-  const renderSections = useCallback((): React.ReactNode => {
-    if (document === null) return null
+  // Page margins as raw CSS values so the browser resolves any unit (in/rem/px). The
+  // same values are applied to the measurement container and the visible pages, and the
+  // layout hook reads back the resolved pixels from the measurement container.
+  const pagePadding = {
+    paddingTop: cssVars["--page-margin-top"] ?? "32px",
+    paddingRight: cssVars["--page-margin-right"] ?? "32px",
+    paddingBottom: cssVars["--page-margin-bottom"] ?? "32px",
+    paddingLeft: cssVars["--page-margin-left"] ?? "32px",
+  }
 
-    const renderSection = (section: (typeof orderedSections)[number]) => (
-      <ResumeSection
-        key={section.sectionType}
-        section={section}
-        onTitleChange={(title) => onTitleChange?.(section.sectionType, title)}
-        onFieldChange={
-          onFieldChange
-            ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
-            : undefined
-        }
-        onAddItem={onAddItem ? (position) => onAddItem(section.sectionType, position) : undefined}
-        onDeleteItem={onDeleteItem ? (itemId) => onDeleteItem(section.sectionType, itemId) : undefined}
-        onReorderItems={onReorderItems ? (newItems) => onReorderItems(section.sectionType, newItems) : undefined}
-      />
-    )
-
+  // Group sections by column so each column paginates independently (single-column
+  // is one group containing every section).
+  const layoutColumns = (() => {
+    if (!document) return []
     if (isTwoColumn) {
-      const leftSections = orderedSections.filter((s) => leftColumnIds.has(s.sectionType))
-      const rightSections = orderedSections.filter((s) => rightColumnIds.has(s.sectionType))
-
-      return (
-        <div className="flex gap-6">
-          <div className="flex flex-col gap-4 basis-1/3">
-            {leftSections.map(renderSection)}
-          </div>
-          <div className="flex flex-col gap-4 flex-1">
-            {rightSections.map(renderSection)}
-          </div>
-        </div>
-      )
+      return [
+        orderedSections.filter((s) => leftColumnIds.has(s.sectionType)),
+        orderedSections.filter((s) => rightColumnIds.has(s.sectionType)),
+      ]
     }
+    return [orderedSections]
+  })()
 
-    // Single-column, modern-accent, or two-column graceful degradation when column arrays are empty.
-    return orderedSections.map(renderSection)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [document, template, onTitleChange, onFieldChange, onAddItem, onDeleteItem, onReorderItems])
+  const { pageLayout, pageCount, measureRef } = usePageLayout(layoutColumns)
 
-  // ResizeObserver on the hidden measurement container — updates pageCount reactively
-  // whenever content height changes (e.g. user edits inline content).
-  useEffect(() => {
-    if (!contentRef.current) return
-    const observer = new ResizeObserver((entries) => {
-      const height = entries[0]?.contentRect.height ?? 0
-      setPageCount(Math.max(1, Math.ceil(height / PAGE_HEIGHT_PX)))
-    })
-    observer.observe(contentRef.current)
-    return () => observer.disconnect()
-  }, [document, template])
+  // Memoised render helper — renders resume section content for both the hidden
+  // measurement container (no slices → all sections) and each visible page article
+  // (slices → only the sections/items assigned to that page).
+  const renderSections = useCallback(
+    (pageSlices?: PageSectionSlice[]): React.ReactNode => {
+      if (document === null) return null
+
+      const sliceMap = pageSlices
+        ? new Map(pageSlices.map((s) => [s.sectionType, s]))
+        : null
+
+      // When slicing, only render sections present on this page — rendering every
+      // section on every page would duplicate content across pages.
+      const sectionsForRender = sliceMap
+        ? orderedSections.filter((s) => sliceMap.has(s.sectionType))
+        : orderedSections
+
+      const renderSection = (section: (typeof orderedSections)[number]) => {
+        const slice = sliceMap?.get(section.sectionType)
+        return (
+          <ResumeSection
+            key={section.sectionType}
+            section={section}
+            onTitleChange={(title) => onTitleChange?.(section.sectionType, title)}
+            onFieldChange={
+              onFieldChange
+                ? (itemId, field, value) => onFieldChange(section.sectionType, itemId, field, value)
+                : undefined
+            }
+            onAddItem={onAddItem ? (position) => onAddItem(section.sectionType, position) : undefined}
+            onDeleteItem={onDeleteItem ? (itemId) => onDeleteItem(section.sectionType, itemId) : undefined}
+            onReorderItems={onReorderItems ? (newItems) => onReorderItems(section.sectionType, newItems) : undefined}
+            visibleItemIds={slice?.visibleItemIds}
+            showTitle={slice ? slice.showTitle : true}
+          />
+        )
+      }
+
+      if (isTwoColumn) {
+        const leftSections = sectionsForRender.filter((s) => leftColumnIds.has(s.sectionType))
+        const rightSections = sectionsForRender.filter((s) => rightColumnIds.has(s.sectionType))
+
+        return (
+          <div className="flex gap-6">
+            <div className="flex flex-col gap-4 basis-1/3">
+              {leftSections.map(renderSection)}
+            </div>
+            <div className="flex flex-col gap-4 flex-1">
+              {rightSections.map(renderSection)}
+            </div>
+          </div>
+        )
+      }
+
+      // Single-column, modern-accent, or two-column graceful degradation when column arrays are empty.
+      return sectionsForRender.map(renderSection)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [document, template, onTitleChange, onFieldChange, onAddItem, onDeleteItem, onReorderItems],
+  )
 
   let canvasContent: React.ReactNode
 
@@ -185,10 +213,9 @@ export default function ResumeCanvas({
       <>
         {/* Hidden measurement container — off-screen, aria-hidden, full A4 width */}
         <div
-          ref={contentRef}
-          style={{ position: "absolute", left: "-9999px", visibility: "hidden", width: "794px", ...rootStyle }}
+          ref={measureRef}
+          style={{ position: "absolute", left: "-9999px", visibility: "hidden", width: "794px", ...rootStyle, ...pagePadding }}
           aria-hidden="true"
-          className="p-8"
         >
           {/* ARIA live region stub for streaming — used in Story 4.3 */}
           <div
@@ -210,39 +237,41 @@ export default function ResumeCanvas({
 
         {/* Visible page stack */}
         <div id="resume-canvas" tabIndex={-1} className="flex flex-col items-center gap-4 w-full">
-          {Array.from({ length: pageCount }, (_, i) => (
-            <article
-              key={i}
-              aria-label={`Resume page ${i + 1}`}
-              style={{ ...rootStyle, height: PAGE_HEIGHT_PX, overflow: "hidden", position: "relative" }}
-              className="bg-white shadow-lg w-[794px] max-w-full"
-            >
-              {/* Inner content div offset per page to slice the correct page window */}
-              <div
-                style={{ position: "absolute", top: -(i * PAGE_HEIGHT_PX), left: 0, right: 0 }}
-                className="p-8"
+          {Array.from({ length: pageCount }, (_, i) => {
+            const pageSlices = pageLayout?.[i]
+
+            return (
+              <article
+                key={i}
+                aria-label={`Resume page ${i + 1}`}
+                style={{ ...rootStyle, height: PAGE_HEIGHT_PX, overflow: "hidden", position: "relative" }}
+                className="bg-white shadow-lg w-[794px] max-w-full"
               >
-                {/* ARIA live region stub — only on page 1 to avoid duplication */}
-                {i === 0 && (
-                  <div
-                    role="status"
-                    aria-live="polite"
-                    aria-label="AI is updating your resume"
-                    className="sr-only"
-                  >
-                    {state === "streaming" ? "AI is updating your resume" : ""}
-                  </div>
-                )}
+                <div style={pagePadding}>
+                  {/* ARIA live region stub — only on page 1 to avoid duplication */}
+                  {i === 0 && (
+                    <div
+                      role="status"
+                      aria-live="polite"
+                      aria-label="AI is updating your resume"
+                      className="sr-only"
+                    >
+                      {state === "streaming" ? "AI is updating your resume" : ""}
+                    </div>
+                  )}
 
-                {/* modern-accent: accent header band — only on page 1 */}
-                {i === 0 && layoutType === "modern-accent" && (
-                  <div aria-hidden="true" className="bg-[var(--accent-color)] p-4 mb-6" />
-                )}
+                  {/* modern-accent: accent header band — only on page 1 */}
+                  {i === 0 && layoutType === "modern-accent" && (
+                    <div aria-hidden="true" className="bg-[var(--accent-color)] p-4 mb-6" />
+                  )}
 
-                {renderSections()}
-              </div>
-            </article>
-          ))}
+                  {pageSlices
+                    ? renderSections(pageSlices)
+                    : renderSections()}
+                </div>
+              </article>
+            )
+          })}
         </div>
       </>
     )

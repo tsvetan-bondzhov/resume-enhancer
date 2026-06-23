@@ -34,6 +34,7 @@ describe("ResumeSidebarItem", () => {
         onOpen={vi.fn()}
         onDuplicate={vi.fn()}
         onDelete={vi.fn()}
+        onExport={vi.fn()}
       />
     )
     expect(screen.getByText("My Resume")).toBeInTheDocument()
@@ -47,6 +48,7 @@ describe("ResumeSidebarItem", () => {
         onOpen={vi.fn()}
         onDuplicate={vi.fn()}
         onDelete={vi.fn()}
+        onExport={vi.fn()}
       />
     )
     const item = container.firstChild as HTMLElement
@@ -61,6 +63,7 @@ describe("ResumeSidebarItem", () => {
         onOpen={vi.fn()}
         onDuplicate={vi.fn()}
         onDelete={vi.fn()}
+        onExport={vi.fn()}
       />
     )
     const item = container.firstChild as HTMLElement
@@ -76,6 +79,7 @@ describe("ResumeSidebarItem", () => {
         onOpen={onOpen}
         onDuplicate={vi.fn()}
         onDelete={vi.fn()}
+        onExport={vi.fn()}
       />
     )
     fireEvent.click(screen.getByRole("button", { name: "My Resume" }))
@@ -91,6 +95,7 @@ describe("ResumeSidebarItem", () => {
         onOpen={vi.fn()}
         onDuplicate={vi.fn()}
         onDelete={onDelete}
+        onExport={vi.fn()}
       />
     )
     fireEvent.click(screen.getByRole("button", { name: /delete my resume/i }))
@@ -106,6 +111,7 @@ describe("ResumeSidebarItem", () => {
         onOpen={vi.fn()}
         onDuplicate={onDuplicate}
         onDelete={vi.fn()}
+        onExport={vi.fn()}
       />
     )
     fireEvent.click(screen.getByRole("button", { name: /duplicate my resume/i }))
@@ -120,6 +126,7 @@ describe("ResumeSidebarItem", () => {
         onOpen={vi.fn()}
         onDuplicate={vi.fn()}
         onDelete={vi.fn()}
+        onExport={vi.fn()}
       />
     )
     expect(screen.getByText("Tailored")).toBeInTheDocument()
@@ -133,6 +140,7 @@ describe("ResumeSidebarItem", () => {
         onOpen={vi.fn()}
         onDuplicate={vi.fn()}
         onDelete={vi.fn()}
+        onExport={vi.fn()}
       />
     )
     expect(screen.getByText("Base")).toBeInTheDocument()

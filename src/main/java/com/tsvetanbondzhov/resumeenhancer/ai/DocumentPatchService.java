@@ -1,47 +1,38 @@
 package com.tsvetanbondzhov.resumeenhancer.ai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.*;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class DocumentPatchService {
 
     private static final String FIELD_DESCRIPTION = "description";
 
+    private final ObjectMapper objectMapper;
+
+    public DocumentPatchService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
     /**
      * Applies a DocumentPatchEvent to a ResumeDocument, returning a new updated document.
      * ResumeDocument is immutable (records + defensive copies) — this method creates a new instance.
      *
-     * @throws InvalidPatchException if sectionId is not found, itemIndex is out of bounds,
-     *                               or field is a reserved discriminant ("type" or "id").
+     * Supported operations (patch.op):
+     *   "modify" (default) — update a single field on an existing item
+     *   "add"              — insert a new item into a section
+     *   "delete"           — remove an existing item by itemIndex
+     *
+     * @throws InvalidPatchException if the patch is structurally invalid.
      */
     public ResumeDocument apply(ResumeDocument document, DocumentPatchEvent patch) {
-        // Guard: reserved discriminant fields must never be patched
-        if ("type".equals(patch.field()) || "id".equals(patch.field())) {
-            throw new InvalidPatchException(
-                    "Field '" + patch.field() + "' is reserved and cannot be patched");
-        }
+        ResumeSectionType targetType = resolveSection(document, patch.sectionId());
 
-        // Find the target section
-        ResumeSectionType targetType;
-        try {
-            targetType = ResumeSectionType.valueOf(patch.sectionId());
-        } catch (IllegalArgumentException e) {
-            throw new InvalidPatchException(
-                    "Section not found: sectionId='" + patch.sectionId() + "'");
-        }
-
-        boolean sectionFound = document.sections().stream()
-                .anyMatch(s -> s.sectionType() == targetType);
-        if (!sectionFound) {
-            throw new InvalidPatchException(
-                    "Section not found in document: sectionId='" + patch.sectionId() + "'");
-        }
-
-        // Rebuild document with the patched section
         List<ResumeSection> updatedSections = document.sections().stream()
                 .map(section -> section.sectionType() == targetType
                         ? applyToSection(section, patch)
@@ -51,17 +42,118 @@ public class DocumentPatchService {
         return new ResumeDocument(updatedSections);
     }
 
-    private ResumeSection applyToSection(ResumeSection section, DocumentPatchEvent patch) {
-        List<ResumeItem> items = section.items();
-        if (patch.itemIndex() < 0 || patch.itemIndex() >= items.size()) {
-            throw new InvalidPatchException(
-                    "itemIndex " + patch.itemIndex() + " is out of bounds for section '"
-                    + patch.sectionId() + "' (size=" + items.size() + ")");
+    /**
+     * Validates a patch against the given document by attempting to apply it.
+     * Returns true only when the patch is structurally valid and applies cleanly;
+     * any InvalidPatchException (or other failure) means the patch should be discarded.
+     * This reuses {@link #apply} so the validation always matches the real apply schema.
+     */
+    public boolean isValid(ResumeDocument document, DocumentPatchEvent patch) {
+        if (document == null || patch == null || patch.sectionId() == null || patch.sectionId().isBlank()) {
+            return false;
+        }
+        try {
+            apply(document, patch);
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private ResumeSectionType resolveSection(ResumeDocument document, String sectionId) {
+        ResumeSectionType targetType;
+        try {
+            targetType = ResumeSectionType.valueOf(sectionId);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidPatchException("Section not found: sectionId='" + sectionId + "'");
         }
 
+        boolean sectionFound = document.sections().stream()
+                .anyMatch(s -> s.sectionType() == targetType);
+        if (!sectionFound) {
+            throw new InvalidPatchException("Section not found in document: sectionId='" + sectionId + "'");
+        }
+        return targetType;
+    }
+
+    private ResumeSection applyToSection(ResumeSection section, DocumentPatchEvent patch) {
+        return switch (patch.effectiveOp()) {
+            case "add"    -> applyAdd(section, patch);
+            case "delete" -> applyDelete(section, patch);
+            default       -> applyModify(section, patch);
+        };
+    }
+
+    private ResumeSection applyModify(ResumeSection section, DocumentPatchEvent patch) {
+        if ("type".equals(patch.field()) || "id".equals(patch.field())) {
+            throw new InvalidPatchException("Field '" + patch.field() + "' is reserved and cannot be patched");
+        }
+
+        List<ResumeItem> items = section.items();
+        int idx = resolveItemIndex(patch, items.size(), section.sectionType().name());
+
         List<ResumeItem> updatedItems = new ArrayList<>(items);
-        updatedItems.set(patch.itemIndex(), applyToItem(items.get(patch.itemIndex()), patch));
+        updatedItems.set(idx, applyToItem(items.get(idx), patch));
         return new ResumeSection(section.sectionType(), section.title(), section.visible(), updatedItems);
+    }
+
+    private ResumeSection applyAdd(ResumeSection section, DocumentPatchEvent patch) {
+        if (patch.item() == null) {
+            throw new InvalidPatchException("'add' operation requires an 'item' field");
+        }
+
+        ResumeItem newItem;
+        try {
+            newItem = objectMapper.treeToValue(patch.item(), ResumeItem.class);
+        } catch (Exception e) {
+            throw new InvalidPatchException("Failed to deserialize new item for 'add' operation: " + e.getMessage());
+        }
+
+        newItem = withNewId(newItem);
+
+        List<ResumeItem> updatedItems = new ArrayList<>(section.items());
+        int insertAt = (patch.itemIndex() != null)
+                ? Math.min(Math.max(patch.itemIndex(), 0), updatedItems.size())
+                : updatedItems.size();
+        updatedItems.add(insertAt, newItem);
+        return new ResumeSection(section.sectionType(), section.title(), section.visible(), updatedItems);
+    }
+
+    private ResumeSection applyDelete(ResumeSection section, DocumentPatchEvent patch) {
+        List<ResumeItem> items = section.items();
+        int idx = resolveItemIndex(patch, items.size(), section.sectionType().name());
+
+        List<ResumeItem> updatedItems = new ArrayList<>(items);
+        updatedItems.remove(idx);
+        return new ResumeSection(section.sectionType(), section.title(), section.visible(), updatedItems);
+    }
+
+    private int resolveItemIndex(DocumentPatchEvent patch, int size, String sectionName) {
+        if (patch.itemIndex() == null) {
+            throw new InvalidPatchException("itemIndex is required for '" + patch.effectiveOp() + "' operation");
+        }
+        if (patch.itemIndex() < 0 || patch.itemIndex() >= size) {
+            throw new InvalidPatchException(
+                    "itemIndex " + patch.itemIndex() + " is out of bounds for section '"
+                    + sectionName + "' (size=" + size + ")");
+        }
+        return patch.itemIndex();
+    }
+
+    private ResumeItem withNewId(ResumeItem item) {
+        String id = UUID.randomUUID().toString();
+        return switch (item) {
+            case WorkExperienceItem w  -> new WorkExperienceItem(id, w.jobTitle(), w.company(), w.startDate(), w.endDate(), w.isCurrent(), w.description());
+            case EducationItem e       -> new EducationItem(id, e.institution(), e.degree(), e.fieldOfStudy(), e.startDate(), e.endDate());
+            case SkillItem s           -> new SkillItem(id, s.name());
+            case CertificationItem c   -> new CertificationItem(id, c.name(), c.issuer(), c.issueDate(), c.expirationDate());
+            case LanguageItem l        -> new LanguageItem(id, l.language(), l.proficiency());
+            case ProjectItem p         -> new ProjectItem(id, p.name(), p.description(), p.technologies(), p.link(), p.startDate(), p.endDate(), p.isCurrent());
+            case VolunteeringItem v    -> new VolunteeringItem(id, v.role(), v.organization(), v.description(), v.startDate(), v.endDate(), v.isCurrent());
+            case SummaryItem s         -> new SummaryItem(id, s.text(), s.linkedInUrl(), s.personalPageUrl(), s.blogUrl(), s.contactEmail(), s.locationCountry(), s.locationCity());
+            case FullNameItem n        -> new FullNameItem(id, n.firstName(), n.lastName());
+            case GenericItem g         -> new GenericItem(id, g.fields());
+        };
     }
 
     private ResumeItem applyToItem(ResumeItem item, DocumentPatchEvent patch) {
@@ -70,8 +162,8 @@ public class DocumentPatchService {
 
         return switch (item) {
             case WorkExperienceItem w -> switch (field) {
-                case "jobTitle"    -> new WorkExperienceItem(w.id(), newValue, w.company(), w.startDate(), w.endDate(), w.isCurrent(), w.description());
-                case "company"     -> new WorkExperienceItem(w.id(), w.jobTitle(), newValue, w.startDate(), w.endDate(), w.isCurrent(), w.description());
+                case "jobTitle"        -> new WorkExperienceItem(w.id(), newValue, w.company(), w.startDate(), w.endDate(), w.isCurrent(), w.description());
+                case "company"         -> new WorkExperienceItem(w.id(), w.jobTitle(), newValue, w.startDate(), w.endDate(), w.isCurrent(), w.description());
                 case FIELD_DESCRIPTION -> new WorkExperienceItem(w.id(), w.jobTitle(), w.company(), w.startDate(), w.endDate(), w.isCurrent(), newValue);
                 default -> throw new InvalidPatchException("Unknown field '" + field + "' for WORK_EXPERIENCE");
             };
@@ -96,15 +188,15 @@ public class DocumentPatchService {
                 default -> throw new InvalidPatchException("Unknown field '" + field + "' for LANGUAGES");
             };
             case ProjectItem p -> switch (field) {
-                case "name"         -> new ProjectItem(p.id(), newValue, p.description(), p.technologies(), p.link(), p.startDate(), p.endDate(), p.isCurrent());
+                case "name"            -> new ProjectItem(p.id(), newValue, p.description(), p.technologies(), p.link(), p.startDate(), p.endDate(), p.isCurrent());
                 case FIELD_DESCRIPTION -> new ProjectItem(p.id(), p.name(), newValue, p.technologies(), p.link(), p.startDate(), p.endDate(), p.isCurrent());
-                case "technologies" -> new ProjectItem(p.id(), p.name(), p.description(), newValue, p.link(), p.startDate(), p.endDate(), p.isCurrent());
-                case "link"         -> new ProjectItem(p.id(), p.name(), p.description(), p.technologies(), newValue, p.startDate(), p.endDate(), p.isCurrent());
+                case "technologies"    -> new ProjectItem(p.id(), p.name(), p.description(), newValue, p.link(), p.startDate(), p.endDate(), p.isCurrent());
+                case "link"            -> new ProjectItem(p.id(), p.name(), p.description(), p.technologies(), newValue, p.startDate(), p.endDate(), p.isCurrent());
                 default -> throw new InvalidPatchException("Unknown field '" + field + "' for PROJECTS");
             };
             case VolunteeringItem v -> switch (field) {
-                case "role"         -> new VolunteeringItem(v.id(), newValue, v.organization(), v.description(), v.startDate(), v.endDate(), v.isCurrent());
-                case "organization" -> new VolunteeringItem(v.id(), v.role(), newValue, v.description(), v.startDate(), v.endDate(), v.isCurrent());
+                case "role"            -> new VolunteeringItem(v.id(), newValue, v.organization(), v.description(), v.startDate(), v.endDate(), v.isCurrent());
+                case "organization"    -> new VolunteeringItem(v.id(), v.role(), newValue, v.description(), v.startDate(), v.endDate(), v.isCurrent());
                 case FIELD_DESCRIPTION -> new VolunteeringItem(v.id(), v.role(), v.organization(), newValue, v.startDate(), v.endDate(), v.isCurrent());
                 default -> throw new InvalidPatchException("Unknown field '" + field + "' for VOLUNTEERING");
             };
@@ -118,8 +210,12 @@ public class DocumentPatchService {
                 case "locationCity"    -> new SummaryItem(s.id(), s.text(), s.linkedInUrl(), s.personalPageUrl(), s.blogUrl(), s.contactEmail(), s.locationCountry(), newValue);
                 default -> throw new InvalidPatchException("Unknown field '" + field + "' for SUMMARY");
             };
+            case FullNameItem n -> switch (field) {
+                case "firstName" -> new FullNameItem(n.id(), newValue, n.lastName());
+                case "lastName"  -> new FullNameItem(n.id(), n.firstName(), newValue);
+                default -> throw new InvalidPatchException("Unknown field '" + field + "' for FULL_NAME");
+            };
             case GenericItem g -> {
-                // GenericItem uses a Map<String, String> — patch any key freely
                 var updatedFields = new java.util.HashMap<>(g.fields());
                 updatedFields.put(field, newValue);
                 yield new GenericItem(g.id(), updatedFields);

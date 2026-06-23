@@ -9,5 +9,6 @@ public record ChatRequest(
         String resumeId,                      // nullable — AI context enrichment; not validated here
         @Size(min = 1, max = 36)
         @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
-        String conversationId // nullable — if null, AiController generates UUID per request
+        String conversationId, // nullable — if null, AiController generates UUID per request
+        boolean allowEdits     // when true, the AI may emit resume patch modifications alongside text
 ) {}

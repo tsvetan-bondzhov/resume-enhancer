@@ -55,6 +55,8 @@ public class ProfileMapper {
                 .map(this::toDto)
                 .toList();
         return new ProfileDto(
+                profile.getFirstName(),
+                profile.getLastName(),
                 profile.getSummary(),
                 profile.getLinkedInUrl(),
                 profile.getPersonalPageUrl(),

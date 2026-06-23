@@ -26,6 +26,7 @@ export default function GenericSectionRenderer({
           <React.Fragment key={item.id}>
             <SortableItemWrapper
               id={item.id}
+              itemIndex={index}
               onDeleteItem={onDeleteItem}
               containerClassName="relative group/item"
             >

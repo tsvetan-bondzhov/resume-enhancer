@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tsvetanbondzhov.resumeenhancer.ai.AiService;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.CertificationItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.EducationItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.FullNameItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.GenericItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.LanguageItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ProjectItem;
@@ -37,6 +38,8 @@ public class LlmSectionExtractor {
     private static final String END_DATE = "endDate";
     private static final String IS_CURRENT = "isCurrent";
     private static final String DESCRIPTION = "description";
+    private static final String FIRST_NAME = "firstName";
+    private static final String LAST_NAME = "lastName";
 
     private final AiService aiService;
     private final ObjectMapper objectMapper;
@@ -52,88 +55,98 @@ public class LlmSectionExtractor {
      * UNKNOWN sections are skipped (not included in any typed list).
      */
     public ParsedResumeDto extract(List<RawSection> rawSections, String fullRawText) {
-        List<WorkExperienceItem> workExperiences = new ArrayList<>();
-        List<EducationItem> education = new ArrayList<>();
-        List<SkillItem> skills = new ArrayList<>();
-        List<CertificationItem> certifications = new ArrayList<>();
-        List<LanguageItem> languages = new ArrayList<>();
-        List<ProjectItem> projects = new ArrayList<>();
-        List<VolunteeringItem> volunteering = new ArrayList<>();
-        SummaryItem summary = null;
+        ParsedResumeAccumulator acc = new ParsedResumeAccumulator();
 
         for (RawSection rawSection : rawSections) {
             ResumeSectionType sectionType = ResumeSectionType.fromHeader(
                 rawSection.title().toLowerCase().replaceAll("[^a-z0-9 ]", "").trim()
             );
-            String sectionText = String.join("\n", rawSection.lines());
-
-            // Truncate to 3000 chars
-            if (sectionText.length() > MAX_SECTION_LENGTH) {
-                log.warn("Section '{}' truncated from {} to {} chars",
-                    rawSection.title(), sectionText.length(), MAX_SECTION_LENGTH);
-                sectionText = sectionText.substring(0, MAX_SECTION_LENGTH);
-            }
+            String sectionText = truncate(rawSection);
 
             List<ResumeItem> items = extractSectionItems(
                 rawSection, sectionType, sectionText, fullRawText);
 
-            // Dispatch typed items to the appropriate list; skip UNKNOWN
-            switch (sectionType) {
-                case WORK_EXPERIENCE -> items.stream()
-                    .filter(WorkExperienceItem.class::isInstance)
-                    .map(WorkExperienceItem.class::cast)
-                    .forEach(workExperiences::add);
-                case EDUCATION -> items.stream()
-                    .filter(EducationItem.class::isInstance)
-                    .map(EducationItem.class::cast)
-                    .forEach(education::add);
-                case SKILLS -> items.stream()
-                    .filter(SkillItem.class::isInstance)
-                    .map(SkillItem.class::cast)
-                    .forEach(skills::add);
-                case CERTIFICATIONS -> items.stream()
-                    .filter(CertificationItem.class::isInstance)
-                    .map(CertificationItem.class::cast)
-                    .forEach(certifications::add);
-                case LANGUAGES -> items.stream()
-                    .filter(LanguageItem.class::isInstance)
-                    .map(LanguageItem.class::cast)
-                    .forEach(languages::add);
-                case PROJECTS -> items.stream()
-                    .filter(ProjectItem.class::isInstance)
-                    .map(ProjectItem.class::cast)
-                    .forEach(projects::add);
-                case VOLUNTEERING -> items.stream()
-                    .filter(VolunteeringItem.class::isInstance)
-                    .map(VolunteeringItem.class::cast)
-                    .forEach(volunteering::add);
-                case SUMMARY -> {
-                    // Take the first SummaryItem only; ignore subsequent ones
-                    if (summary == null) {
-                        summary = items.stream()
-                            .filter(SummaryItem.class::isInstance)
-                            .map(SummaryItem.class::cast)
-                            .findFirst()
-                            .orElse(null);
-                    }
-                }
-                case UNKNOWN -> {
-                    // UNKNOWN sections are intentionally excluded from the DTO
-                }
+            dispatchItems(acc, sectionType, items);
+        }
+
+        return acc.toDto(fullRawText);
+    }
+
+    /** Joins the section lines and truncates to {@link #MAX_SECTION_LENGTH} characters. */
+    private String truncate(RawSection rawSection) {
+        String sectionText = String.join("\n", rawSection.lines());
+        if (sectionText.length() > MAX_SECTION_LENGTH) {
+            log.warn("Section '{}' truncated from {} to {} chars",
+                rawSection.title(), sectionText.length(), MAX_SECTION_LENGTH);
+            sectionText = sectionText.substring(0, MAX_SECTION_LENGTH);
+        }
+        return sectionText;
+    }
+
+    /** Dispatches typed items to the appropriate accumulator list; UNKNOWN sections are skipped. */
+    private void dispatchItems(ParsedResumeAccumulator acc, ResumeSectionType sectionType, List<ResumeItem> items) {
+        switch (sectionType) {
+            case WORK_EXPERIENCE -> typed(items, WorkExperienceItem.class).forEach(acc.workExperiences::add);
+            case EDUCATION -> typed(items, EducationItem.class).forEach(acc.education::add);
+            case SKILLS -> typed(items, SkillItem.class).forEach(acc.skills::add);
+            case CERTIFICATIONS -> typed(items, CertificationItem.class).forEach(acc.certifications::add);
+            case LANGUAGES -> typed(items, LanguageItem.class).forEach(acc.languages::add);
+            case PROJECTS -> typed(items, ProjectItem.class).forEach(acc.projects::add);
+            case VOLUNTEERING -> typed(items, VolunteeringItem.class).forEach(acc.volunteering::add);
+            case SUMMARY -> {
+                // Take the first SummaryItem only; ignore subsequent ones.
+                acc.setSummaryIfAbsent(first(items, SummaryItem.class));
+                // The name commonly lives in the summary/header block — capture it.
+                acc.setFullNameIfAbsent(first(items, FullNameItem.class));
+            }
+            // Take the first FullNameItem only; ignore subsequent ones.
+            case FULL_NAME -> acc.setFullNameIfAbsent(first(items, FullNameItem.class));
+            case UNKNOWN -> {
+                // UNKNOWN sections are intentionally excluded from the DTO
+            }
+        }
+    }
+
+    /** Streams only the items assignable to the given type. */
+    private <T extends ResumeItem> java.util.stream.Stream<T> typed(List<ResumeItem> items, Class<T> type) {
+        return items.stream().filter(type::isInstance).map(type::cast);
+    }
+
+    /** Returns the first item assignable to the given type, or null if none. */
+    private <T extends ResumeItem> T first(List<ResumeItem> items, Class<T> type) {
+        return typed(items, type).findFirst().orElse(null);
+    }
+
+    /** Mutable accumulator collecting typed items across sections before building the DTO. */
+    private static final class ParsedResumeAccumulator {
+        private final List<WorkExperienceItem> workExperiences = new ArrayList<>();
+        private final List<EducationItem> education = new ArrayList<>();
+        private final List<SkillItem> skills = new ArrayList<>();
+        private final List<CertificationItem> certifications = new ArrayList<>();
+        private final List<LanguageItem> languages = new ArrayList<>();
+        private final List<ProjectItem> projects = new ArrayList<>();
+        private final List<VolunteeringItem> volunteering = new ArrayList<>();
+        private SummaryItem summary;
+        private FullNameItem fullName;
+
+        void setSummaryIfAbsent(SummaryItem candidate) {
+            if (summary == null) {
+                summary = candidate;
             }
         }
 
-        return new ParsedResumeDto(
-            fullRawText,
-            workExperiences,
-            education,
-            skills,
-            certifications,
-            languages,
-            projects,
-            volunteering,
-            summary
-        );
+        void setFullNameIfAbsent(FullNameItem candidate) {
+            if (fullName == null) {
+                fullName = candidate;
+            }
+        }
+
+        ParsedResumeDto toDto(String fullRawText) {
+            return new ParsedResumeDto(
+                fullRawText, workExperiences, education, skills, certifications,
+                languages, projects, volunteering, summary, fullName
+            );
+        }
     }
 
     private List<ResumeItem> extractSectionItems(
@@ -158,6 +171,16 @@ public class LlmSectionExtractor {
             List<ResumeItem> result = new ArrayList<>();
             for (Map<String, Object> rawItem : rawItems) {
                 result.add(buildItemWithFallback(sectionType, rawItem, fullRawText, rawSection.title()));
+                // The candidate's name typically appears in the SUMMARY/header block rather than
+                // under a dedicated "Name" header, so also derive a FullNameItem from it.
+                if (sectionType == ResumeSectionType.SUMMARY
+                        && (rawItem.get(FIRST_NAME) != null || rawItem.get(LAST_NAME) != null)) {
+                    result.add(new FullNameItem(
+                            UUID.randomUUID().toString(),
+                            str(rawItem, FIRST_NAME),
+                            str(rawItem, LAST_NAME)
+                    ));
+                }
             }
             return result;
 
@@ -265,6 +288,11 @@ public class LlmSectionExtractor {
                     str(raw, "contactEmail"),
                     str(raw, "locationCountry"),
                     str(raw, "locationCity")
+            );
+            case FULL_NAME -> new FullNameItem(
+                    id,
+                    str(raw, FIRST_NAME),
+                    str(raw, LAST_NAME)
             );
             case UNKNOWN -> new GenericItem(id, toStringMap(raw));
         };

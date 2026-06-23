@@ -122,6 +122,8 @@ vi.mock("react-router-dom", async (importOriginal) => {
 function resetProfileStore() {
   useProfileStore.setState({
     profile: {
+      firstName: null,
+      lastName: null,
       summary: null,
       linkedInUrl: null,
       personalPageUrl: null,

@@ -21,6 +21,7 @@ import com.tsvetanbondzhov.resumeenhancer.resume.domain.EducationItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.LanguageItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ProjectItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.SkillItem;
+import com.tsvetanbondzhov.resumeenhancer.resume.domain.FullNameItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.SummaryItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.VolunteeringItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem;
@@ -148,7 +149,17 @@ public class ResumeService {
     private ResumeDocument buildFromProfile(Profile profile) {
         List<ResumeSection> sections = new ArrayList<>();
 
-        // SUMMARY section — added first
+        // FULL_NAME section — added first (candidate's full name header)
+        boolean nameVisible = (profile.getFirstName() != null && !profile.getFirstName().isBlank())
+                || (profile.getLastName() != null && !profile.getLastName().isBlank());
+        List<ResumeItem> nameItems = List.of(new FullNameItem(
+                UUID.randomUUID().toString(),
+                profile.getFirstName(),
+                profile.getLastName()
+        ));
+        sections.add(new ResumeSection(ResumeSectionType.FULL_NAME, "Name", nameVisible, nameItems));
+
+        // SUMMARY section
         String summaryText = profile.getSummary() != null ? profile.getSummary() : "";
         boolean summaryVisible = profile.getSummary() != null && !profile.getSummary().isBlank();
         List<ResumeItem> summaryItems = List.of(new SummaryItem(

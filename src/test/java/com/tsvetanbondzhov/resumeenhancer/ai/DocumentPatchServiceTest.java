@@ -1,5 +1,7 @@
 package com.tsvetanbondzhov.resumeenhancer.ai;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,7 +23,7 @@ class DocumentPatchServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DocumentPatchService();
+        service = new DocumentPatchService(new ObjectMapper());
 
         WorkExperienceItem item0 = new WorkExperienceItem(
                 "item-0", "Software Engineer", "Acme Corp", null, null, true, "Built things");
@@ -42,7 +44,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_patches_jobTitle_on_first_work_experience_item() {
-        var patch = new DocumentPatchEvent("WORK_EXPERIENCE", 0, "jobTitle", "Senior Engineer");
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 0, "jobTitle", "Senior Engineer");
         ResumeDocument result = service.apply(document, patch);
 
         WorkExperienceItem updated = (WorkExperienceItem) result.sections().get(0).items().get(0);
@@ -55,7 +57,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_patches_description_on_second_work_experience_item() {
-        var patch = new DocumentPatchEvent("WORK_EXPERIENCE", 1, "description", "Built great things");
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 1, "description", "Built great things");
         ResumeDocument result = service.apply(document, patch);
 
         WorkExperienceItem updated = (WorkExperienceItem) result.sections().get(0).items().get(1);
@@ -65,7 +67,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_patches_summary_text() {
-        var patch = new DocumentPatchEvent("SUMMARY", 0, "text", "10+ years of excellence");
+        var patch = DocumentPatchEvent.modify("SUMMARY", 0, "text", "10+ years of excellence");
         ResumeDocument result = service.apply(document, patch);
 
         SummaryItem updated = (SummaryItem) result.sections().get(1).items().get(0);
@@ -76,7 +78,7 @@ class DocumentPatchServiceTest {
     @Test
     void apply_returns_new_document_instance_original_is_unchanged() {
         var original0 = (WorkExperienceItem) document.sections().get(0).items().get(0);
-        var patch = new DocumentPatchEvent("WORK_EXPERIENCE", 0, "jobTitle", "Senior Engineer");
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 0, "jobTitle", "Senior Engineer");
 
         ResumeDocument result = service.apply(document, patch);
 
@@ -89,7 +91,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_patches_newValue_null_clears_field() {
-        var patch = new DocumentPatchEvent("WORK_EXPERIENCE", 0, "description", null);
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 0, "description", null);
         ResumeDocument result = service.apply(document, patch);
 
         WorkExperienceItem updated = (WorkExperienceItem) result.sections().get(0).items().get(0);
@@ -100,7 +102,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_throws_InvalidPatchException_for_unknown_sectionId() {
-        var patch = new DocumentPatchEvent("NONEXISTENT", 0, "jobTitle", "X");
+        var patch = DocumentPatchEvent.modify("NONEXISTENT", 0, "jobTitle", "X");
         assertThatThrownBy(() -> service.apply(document, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("NONEXISTENT");
@@ -109,7 +111,7 @@ class DocumentPatchServiceTest {
     @Test
     void apply_throws_InvalidPatchException_for_valid_sectionType_not_in_document() {
         // SKILLS section is not present in the test document
-        var patch = new DocumentPatchEvent("SKILLS", 0, "name", "Java");
+        var patch = DocumentPatchEvent.modify("SKILLS", 0, "name", "Java");
         assertThatThrownBy(() -> service.apply(document, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("SKILLS");
@@ -119,7 +121,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_throws_InvalidPatchException_for_itemIndex_out_of_bounds_positive() {
-        var patch = new DocumentPatchEvent("WORK_EXPERIENCE", 99, "jobTitle", "X");
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 99, "jobTitle", "X");
         assertThatThrownBy(() -> service.apply(document, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("out of bounds");
@@ -128,7 +130,7 @@ class DocumentPatchServiceTest {
     @Test
     void apply_throws_for_itemIndex_negative_lower_bound() {
         // F2: negative itemIndex should trigger the < 0 guard and throw InvalidPatchException
-        var patch = new DocumentPatchEvent("WORK_EXPERIENCE", -1, "jobTitle", "X");
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", -1, "jobTitle", "X");
         assertThatThrownBy(() -> service.apply(document, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("out of bounds");
@@ -137,14 +139,14 @@ class DocumentPatchServiceTest {
     @Test
     void apply_throws_for_null_field() {
         // F1: null field should throw (switch on null → NPE or InvalidPatchException rather than silent ignore)
-        var patch = new DocumentPatchEvent("WORK_EXPERIENCE", 0, null, "X");
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 0, null, "X");
         assertThatThrownBy(() -> service.apply(document, patch))
                 .isInstanceOf(RuntimeException.class);
     }
 
     @Test
     void apply_throws_InvalidPatchException_for_reserved_field_type() {
-        var patch = new DocumentPatchEvent("WORK_EXPERIENCE", 0, "type", "EDUCATION");
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 0, "type", "EDUCATION");
         assertThatThrownBy(() -> service.apply(document, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("reserved");
@@ -152,7 +154,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_throws_InvalidPatchException_for_reserved_field_id() {
-        var patch = new DocumentPatchEvent("WORK_EXPERIENCE", 0, "id", "new-id");
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 0, "id", "new-id");
         assertThatThrownBy(() -> service.apply(document, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("reserved");
@@ -160,7 +162,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_throws_InvalidPatchException_for_unknown_field_on_work_experience() {
-        var patch = new DocumentPatchEvent("WORK_EXPERIENCE", 0, "salary", "100k");
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 0, "salary", "100k");
         assertThatThrownBy(() -> service.apply(document, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("salary");
@@ -169,7 +171,7 @@ class DocumentPatchServiceTest {
     @ParameterizedTest
     @ValueSource(strings = {"company", "description"})
     void apply_patches_all_string_fields_on_work_experience(String field) {
-        var patch = new DocumentPatchEvent("WORK_EXPERIENCE", 0, field, "new-value");
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 0, field, "new-value");
         ResumeDocument result = service.apply(document, patch);
         WorkExperienceItem updated = (WorkExperienceItem) result.sections().get(0).items().get(0);
         // Verify the field was patched to new-value
@@ -193,7 +195,7 @@ class DocumentPatchServiceTest {
         EducationItem edu = new EducationItem("edu-0", "MIT", "BSc", "CS", null, null);
         ResumeDocument doc = documentWith(edu, ResumeSectionType.EDUCATION, "Education");
 
-        var patch = new DocumentPatchEvent("EDUCATION", 0, "institution", "Harvard");
+        var patch = DocumentPatchEvent.modify("EDUCATION", 0, "institution", "Harvard");
         ResumeDocument result = service.apply(doc, patch);
 
         EducationItem updated = (EducationItem) result.sections().get(0).items().get(0);
@@ -206,7 +208,7 @@ class DocumentPatchServiceTest {
         EducationItem edu = new EducationItem("edu-0", "MIT", "BSc", "CS", null, null);
         ResumeDocument doc = documentWith(edu, ResumeSectionType.EDUCATION, "Education");
 
-        var patch = new DocumentPatchEvent("EDUCATION", 0, "degree", "MSc");
+        var patch = DocumentPatchEvent.modify("EDUCATION", 0, "degree", "MSc");
         ResumeDocument result = service.apply(doc, patch);
 
         EducationItem updated = (EducationItem) result.sections().get(0).items().get(0);
@@ -218,7 +220,7 @@ class DocumentPatchServiceTest {
         EducationItem edu = new EducationItem("edu-0", "MIT", "BSc", "CS", null, null);
         ResumeDocument doc = documentWith(edu, ResumeSectionType.EDUCATION, "Education");
 
-        var patch = new DocumentPatchEvent("EDUCATION", 0, "fieldOfStudy", "Mathematics");
+        var patch = DocumentPatchEvent.modify("EDUCATION", 0, "fieldOfStudy", "Mathematics");
         ResumeDocument result = service.apply(doc, patch);
 
         EducationItem updated = (EducationItem) result.sections().get(0).items().get(0);
@@ -230,7 +232,7 @@ class DocumentPatchServiceTest {
         EducationItem edu = new EducationItem("edu-0", "MIT", "BSc", "CS", null, null);
         ResumeDocument doc = documentWith(edu, ResumeSectionType.EDUCATION, "Education");
 
-        var patch = new DocumentPatchEvent("EDUCATION", 0, "unknown", "val");
+        var patch = DocumentPatchEvent.modify("EDUCATION", 0, "unknown", "val");
         assertThatThrownBy(() -> service.apply(doc, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("EDUCATION");
@@ -243,7 +245,7 @@ class DocumentPatchServiceTest {
         SkillItem skill = new SkillItem("skill-0", "Java");
         ResumeDocument doc = documentWith(skill, ResumeSectionType.SKILLS, "Skills");
 
-        var patch = new DocumentPatchEvent("SKILLS", 0, "name", "Kotlin");
+        var patch = DocumentPatchEvent.modify("SKILLS", 0, "name", "Kotlin");
         ResumeDocument result = service.apply(doc, patch);
 
         SkillItem updated = (SkillItem) result.sections().get(0).items().get(0);
@@ -255,7 +257,7 @@ class DocumentPatchServiceTest {
         SkillItem skill = new SkillItem("skill-0", "Java");
         ResumeDocument doc = documentWith(skill, ResumeSectionType.SKILLS, "Skills");
 
-        var patch = new DocumentPatchEvent("SKILLS", 0, "level", "Expert");
+        var patch = DocumentPatchEvent.modify("SKILLS", 0, "level", "Expert");
         assertThatThrownBy(() -> service.apply(doc, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("SKILLS");
@@ -268,7 +270,7 @@ class DocumentPatchServiceTest {
         CertificationItem cert = new CertificationItem("cert-0", "AWS Certified", "Amazon", null, null);
         ResumeDocument doc = documentWith(cert, ResumeSectionType.CERTIFICATIONS, "Certifications");
 
-        var patch = new DocumentPatchEvent("CERTIFICATIONS", 0, "name", "GCP Certified");
+        var patch = DocumentPatchEvent.modify("CERTIFICATIONS", 0, "name", "GCP Certified");
         ResumeDocument result = service.apply(doc, patch);
 
         CertificationItem updated = (CertificationItem) result.sections().get(0).items().get(0);
@@ -280,7 +282,7 @@ class DocumentPatchServiceTest {
         CertificationItem cert = new CertificationItem("cert-0", "AWS Certified", "Amazon", null, null);
         ResumeDocument doc = documentWith(cert, ResumeSectionType.CERTIFICATIONS, "Certifications");
 
-        var patch = new DocumentPatchEvent("CERTIFICATIONS", 0, "issuer", "Google");
+        var patch = DocumentPatchEvent.modify("CERTIFICATIONS", 0, "issuer", "Google");
         ResumeDocument result = service.apply(doc, patch);
 
         CertificationItem updated = (CertificationItem) result.sections().get(0).items().get(0);
@@ -292,7 +294,7 @@ class DocumentPatchServiceTest {
         CertificationItem cert = new CertificationItem("cert-0", "AWS Certified", "Amazon", null, null);
         ResumeDocument doc = documentWith(cert, ResumeSectionType.CERTIFICATIONS, "Certifications");
 
-        var patch = new DocumentPatchEvent("CERTIFICATIONS", 0, "expiry", "2030");
+        var patch = DocumentPatchEvent.modify("CERTIFICATIONS", 0, "expiry", "2030");
         assertThatThrownBy(() -> service.apply(doc, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("CERTIFICATIONS");
@@ -305,7 +307,7 @@ class DocumentPatchServiceTest {
         LanguageItem lang = new LanguageItem("lang-0", "English", "C2");
         ResumeDocument doc = documentWith(lang, ResumeSectionType.LANGUAGES, "Languages");
 
-        var patch = new DocumentPatchEvent("LANGUAGES", 0, "language", "French");
+        var patch = DocumentPatchEvent.modify("LANGUAGES", 0, "language", "French");
         ResumeDocument result = service.apply(doc, patch);
 
         LanguageItem updated = (LanguageItem) result.sections().get(0).items().get(0);
@@ -317,7 +319,7 @@ class DocumentPatchServiceTest {
         LanguageItem lang = new LanguageItem("lang-0", "English", "C2");
         ResumeDocument doc = documentWith(lang, ResumeSectionType.LANGUAGES, "Languages");
 
-        var patch = new DocumentPatchEvent("LANGUAGES", 0, "proficiency", "B2");
+        var patch = DocumentPatchEvent.modify("LANGUAGES", 0, "proficiency", "B2");
         ResumeDocument result = service.apply(doc, patch);
 
         LanguageItem updated = (LanguageItem) result.sections().get(0).items().get(0);
@@ -329,7 +331,7 @@ class DocumentPatchServiceTest {
         LanguageItem lang = new LanguageItem("lang-0", "English", "C2");
         ResumeDocument doc = documentWith(lang, ResumeSectionType.LANGUAGES, "Languages");
 
-        var patch = new DocumentPatchEvent("LANGUAGES", 0, "unknown", "val");
+        var patch = DocumentPatchEvent.modify("LANGUAGES", 0, "unknown", "val");
         assertThatThrownBy(() -> service.apply(doc, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("LANGUAGES");
@@ -342,7 +344,7 @@ class DocumentPatchServiceTest {
         ProjectItem proj = new ProjectItem("proj-0", "MyApp", "A great app", "Java", "http://link", null, null, false);
         ResumeDocument doc = documentWith(proj, ResumeSectionType.PROJECTS, "Projects");
 
-        var patch = new DocumentPatchEvent("PROJECTS", 0, "name", "BetterApp");
+        var patch = DocumentPatchEvent.modify("PROJECTS", 0, "name", "BetterApp");
         ResumeDocument result = service.apply(doc, patch);
 
         ProjectItem updated = (ProjectItem) result.sections().get(0).items().get(0);
@@ -354,7 +356,7 @@ class DocumentPatchServiceTest {
         ProjectItem proj = new ProjectItem("proj-0", "MyApp", "A great app", "Java", "http://link", null, null, false);
         ResumeDocument doc = documentWith(proj, ResumeSectionType.PROJECTS, "Projects");
 
-        var patch = new DocumentPatchEvent("PROJECTS", 0, "description", "An incredible app");
+        var patch = DocumentPatchEvent.modify("PROJECTS", 0, "description", "An incredible app");
         ResumeDocument result = service.apply(doc, patch);
 
         ProjectItem updated = (ProjectItem) result.sections().get(0).items().get(0);
@@ -366,7 +368,7 @@ class DocumentPatchServiceTest {
         ProjectItem proj = new ProjectItem("proj-0", "MyApp", "A great app", "Java", "http://link", null, null, false);
         ResumeDocument doc = documentWith(proj, ResumeSectionType.PROJECTS, "Projects");
 
-        var patch = new DocumentPatchEvent("PROJECTS", 0, "technologies", "Kotlin, Spring");
+        var patch = DocumentPatchEvent.modify("PROJECTS", 0, "technologies", "Kotlin, Spring");
         ResumeDocument result = service.apply(doc, patch);
 
         ProjectItem updated = (ProjectItem) result.sections().get(0).items().get(0);
@@ -378,7 +380,7 @@ class DocumentPatchServiceTest {
         ProjectItem proj = new ProjectItem("proj-0", "MyApp", "A great app", "Java", "http://link", null, null, false);
         ResumeDocument doc = documentWith(proj, ResumeSectionType.PROJECTS, "Projects");
 
-        var patch = new DocumentPatchEvent("PROJECTS", 0, "link", "https://new-link.com");
+        var patch = DocumentPatchEvent.modify("PROJECTS", 0, "link", "https://new-link.com");
         ResumeDocument result = service.apply(doc, patch);
 
         ProjectItem updated = (ProjectItem) result.sections().get(0).items().get(0);
@@ -390,7 +392,7 @@ class DocumentPatchServiceTest {
         ProjectItem proj = new ProjectItem("proj-0", "MyApp", "A great app", "Java", "http://link", null, null, false);
         ResumeDocument doc = documentWith(proj, ResumeSectionType.PROJECTS, "Projects");
 
-        var patch = new DocumentPatchEvent("PROJECTS", 0, "budget", "$10k");
+        var patch = DocumentPatchEvent.modify("PROJECTS", 0, "budget", "$10k");
         assertThatThrownBy(() -> service.apply(doc, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("PROJECTS");
@@ -403,7 +405,7 @@ class DocumentPatchServiceTest {
         VolunteeringItem vol = new VolunteeringItem("vol-0", "Mentor", "Code Club", "Helped beginners", null, null, false);
         ResumeDocument doc = documentWith(vol, ResumeSectionType.VOLUNTEERING, "Volunteering");
 
-        var patch = new DocumentPatchEvent("VOLUNTEERING", 0, "role", "Lead Mentor");
+        var patch = DocumentPatchEvent.modify("VOLUNTEERING", 0, "role", "Lead Mentor");
         ResumeDocument result = service.apply(doc, patch);
 
         VolunteeringItem updated = (VolunteeringItem) result.sections().get(0).items().get(0);
@@ -415,7 +417,7 @@ class DocumentPatchServiceTest {
         VolunteeringItem vol = new VolunteeringItem("vol-0", "Mentor", "Code Club", "Helped beginners", null, null, false);
         ResumeDocument doc = documentWith(vol, ResumeSectionType.VOLUNTEERING, "Volunteering");
 
-        var patch = new DocumentPatchEvent("VOLUNTEERING", 0, "organization", "Dev Academy");
+        var patch = DocumentPatchEvent.modify("VOLUNTEERING", 0, "organization", "Dev Academy");
         ResumeDocument result = service.apply(doc, patch);
 
         VolunteeringItem updated = (VolunteeringItem) result.sections().get(0).items().get(0);
@@ -427,7 +429,7 @@ class DocumentPatchServiceTest {
         VolunteeringItem vol = new VolunteeringItem("vol-0", "Mentor", "Code Club", "Helped beginners", null, null, false);
         ResumeDocument doc = documentWith(vol, ResumeSectionType.VOLUNTEERING, "Volunteering");
 
-        var patch = new DocumentPatchEvent("VOLUNTEERING", 0, "description", "Coached 20 students");
+        var patch = DocumentPatchEvent.modify("VOLUNTEERING", 0, "description", "Coached 20 students");
         ResumeDocument result = service.apply(doc, patch);
 
         VolunteeringItem updated = (VolunteeringItem) result.sections().get(0).items().get(0);
@@ -439,7 +441,7 @@ class DocumentPatchServiceTest {
         VolunteeringItem vol = new VolunteeringItem("vol-0", "Mentor", "Code Club", "Helped beginners", null, null, false);
         ResumeDocument doc = documentWith(vol, ResumeSectionType.VOLUNTEERING, "Volunteering");
 
-        var patch = new DocumentPatchEvent("VOLUNTEERING", 0, "unknown", "val");
+        var patch = DocumentPatchEvent.modify("VOLUNTEERING", 0, "unknown", "val");
         assertThatThrownBy(() -> service.apply(doc, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("VOLUNTEERING");
@@ -449,7 +451,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_patches_summary_linkedInUrl() {
-        var patch = new DocumentPatchEvent("SUMMARY", 0, "linkedInUrl", "https://linkedin.com/in/user");
+        var patch = DocumentPatchEvent.modify("SUMMARY", 0, "linkedInUrl", "https://linkedin.com/in/user");
         ResumeDocument result = service.apply(document, patch);
 
         SummaryItem updated = (SummaryItem) result.sections().get(1).items().get(0);
@@ -458,7 +460,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_patches_summary_personalPageUrl() {
-        var patch = new DocumentPatchEvent("SUMMARY", 0, "personalPageUrl", "https://mypage.com");
+        var patch = DocumentPatchEvent.modify("SUMMARY", 0, "personalPageUrl", "https://mypage.com");
         ResumeDocument result = service.apply(document, patch);
 
         SummaryItem updated = (SummaryItem) result.sections().get(1).items().get(0);
@@ -467,7 +469,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_patches_summary_blogUrl() {
-        var patch = new DocumentPatchEvent("SUMMARY", 0, "blogUrl", "https://blog.com");
+        var patch = DocumentPatchEvent.modify("SUMMARY", 0, "blogUrl", "https://blog.com");
         ResumeDocument result = service.apply(document, patch);
 
         SummaryItem updated = (SummaryItem) result.sections().get(1).items().get(0);
@@ -476,7 +478,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_patches_summary_contactEmail() {
-        var patch = new DocumentPatchEvent("SUMMARY", 0, "contactEmail", "new@example.com");
+        var patch = DocumentPatchEvent.modify("SUMMARY", 0, "contactEmail", "new@example.com");
         ResumeDocument result = service.apply(document, patch);
 
         SummaryItem updated = (SummaryItem) result.sections().get(1).items().get(0);
@@ -485,7 +487,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_patches_summary_locationCountry() {
-        var patch = new DocumentPatchEvent("SUMMARY", 0, "locationCountry", "Germany");
+        var patch = DocumentPatchEvent.modify("SUMMARY", 0, "locationCountry", "Germany");
         ResumeDocument result = service.apply(document, patch);
 
         SummaryItem updated = (SummaryItem) result.sections().get(1).items().get(0);
@@ -494,7 +496,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_patches_summary_locationCity() {
-        var patch = new DocumentPatchEvent("SUMMARY", 0, "locationCity", "Berlin");
+        var patch = DocumentPatchEvent.modify("SUMMARY", 0, "locationCity", "Berlin");
         ResumeDocument result = service.apply(document, patch);
 
         SummaryItem updated = (SummaryItem) result.sections().get(1).items().get(0);
@@ -503,7 +505,7 @@ class DocumentPatchServiceTest {
 
     @Test
     void apply_throws_InvalidPatchException_for_unknown_field_on_summary() {
-        var patch = new DocumentPatchEvent("SUMMARY", 0, "phone", "+44123456789");
+        var patch = DocumentPatchEvent.modify("SUMMARY", 0, "phone", "+44123456789");
         assertThatThrownBy(() -> service.apply(document, patch))
                 .isInstanceOf(InvalidPatchException.class)
                 .hasMessageContaining("SUMMARY");
@@ -517,7 +519,7 @@ class DocumentPatchServiceTest {
         ResumeSection section = new ResumeSection(ResumeSectionType.SKILLS, "Extra", true, List.of(generic));
         ResumeDocument doc = new ResumeDocument(List.of(section));
 
-        var patch = new DocumentPatchEvent("SKILLS", 0, "customField", "updated");
+        var patch = DocumentPatchEvent.modify("SKILLS", 0, "customField", "updated");
         ResumeDocument result = service.apply(doc, patch);
 
         GenericItem updated = (GenericItem) result.sections().get(0).items().get(0);
@@ -530,11 +532,213 @@ class DocumentPatchServiceTest {
         ResumeSection section = new ResumeSection(ResumeSectionType.SKILLS, "Extra", true, List.of(generic));
         ResumeDocument doc = new ResumeDocument(List.of(section));
 
-        var patch = new DocumentPatchEvent("SKILLS", 0, "newField", "newValue");
+        var patch = DocumentPatchEvent.modify("SKILLS", 0, "newField", "newValue");
         ResumeDocument result = service.apply(doc, patch);
 
         GenericItem updated = (GenericItem) result.sections().get(0).items().get(0);
         assertThat(updated.fields()).containsEntry("newField", "newValue");
         assertThat(updated.fields()).containsEntry("existingField", "value");
+    }
+
+    // --- FullNameItem patches ---
+
+    @Test
+    void apply_patches_fullName_firstName() {
+        FullNameItem name = new FullNameItem("name-0", "Jane", "Doe");
+        ResumeDocument doc = documentWith(name, ResumeSectionType.FULL_NAME, "Name");
+
+        var patch = DocumentPatchEvent.modify("FULL_NAME", 0, "firstName", "John");
+        ResumeDocument result = service.apply(doc, patch);
+
+        FullNameItem updated = (FullNameItem) result.sections().get(0).items().get(0);
+        assertThat(updated.firstName()).isEqualTo("John");
+        assertThat(updated.lastName()).isEqualTo("Doe");
+    }
+
+    @Test
+    void apply_patches_fullName_lastName() {
+        FullNameItem name = new FullNameItem("name-0", "Jane", "Doe");
+        ResumeDocument doc = documentWith(name, ResumeSectionType.FULL_NAME, "Name");
+
+        var patch = DocumentPatchEvent.modify("FULL_NAME", 0, "lastName", "Smith");
+        ResumeDocument result = service.apply(doc, patch);
+
+        FullNameItem updated = (FullNameItem) result.sections().get(0).items().get(0);
+        assertThat(updated.lastName()).isEqualTo("Smith");
+    }
+
+    @Test
+    void apply_throws_InvalidPatchException_for_unknown_field_on_fullName() {
+        FullNameItem name = new FullNameItem("name-0", "Jane", "Doe");
+        ResumeDocument doc = documentWith(name, ResumeSectionType.FULL_NAME, "Name");
+
+        var patch = DocumentPatchEvent.modify("FULL_NAME", 0, "middleName", "X");
+        assertThatThrownBy(() -> service.apply(doc, patch))
+                .isInstanceOf(InvalidPatchException.class)
+                .hasMessageContaining("FULL_NAME");
+    }
+
+    // --- "add" operation ---
+
+    private DocumentPatchEvent addPatch(String sectionId, Integer itemIndex, JsonNode item) {
+        return new DocumentPatchEvent(sectionId, "add", itemIndex, null, null, item);
+    }
+
+    @Test
+    void apply_add_appends_new_item_with_generated_id_when_no_index() throws Exception {
+        JsonNode item = new ObjectMapper().readTree(
+                "{\"type\":\"WORK_EXPERIENCE\",\"jobTitle\":\"Architect\",\"company\":\"BigCo\"}");
+        var patch = addPatch("WORK_EXPERIENCE", null, item);
+
+        ResumeDocument result = service.apply(document, patch);
+
+        List<ResumeItem> items = result.sections().get(0).items();
+        assertThat(items).hasSize(3);
+        WorkExperienceItem added = (WorkExperienceItem) items.get(2);
+        assertThat(added.jobTitle()).isEqualTo("Architect");
+        assertThat(added.company()).isEqualTo("BigCo");
+        // A fresh id is generated rather than reusing any incoming id
+        assertThat(added.id()).isNotBlank();
+    }
+
+    @Test
+    void apply_add_inserts_at_clamped_index() throws Exception {
+        JsonNode item = new ObjectMapper().readTree(
+                "{\"type\":\"WORK_EXPERIENCE\",\"jobTitle\":\"Intern\",\"company\":\"FirstCo\"}");
+        var patch = addPatch("WORK_EXPERIENCE", 0, item);
+
+        ResumeDocument result = service.apply(document, patch);
+
+        List<ResumeItem> items = result.sections().get(0).items();
+        assertThat(items).hasSize(3);
+        assertThat(((WorkExperienceItem) items.get(0)).jobTitle()).isEqualTo("Intern");
+    }
+
+    @Test
+    void apply_add_clamps_out_of_range_index_to_end() throws Exception {
+        JsonNode item = new ObjectMapper().readTree(
+                "{\"type\":\"WORK_EXPERIENCE\",\"jobTitle\":\"Last\",\"company\":\"LastCo\"}");
+        var patch = addPatch("WORK_EXPERIENCE", 999, item);
+
+        ResumeDocument result = service.apply(document, patch);
+
+        List<ResumeItem> items = result.sections().get(0).items();
+        assertThat(items).hasSize(3);
+        assertThat(((WorkExperienceItem) items.get(2)).jobTitle()).isEqualTo("Last");
+    }
+
+    @Test
+    void apply_add_clamps_negative_index_to_zero() throws Exception {
+        JsonNode item = new ObjectMapper().readTree(
+                "{\"type\":\"WORK_EXPERIENCE\",\"jobTitle\":\"Neg\",\"company\":\"NegCo\"}");
+        var patch = addPatch("WORK_EXPERIENCE", -5, item);
+
+        ResumeDocument result = service.apply(document, patch);
+
+        List<ResumeItem> items = result.sections().get(0).items();
+        assertThat(items).hasSize(3);
+        assertThat(((WorkExperienceItem) items.get(0)).jobTitle()).isEqualTo("Neg");
+    }
+
+    @Test
+    void apply_add_generates_new_id_for_skill_item() throws Exception {
+        SkillItem skill = new SkillItem("skill-0", "Java");
+        ResumeDocument doc = documentWith(skill, ResumeSectionType.SKILLS, "Skills");
+
+        JsonNode item = new ObjectMapper().readTree("{\"type\":\"SKILLS\",\"name\":\"Kotlin\"}");
+        var patch = addPatch("SKILLS", null, item);
+
+        ResumeDocument result = service.apply(doc, patch);
+        List<ResumeItem> items = result.sections().get(0).items();
+        assertThat(items).hasSize(2);
+        SkillItem added = (SkillItem) items.get(1);
+        assertThat(added.name()).isEqualTo("Kotlin");
+        assertThat(added.id()).isNotBlank();
+    }
+
+    @Test
+    void apply_add_throws_when_item_missing() {
+        var patch = addPatch("WORK_EXPERIENCE", null, null);
+        assertThatThrownBy(() -> service.apply(document, patch))
+                .isInstanceOf(InvalidPatchException.class)
+                .hasMessageContaining("'item'");
+    }
+
+    @Test
+    void apply_add_throws_when_item_cannot_be_deserialized() throws Exception {
+        JsonNode item = new ObjectMapper().readTree("{\"type\":\"NOT_A_REAL_TYPE\"}");
+        var patch = addPatch("WORK_EXPERIENCE", null, item);
+        assertThatThrownBy(() -> service.apply(document, patch))
+                .isInstanceOf(InvalidPatchException.class)
+                .hasMessageContaining("deserialize");
+    }
+
+    // --- "delete" operation ---
+
+    private DocumentPatchEvent deletePatch(String sectionId, Integer itemIndex) {
+        return new DocumentPatchEvent(sectionId, "delete", itemIndex, null, null, null);
+    }
+
+    @Test
+    void apply_delete_removes_item_at_index() {
+        var patch = deletePatch("WORK_EXPERIENCE", 0);
+        ResumeDocument result = service.apply(document, patch);
+
+        List<ResumeItem> items = result.sections().get(0).items();
+        assertThat(items).hasSize(1);
+        assertThat(((WorkExperienceItem) items.get(0)).jobTitle()).isEqualTo("Junior Dev");
+    }
+
+    @Test
+    void apply_delete_throws_for_missing_itemIndex() {
+        var patch = deletePatch("WORK_EXPERIENCE", null);
+        assertThatThrownBy(() -> service.apply(document, patch))
+                .isInstanceOf(InvalidPatchException.class)
+                .hasMessageContaining("itemIndex is required");
+    }
+
+    @Test
+    void apply_delete_throws_for_out_of_bounds_index() {
+        var patch = deletePatch("WORK_EXPERIENCE", 99);
+        assertThatThrownBy(() -> service.apply(document, patch))
+                .isInstanceOf(InvalidPatchException.class)
+                .hasMessageContaining("out of bounds");
+    }
+
+    // --- isValid ---
+
+    @Test
+    void isValid_returns_true_for_valid_patch() {
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 0, "jobTitle", "X");
+        assertThat(service.isValid(document, patch)).isTrue();
+    }
+
+    @Test
+    void isValid_returns_false_for_null_document() {
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 0, "jobTitle", "X");
+        assertThat(service.isValid(null, patch)).isFalse();
+    }
+
+    @Test
+    void isValid_returns_false_for_null_patch() {
+        assertThat(service.isValid(document, null)).isFalse();
+    }
+
+    @Test
+    void isValid_returns_false_for_null_sectionId() {
+        var patch = new DocumentPatchEvent(null, "modify", 0, "jobTitle", "X", null);
+        assertThat(service.isValid(document, patch)).isFalse();
+    }
+
+    @Test
+    void isValid_returns_false_for_blank_sectionId() {
+        var patch = new DocumentPatchEvent("   ", "modify", 0, "jobTitle", "X", null);
+        assertThat(service.isValid(document, patch)).isFalse();
+    }
+
+    @Test
+    void isValid_returns_false_when_apply_throws() {
+        var patch = DocumentPatchEvent.modify("WORK_EXPERIENCE", 99, "jobTitle", "X");
+        assertThat(service.isValid(document, patch)).isFalse();
     }
 }

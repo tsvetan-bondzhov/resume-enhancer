@@ -77,7 +77,9 @@ export function mapParsedToProfile(
     languages.length === 0 &&
     projects.length === 0 &&
     volunteering.length === 0 &&
-    !parsed.summary?.text
+    !parsed.summary?.text &&
+    !parsed.fullName?.firstName &&
+    !parsed.fullName?.lastName
 
   if (isEmpty) {
     return {}
@@ -129,6 +131,8 @@ export function useResumeUpload(): {
         setStep(0)
       } else {
         const seeded: ProfileDto = {
+          firstName: parsed.fullName?.firstName ?? null,
+          lastName: parsed.fullName?.lastName ?? null,
           summary: parsed.summary?.text ?? null,
           linkedInUrl: parsed.summary?.linkedInUrl ?? null,
           personalPageUrl: parsed.summary?.personalPageUrl ?? null,

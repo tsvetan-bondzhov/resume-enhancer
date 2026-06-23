@@ -1,6 +1,6 @@
 import React, { useRef } from "react"
 import type { ResumeSectionDto, ResumeItemDto } from "@/types/api"
-import DiffOverlay from "@/components/resume/DiffOverlay"
+import { SectionIdContext } from "@/components/resume/sections/sectionRendererShared"
 import WorkExperienceSectionRenderer from "@/components/resume/sections/WorkExperienceSectionRenderer"
 import EducationSectionRenderer from "@/components/resume/sections/EducationSectionRenderer"
 import SkillsSectionRenderer from "@/components/resume/sections/SkillsSectionRenderer"
@@ -9,6 +9,7 @@ import LanguagesSectionRenderer from "@/components/resume/sections/LanguagesSect
 import ProjectsSectionRenderer from "@/components/resume/sections/ProjectsSectionRenderer"
 import VolunteeringSectionRenderer from "@/components/resume/sections/VolunteeringSectionRenderer"
 import SummarySectionRenderer from "@/components/resume/sections/SummarySectionRenderer"
+import FullNameSectionRenderer from "@/components/resume/sections/FullNameSectionRenderer"
 import GenericSectionRenderer from "@/components/resume/sections/GenericSectionRenderer"
 
 interface ResumeSectionProps {
@@ -18,6 +19,8 @@ interface ResumeSectionProps {
   readonly onAddItem?: (position: number) => void
   readonly onDeleteItem?: (itemId: string) => void
   readonly onReorderItems?: (newItems: ResumeItemDto[]) => void
+  readonly visibleItemIds?: ReadonlySet<string>
+  readonly showTitle?: boolean
 }
 
 function renderSectionContent(
@@ -132,6 +135,19 @@ function renderSectionContent(
           onReorderItems={onReorderItems}
         />
       )
+    case "FULL_NAME":
+      return (
+        <FullNameSectionRenderer
+          items={section.items.filter((i) => i.type === "FULL_NAME").map((i) => {
+            if (i.type === "FULL_NAME") return i
+            throw new Error("unexpected item type")
+          })}
+          onFieldChange={onFieldChange}
+          onAddItem={onAddItem}
+          onDeleteItem={onDeleteItem}
+          onReorderItems={onReorderItems}
+        />
+      )
     case "UNKNOWN":
       return (
         <GenericSectionRenderer
@@ -161,6 +177,8 @@ export default function ResumeSection({
   onAddItem,
   onDeleteItem,
   onReorderItems,
+  visibleItemIds,
+  showTitle = true,
 }: ResumeSectionProps) {
   const titleRef = useRef<HTMLHeadingElement>(null)
   const isTitleEmpty = !section.title
@@ -181,22 +199,29 @@ export default function ResumeSection({
     }
   }
 
+  const filteredSection = visibleItemIds
+    ? { ...section, items: section.items.filter((item) => visibleItemIds.has(item.id)) }
+    : section
+
   return (
-    <section aria-labelledby={`section-title-${section.sectionType}`} className="mb-6">
-        <h2
-          ref={titleRef}
-          id={`section-title-${section.sectionType}`}
-          contentEditable
-          suppressContentEditableWarning
-          onFocus={isTitleEmpty ? handleTitleFocus : undefined}
-          onBlur={handleTitleBlur}
-          className={`text-base font-semibold border-b-2 border-[var(--accent-color,theme(colors.zinc.200))] pb-1 mb-2 uppercase tracking-wide outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text${isTitleEmpty ? " text-gray-300 italic" : ""}`}
-          aria-label={`Edit section title: ${section.title}`}
-        >
-          {isTitleEmpty ? SECTION_TITLE_PLACEHOLDER : section.title}
-        </h2>
-      {renderSectionContent(section, onFieldChange, onAddItem, onDeleteItem, onReorderItems)}
-      <DiffOverlay sectionId={section.sectionType} />
-    </section>
+    <SectionIdContext.Provider value={section.sectionType}>
+      <section aria-labelledby={`section-title-${section.sectionType}`} className="mb-6" data-section-type={section.sectionType}>
+          {showTitle && (
+            <h2
+              ref={titleRef}
+              id={`section-title-${section.sectionType}`}
+              contentEditable
+              suppressContentEditableWarning
+              onFocus={isTitleEmpty ? handleTitleFocus : undefined}
+              onBlur={handleTitleBlur}
+              className={`text-base font-semibold border-b-2 border-[var(--accent-color,theme(colors.zinc.200))] pb-1 mb-2 uppercase tracking-wide outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text${isTitleEmpty ? " text-gray-300 italic" : ""}`}
+              aria-label={`Edit section title: ${section.title}`}
+            >
+              {isTitleEmpty ? SECTION_TITLE_PLACEHOLDER : section.title}
+            </h2>
+          )}
+        {renderSectionContent(filteredSection, onFieldChange, onAddItem, onDeleteItem, onReorderItems)}
+      </section>
+    </SectionIdContext.Provider>
   )
 }

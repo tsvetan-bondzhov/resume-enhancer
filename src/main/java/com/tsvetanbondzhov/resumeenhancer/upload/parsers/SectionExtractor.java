@@ -101,7 +101,8 @@ public final class SectionExtractor {
             List.of(),  // languages
             List.of(),  // projects
             List.of(),  // volunteering
-            null        // summary
+            null,       // summary
+            null        // fullName
         );
     }
 

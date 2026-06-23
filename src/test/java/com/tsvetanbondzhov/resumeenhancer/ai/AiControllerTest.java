@@ -23,6 +23,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.matches;
@@ -50,7 +51,8 @@ class AiControllerTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
-        aiController = new AiController(aiService, healthGuard, objectMapper, resumeService, memory);
+        DocumentPatchService documentPatchService = new DocumentPatchService(objectMapper);
+        aiController = new AiController(aiService, healthGuard, objectMapper, resumeService, documentPatchService, memory);
     }
 
     // ─── /chat — unavailable path ─────────────────────────────────────────────
@@ -59,8 +61,8 @@ class AiControllerTest {
     void chat_returns503_when_ollama_unavailable() {
         when(healthGuard.isAvailable()).thenReturn(false);
 
-        ChatRequest request = new ChatRequest("Hello AI", null, null);
-        ResponseEntity<?> response = aiController.chat(request);
+        ChatRequest request = new ChatRequest("Hello AI", null, null, false);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
     }
@@ -69,8 +71,8 @@ class AiControllerTest {
     void chat_response_body_has_problem_detail_when_unavailable() {
         when(healthGuard.isAvailable()).thenReturn(false);
 
-        ChatRequest request = new ChatRequest("Hello AI", null, null);
-        ResponseEntity<?> response = aiController.chat(request);
+        ChatRequest request = new ChatRequest("Hello AI", null, null, false);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().toString()).contains("unavailable");
@@ -81,11 +83,11 @@ class AiControllerTest {
     @Test
     void chat_returns200_with_sse_emitter_when_ollama_available() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
-        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class)))
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any(), anyBoolean()))
                 .thenReturn(Flux.just("Hello", " world"));
 
-        ChatRequest request = new ChatRequest("Say hello", null, null);
-        ResponseEntity<?> response = aiController.chat(request);
+        ChatRequest request = new ChatRequest("Say hello", null, null, false);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isInstanceOf(SseEmitter.class);
@@ -96,30 +98,30 @@ class AiControllerTest {
     @Test
     void chat_withConversationId_returns200_with_sse_emitter() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
-        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class)))
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any(), anyBoolean()))
                 .thenReturn(Flux.just("Hello", " world"));
 
-        ChatRequest request = new ChatRequest("Hello AI", null, "conv-123");
-        ResponseEntity<?> response = aiController.chat(request);
+        ChatRequest request = new ChatRequest("Hello AI", null, "conv-123", false);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isInstanceOf(SseEmitter.class);
         Thread.sleep(100);
-        verify(aiService).streamChat(eq("Hello AI"), eq("conv-123"), any(ChatMemory.class));
+        verify(aiService).streamChat(eq("Hello AI"), eq("conv-123"), any(ChatMemory.class), any(), anyBoolean());
     }
 
     @Test
     void chat_withoutConversationId_generates_conversationId_and_returns200() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
-        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class)))
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any(), anyBoolean()))
                 .thenReturn(Flux.just("token1"));
 
-        ChatRequest request = new ChatRequest("Hello AI", null, null);
-        ResponseEntity<?> response = aiController.chat(request);
+        ChatRequest request = new ChatRequest("Hello AI", null, null, false);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         Thread.sleep(100);
-        verify(aiService).streamChat(anyString(), matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"), any(ChatMemory.class));
+        verify(aiService).streamChat(anyString(), matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"), any(ChatMemory.class), any(), anyBoolean());
     }
 
     // ─── /enhance — unavailable path ─────────────────────────────────────────
@@ -128,7 +130,7 @@ class AiControllerTest {
     void enhance_returns503_when_ollama_unavailable() {
         when(healthGuard.isAvailable()).thenReturn(false);
 
-        EnhanceRequest request = new EnhanceRequest(UUID.randomUUID().toString());
+        EnhanceRequest request = new EnhanceRequest(UUID.randomUUID().toString(), null);
         Authentication authentication = mock(Authentication.class);
 
         ResponseEntity<?> response = aiController.enhance(request, authentication);
@@ -140,7 +142,7 @@ class AiControllerTest {
     void enhance_response_body_has_problem_detail_when_unavailable() {
         when(healthGuard.isAvailable()).thenReturn(false);
 
-        EnhanceRequest request = new EnhanceRequest(UUID.randomUUID().toString());
+        EnhanceRequest request = new EnhanceRequest(UUID.randomUUID().toString(), null);
         Authentication authentication = mock(Authentication.class);
 
         ResponseEntity<?> response = aiController.enhance(request, authentication);
@@ -164,9 +166,9 @@ class AiControllerTest {
         when(authentication.getName()).thenReturn("user@example.com");
 
         when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
-        when(aiService.streamEnhance(any(ResumeDocument.class))).thenReturn(Flux.just("token1", "token2"));
+        when(aiService.streamEnhance(any(ResumeDocument.class), anyString(), any(ChatMemory.class))).thenReturn(Flux.just("token1", "token2"));
 
-        EnhanceRequest request = new EnhanceRequest(resumeId.toString());
+        EnhanceRequest request = new EnhanceRequest(resumeId.toString(), null);
         ResponseEntity<?> response = aiController.enhance(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -182,7 +184,7 @@ class AiControllerTest {
         String prompt = "Write my resume";
         String resumeId = "abc-123";
         String conversationId = "conv-456";
-        ChatRequest request = new ChatRequest(prompt, resumeId, conversationId);
+        ChatRequest request = new ChatRequest(prompt, resumeId, conversationId, false);
 
         assertThat(request.prompt()).isEqualTo(prompt);
         assertThat(request.resumeId()).isEqualTo(resumeId);
@@ -191,7 +193,7 @@ class AiControllerTest {
 
     @Test
     void chatRequest_with_null_resumeId_and_null_conversationId() {
-        ChatRequest request = new ChatRequest("prompt", null, null);
+        ChatRequest request = new ChatRequest("prompt", null, null, false);
 
         assertThat(request.prompt()).isEqualTo("prompt");
         assertThat(request.resumeId()).isNull();
@@ -201,7 +203,7 @@ class AiControllerTest {
     @Test
     void enhanceRequest_record_construction_and_accessor() {
         String resumeId = UUID.randomUUID().toString();
-        EnhanceRequest request = new EnhanceRequest(resumeId);
+        EnhanceRequest request = new EnhanceRequest(resumeId, null);
 
         assertThat(request.resumeId()).isEqualTo(resumeId);
     }
@@ -212,7 +214,7 @@ class AiControllerTest {
     void tailor_returns503_when_ollama_unavailable() {
         when(healthGuard.isAvailable()).thenReturn(false);
 
-        TailorRequest request = new TailorRequest(UUID.randomUUID().toString(), "Senior Java Developer role");
+        TailorRequest request = new TailorRequest(UUID.randomUUID().toString(), "Senior Java Developer role", null);
         Authentication authentication = mock(Authentication.class);
 
         ResponseEntity<?> response = aiController.tailor(request, authentication);
@@ -224,7 +226,7 @@ class AiControllerTest {
     void tailor_response_body_has_problem_detail_when_unavailable() {
         when(healthGuard.isAvailable()).thenReturn(false);
 
-        TailorRequest request = new TailorRequest(UUID.randomUUID().toString(), "Senior Java Developer role");
+        TailorRequest request = new TailorRequest(UUID.randomUUID().toString(), "Senior Java Developer role", null);
         Authentication authentication = mock(Authentication.class);
 
         ResponseEntity<?> response = aiController.tailor(request, authentication);
@@ -248,10 +250,10 @@ class AiControllerTest {
         when(authentication.getName()).thenReturn("user@example.com");
 
         when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
-        when(aiService.streamTailor(any(ResumeDocument.class), anyString()))
+        when(aiService.streamTailor(any(ResumeDocument.class), anyString(), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.just("token1", "token2"));
 
-        TailorRequest request = new TailorRequest(resumeId.toString(), "Senior Java Developer");
+        TailorRequest request = new TailorRequest(resumeId.toString(), "Senior Java Developer", null);
         ResponseEntity<?> response = aiController.tailor(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -264,7 +266,7 @@ class AiControllerTest {
     void tailorRequest_record_construction_and_accessors() {
         String resumeId = UUID.randomUUID().toString();
         String jobDesc = "We are looking for a Java developer";
-        TailorRequest request = new TailorRequest(resumeId, jobDesc);
+        TailorRequest request = new TailorRequest(resumeId, jobDesc, null);
 
         assertThat(request.resumeId()).isEqualTo(resumeId);
         assertThat(request.jobDescription()).isEqualTo(jobDesc);
@@ -286,10 +288,10 @@ class AiControllerTest {
 
         // Stream with token, a valid patch JSON line, and then complete
         String patchJson = "{\"sectionId\":\"WORK_EXPERIENCE\",\"itemIndex\":0,\"field\":\"jobTitle\",\"newValue\":\"Senior\"}";
-        when(aiService.streamEnhance(any(ResumeDocument.class)))
+        when(aiService.streamEnhance(any(ResumeDocument.class), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.just("token1\n", patchJson + "\n", "token2"));
 
-        EnhanceRequest request = new EnhanceRequest(resumeId.toString());
+        EnhanceRequest request = new EnhanceRequest(resumeId.toString(), null);
         ResponseEntity<?> response = aiController.enhance(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -310,10 +312,10 @@ class AiControllerTest {
         when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
 
         // Empty intermediate tokens (covers the !line.isEmpty() guard)
-        when(aiService.streamEnhance(any(ResumeDocument.class)))
+        when(aiService.streamEnhance(any(ResumeDocument.class), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.just("chunk1\n", "\n", "chunk2"));
 
-        EnhanceRequest request = new EnhanceRequest(resumeId.toString());
+        EnhanceRequest request = new EnhanceRequest(resumeId.toString(), null);
         ResponseEntity<?> response = aiController.enhance(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -334,10 +336,10 @@ class AiControllerTest {
 
         // A patch JSON without trailing newline — will be flushed in doOnComplete
         String patchJson = "{\"sectionId\":\"SKILLS\",\"itemIndex\":0,\"field\":\"name\",\"newValue\":\"Kotlin\"}";
-        when(aiService.streamEnhance(any(ResumeDocument.class)))
+        when(aiService.streamEnhance(any(ResumeDocument.class), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.just(patchJson));
 
-        EnhanceRequest request = new EnhanceRequest(resumeId.toString());
+        EnhanceRequest request = new EnhanceRequest(resumeId.toString(), null);
         ResponseEntity<?> response = aiController.enhance(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -357,10 +359,10 @@ class AiControllerTest {
         when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
 
         // Flux that emits an error — exercises doOnError in buildEnhanceDisposable
-        when(aiService.streamEnhance(any(ResumeDocument.class)))
+        when(aiService.streamEnhance(any(ResumeDocument.class), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.error(new RuntimeException("AI backend unavailable")));
 
-        EnhanceRequest request = new EnhanceRequest(resumeId.toString());
+        EnhanceRequest request = new EnhanceRequest(resumeId.toString(), null);
         ResponseEntity<?> response = aiController.enhance(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -380,10 +382,10 @@ class AiControllerTest {
         Authentication authentication = mock(Authentication.class);
         when(authentication.getName()).thenReturn("user@example.com");
         when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
-        when(aiService.streamTailor(any(ResumeDocument.class), anyString()))
+        when(aiService.streamTailor(any(ResumeDocument.class), anyString(), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.just("token1\n", "token2"));
 
-        TailorRequest request = new TailorRequest(resumeId.toString(), "Senior Java Developer");
+        TailorRequest request = new TailorRequest(resumeId.toString(), "Senior Java Developer", null);
         ResponseEntity<?> response = aiController.tailor(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -403,10 +405,10 @@ class AiControllerTest {
         when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
 
         // Exercises doOnError in buildEnhanceDisposable (tailor reuses it) + trySendError
-        when(aiService.streamTailor(any(ResumeDocument.class), anyString()))
+        when(aiService.streamTailor(any(ResumeDocument.class), anyString(), anyString(), any(ChatMemory.class)))
                 .thenReturn(Flux.error(new RuntimeException("Model timeout")));
 
-        TailorRequest request = new TailorRequest(resumeId.toString(), "Job description here");
+        TailorRequest request = new TailorRequest(resumeId.toString(), "Job description here", null);
         ResponseEntity<?> response = aiController.tailor(request, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -418,11 +420,11 @@ class AiControllerTest {
     @Test
     void chat_withStreamError_exercisesDoOnErrorPath() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
-        when(aiService.streamChat(anyString(), anyString(), any()))
+        when(aiService.streamChat(anyString(), anyString(), any(), any(), anyBoolean()))
                 .thenReturn(Flux.error(new RuntimeException("Connection reset")));
 
-        ChatRequest request = new ChatRequest("Say hello", null, null);
-        ResponseEntity<?> response = aiController.chat(request);
+        ChatRequest request = new ChatRequest("Say hello", null, null, false);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         Thread.sleep(200);
@@ -432,13 +434,74 @@ class AiControllerTest {
     void chat_withTokens_exercisesDoOnNextAndDoOnComplete() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
         // Provides actual tokens so doOnNext and doOnComplete fire
-        when(aiService.streamChat(anyString(), anyString(), any()))
+        when(aiService.streamChat(anyString(), anyString(), any(), any(), anyBoolean()))
                 .thenReturn(Flux.just("Hello", " ", "world"));
 
-        ChatRequest request = new ChatRequest("Say hello", null, "conv-existing");
-        ResponseEntity<?> response = aiController.chat(request);
+        ChatRequest request = new ChatRequest("Say hello", null, "conv-existing", false);
+        ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         Thread.sleep(300);
+    }
+
+    // ─── /chat — allowEdits patch-aware path ─────────────────────────────────
+
+    @Test
+    void chat_withAllowEdits_loadsResume_andUsesPatchAwarePipeline() throws InterruptedException {
+        UUID resumeId = UUID.randomUUID();
+        ResumeDocument document = new ResumeDocument(List.of());
+        ResumeDto resumeDto = new ResumeDto(resumeId, "My Resume", null, document, false,
+                Instant.now(), Instant.now());
+
+        when(healthGuard.isAvailable()).thenReturn(true);
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("user@example.com");
+        when(resumeService.getResume(anyString(), any(UUID.class))).thenReturn(resumeDto);
+
+        // Prose + a patch JSON line; with a real document the patch is validated then emitted/discarded
+        String patchJson = "{\"sectionId\":\"WORK_EXPERIENCE\",\"itemIndex\":0,\"field\":\"jobTitle\",\"newValue\":\"Senior\"}";
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any(), anyBoolean()))
+                .thenReturn(Flux.just("Some prose\n", patchJson + "\n"));
+
+        ChatRequest request = new ChatRequest("Improve my title", resumeId.toString(), "conv-edit", true);
+        ResponseEntity<?> response = aiController.chat(request, authentication);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isInstanceOf(SseEmitter.class);
+        Thread.sleep(200);
+        // allowEdits=true is only honoured when a document loads — verify it was passed through
+        verify(aiService).streamChat(eq("Improve my title"), eq("conv-edit"), any(ChatMemory.class), any(), eq(true));
+    }
+
+    @Test
+    void chat_withAllowEdits_butResumeLoadFails_fallsBackToPlainChat() throws InterruptedException {
+        UUID resumeId = UUID.randomUUID();
+
+        when(healthGuard.isAvailable()).thenReturn(true);
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("user@example.com");
+        // resolveResumeDocument swallows the exception and returns null → allowEdits becomes false
+        when(resumeService.getResume(anyString(), any(UUID.class)))
+                .thenThrow(new RuntimeException("resume not found"));
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any(), anyBoolean()))
+                .thenReturn(Flux.just("token"));
+
+        ChatRequest request = new ChatRequest("Improve my title", resumeId.toString(), "conv-x", true);
+        ResponseEntity<?> response = aiController.chat(request, authentication);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Thread.sleep(200);
+        // Document failed to load → allowEdits coerced to false
+        verify(aiService).streamChat(eq("Improve my title"), eq("conv-x"), any(ChatMemory.class), any(), eq(false));
+    }
+
+    // ─── /chat/{conversationId} — clear conversation ─────────────────────────
+
+    @Test
+    void clearConversation_returnsNoContent_andDelegatesToService() {
+        ResponseEntity<Void> response = aiController.clearConversation("conv-to-clear");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        verify(aiService).clearConversation(eq("conv-to-clear"), any(ChatMemory.class));
     }
 }

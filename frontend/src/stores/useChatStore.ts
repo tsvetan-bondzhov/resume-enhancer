@@ -5,6 +5,7 @@ interface ChatState {
   messages: ChatMessage[]
   isStreaming: boolean
   addMessage: (message: ChatMessage) => void
+  updateMessage: (id: string, patch: Partial<ChatMessage>) => void
   setStreaming: (isStreaming: boolean) => void
   clearMessages: () => void
 }
@@ -14,6 +15,11 @@ export const useChatStore = create<ChatState>((set) => ({
   isStreaming: false,
   addMessage: (message) =>
     set((state) => ({ ...state, messages: [...state.messages, message] })),
+  updateMessage: (id, patch) =>
+    set((state) => ({
+      ...state,
+      messages: state.messages.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+    })),
   setStreaming: (isStreaming) => set((state) => ({ ...state, isStreaming })),
   clearMessages: () => set((state) => ({ ...state, messages: [] })),
 }))

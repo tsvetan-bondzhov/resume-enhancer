@@ -66,12 +66,12 @@ export default function SummarySectionRenderer({
 }: SummarySectionRendererProps) {
   const content = (
     <div className="group/section">
-      {items.map((item) => {
+      {items.map((item, index) => {
         // In read-only mode skip items with no text; in editor mode always render so user can click to add
         if (item.text == null && !onFieldChange) return null
         return (
           <React.Fragment key={item.id}>
-            <SortableItemWrapper id={item.id} onDeleteItem={onDeleteItem}>
+            <SortableItemWrapper id={item.id} itemIndex={index} onDeleteItem={onDeleteItem}>
               {(() => {
                 const hasContact =
                   item.contactEmail != null ||

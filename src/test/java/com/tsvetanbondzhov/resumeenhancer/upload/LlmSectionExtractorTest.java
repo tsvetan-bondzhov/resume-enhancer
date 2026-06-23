@@ -177,6 +177,42 @@ class LlmSectionExtractorTest {
             "Experienced software engineer with 5 years building distributed systems.");
     }
 
+    // SUMMARY section that includes a name also populates the fullName field
+    @Test
+    void extract_summarySectionWithName_mapsFullNameField() {
+        String validJson = """
+            [{"firstName": "Jane", "lastName": "Doe", "text": "Experienced engineer."}]
+            """;
+        when(aiService.extractResumeSection(anyString(), anyString())).thenReturn(validJson);
+
+        List<RawSection> sections = List.of(
+            new RawSection("Summary", List.of("Jane Doe", "Experienced engineer."))
+        );
+        ParsedResumeDto result = llmSectionExtractor.extract(sections, "Jane Doe Experienced engineer.");
+
+        assertThat(result.fullName()).isNotNull();
+        assertThat(result.fullName().firstName()).isEqualTo("Jane");
+        assertThat(result.fullName().lastName()).isEqualTo("Doe");
+    }
+
+    // Dedicated FULL_NAME section builds a typed FullNameItem
+    @Test
+    void extract_fullNameSection_buildsFullNameItem() {
+        String validJson = """
+            [{"firstName": "John", "lastName": "Smith"}]
+            """;
+        when(aiService.extractResumeSection(anyString(), anyString())).thenReturn(validJson);
+
+        List<RawSection> sections = List.of(
+            new RawSection("Name", List.of("John Smith"))
+        );
+        ParsedResumeDto result = llmSectionExtractor.extract(sections, "John Smith");
+
+        assertThat(result.fullName()).isNotNull();
+        assertThat(result.fullName().firstName()).isEqualTo("John");
+        assertThat(result.fullName().lastName()).isEqualTo("Smith");
+    }
+
     // UNKNOWN section produces no entries in any typed list
     @Test
     void extract_unknownSection_producesNoTypedItems() {
@@ -486,5 +522,101 @@ class LlmSectionExtractorTest {
         assertThat(item.startDate()).isEqualTo(LocalDate.of(2020, 1, 1));
         assertThat(item.endDate()).isEqualTo(LocalDate.of(2021, 1, 1));
         assertThat(item.link()).isNull();
+    }
+
+    // SUMMARY section with only a first name still populates the fullName field
+    @Test
+    void extract_summarySectionWithOnlyFirstName_mapsFullNameField() {
+        String validJson = """
+            [{"firstName": "Alice", "text": "Backend engineer."}]
+            """;
+        when(aiService.extractResumeSection(anyString(), anyString())).thenReturn(validJson);
+
+        List<RawSection> sections = List.of(
+            new RawSection("Summary", List.of("Alice", "Backend engineer."))
+        );
+        ParsedResumeDto result = llmSectionExtractor.extract(sections, "Alice Backend engineer.");
+
+        assertThat(result.fullName()).isNotNull();
+        assertThat(result.fullName().firstName()).isEqualTo("Alice");
+        assertThat(result.fullName().lastName()).isNull();
+    }
+
+    // SUMMARY section with only a last name still populates the fullName field
+    @Test
+    void extract_summarySectionWithOnlyLastName_mapsFullNameField() {
+        String validJson = """
+            [{"lastName": "Johnson", "text": "Backend engineer."}]
+            """;
+        when(aiService.extractResumeSection(anyString(), anyString())).thenReturn(validJson);
+
+        List<RawSection> sections = List.of(
+            new RawSection("Summary", List.of("Johnson", "Backend engineer."))
+        );
+        ParsedResumeDto result = llmSectionExtractor.extract(sections, "Johnson Backend engineer.");
+
+        assertThat(result.fullName()).isNotNull();
+        assertThat(result.fullName().firstName()).isNull();
+        assertThat(result.fullName().lastName()).isEqualTo("Johnson");
+    }
+
+    // SUMMARY section without any name leaves the fullName field null
+    @Test
+    void extract_summarySectionWithoutName_leavesFullNameNull() {
+        String validJson = """
+            [{"text": "Backend engineer with no name in summary."}]
+            """;
+        when(aiService.extractResumeSection(anyString(), anyString())).thenReturn(validJson);
+
+        List<RawSection> sections = List.of(
+            new RawSection("Summary", List.of("Backend engineer with no name in summary."))
+        );
+        ParsedResumeDto result = llmSectionExtractor.extract(
+            sections, "Backend engineer with no name in summary.");
+
+        assertThat(result.summary()).isNotNull();
+        assertThat(result.fullName()).isNull();
+    }
+
+    // FULL_NAME section with only a first name builds a FullNameItem with null lastName
+    @Test
+    void extract_fullNameSectionWithOnlyFirstName_buildsFullNameItem() {
+        String validJson = """
+            [{"firstName": "Madonna"}]
+            """;
+        when(aiService.extractResumeSection(anyString(), anyString())).thenReturn(validJson);
+
+        List<RawSection> sections = List.of(
+            new RawSection("Full Name", List.of("Madonna"))
+        );
+        ParsedResumeDto result = llmSectionExtractor.extract(sections, "Madonna");
+
+        assertThat(result.fullName()).isNotNull();
+        assertThat(result.fullName().firstName()).isEqualTo("Madonna");
+        assertThat(result.fullName().lastName()).isNull();
+    }
+
+    // A FULL_NAME section takes precedence; a later SUMMARY name does not overwrite it
+    @Test
+    void extract_fullNameThenSummaryWithName_firstFullNameRetained() {
+        String nameJson = """
+            [{"firstName": "John", "lastName": "Smith"}]
+            """;
+        String summaryJson = """
+            [{"firstName": "Jane", "lastName": "Doe", "text": "Engineer."}]
+            """;
+        when(aiService.extractResumeSection(anyString(), anyString()))
+            .thenReturn(nameJson)
+            .thenReturn(summaryJson);
+
+        List<RawSection> sections = List.of(
+            new RawSection("Name", List.of("John Smith")),
+            new RawSection("Summary", List.of("Jane Doe", "Engineer."))
+        );
+        ParsedResumeDto result = llmSectionExtractor.extract(sections, "John Smith Jane Doe Engineer.");
+
+        assertThat(result.fullName()).isNotNull();
+        assertThat(result.fullName().firstName()).isEqualTo("John");
+        assertThat(result.fullName().lastName()).isEqualTo("Smith");
     }
 }

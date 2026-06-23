@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import java.util.List;
 
 public record ProfileUpdateRequest(
+        String firstName,
+        String lastName,
         String summary,
         String linkedInUrl,
         String personalPageUrl,

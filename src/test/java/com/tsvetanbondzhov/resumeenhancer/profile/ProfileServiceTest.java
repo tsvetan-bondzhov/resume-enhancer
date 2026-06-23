@@ -138,6 +138,7 @@ class ProfileServiceTest {
         when(profileRepository.findByUser(user)).thenReturn(Optional.empty());
 
         ProfileUpdateRequest request = new ProfileUpdateRequest(
+                null, null,  // firstName, lastName
                 "Summary text",
                 null, null, null, null, null, null,  // contact fields
                 List.of(new WorkExperienceRequest("Dev", "Corp", LocalDate.of(2020, Month.JANUARY, 1), null, true, "Work")),
@@ -191,6 +192,7 @@ class ProfileServiceTest {
         when(profileRepository.findByUser(user)).thenReturn(Optional.of(existingProfile));
 
         ProfileUpdateRequest request = new ProfileUpdateRequest(
+                null, null,  // firstName, lastName
                 "New summary",
                 null, null, null, null, null, null,  // contact fields
                 List.of(new WorkExperienceRequest("NewJob", "NewCorp", null, null, false, null)),
@@ -226,6 +228,7 @@ class ProfileServiceTest {
         when(profileRepository.findByUser(user)).thenReturn(Optional.empty());
 
         ProfileUpdateRequest request = new ProfileUpdateRequest(
+                null, null,  // firstName, lastName
                 "Summary",
                 null, null, null, null, null, null,  // contact fields
                 List.of(),
@@ -280,6 +283,7 @@ class ProfileServiceTest {
         when(profileRepository.findByUser(user)).thenReturn(Optional.of(existingProfile));
 
         ProfileUpdateRequest request = new ProfileUpdateRequest(
+                null, null,  // firstName, lastName
                 null,
                 null, null, null, null, null, null,  // contact fields
                 List.of(),

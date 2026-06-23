@@ -165,24 +165,23 @@ class AiServiceTest {
                 .verifyComplete();
     }
 
-    // ─── streamChat(prompt, conversationId, chatMemory) — success path ───────
+    // ─── streamChat(prompt, conversationId, chatMemory, resumeContext) — success path ───────
 
     @Test
     @SuppressWarnings("unchecked")
     void streamChat_withConversationId_returns_flux_of_tokens() {
         ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
-        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
         ChatClient.StreamResponseSpec streamSpec = mock(ChatClient.StreamResponseSpec.class);
 
         when(chatClient.prompt()).thenReturn(promptSpec);
-        when(promptSpec.user(anyString())).thenReturn(userSpec);
-        // advisors(Consumer<AdvisorSpec>) is called on userSpec — return userSpec so .stream() can chain
-        when(userSpec.advisors(any(Consumer.class))).thenReturn(userSpec);
-        when(userSpec.stream()).thenReturn(streamSpec);
+        when(promptSpec.system(anyString())).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(promptSpec);
+        when(promptSpec.advisors(any(Consumer.class))).thenReturn(promptSpec);
+        when(promptSpec.stream()).thenReturn(streamSpec);
         when(streamSpec.content()).thenReturn(Flux.just("Hello", " world"));
 
         MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
-        Flux<String> result = aiService.streamChat("test prompt", "conv-123", memory);
+        Flux<String> result = aiService.streamChat("test prompt", "conv-123", memory, null);
 
         StepVerifier.create(result)
                 .expectNext("Hello")
@@ -209,14 +208,16 @@ class AiServiceTest {
     // ─── streamEnhance — success path ───────────────────────────────────────
 
     @Test
+    @SuppressWarnings("unchecked")
     void streamEnhance_returnsPatchFlux() {
         ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
-        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
         ChatClient.StreamResponseSpec streamSpec = mock(ChatClient.StreamResponseSpec.class);
 
         when(chatClient.prompt()).thenReturn(promptSpec);
-        when(promptSpec.user(anyString())).thenReturn(userSpec);
-        when(userSpec.stream()).thenReturn(streamSpec);
+        when(promptSpec.system(anyString())).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(promptSpec);
+        when(promptSpec.advisors(any(Consumer.class))).thenReturn(promptSpec);
+        when(promptSpec.stream()).thenReturn(streamSpec);
         when(streamSpec.content()).thenReturn(
                 Flux.just(
                         "{\"sectionId\":\"WORK_EXPERIENCE\",",
@@ -225,7 +226,8 @@ class AiServiceTest {
         );
 
         ResumeDocument document = new ResumeDocument(List.of());
-        Flux<String> result = aiService.streamEnhance(document);
+        MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
+        Flux<String> result = aiService.streamEnhance(document, "conv-enhance-1", memory);
 
         StepVerifier.create(result)
                 .expectNext("{\"sectionId\":\"WORK_EXPERIENCE\",")
@@ -236,17 +238,20 @@ class AiServiceTest {
     // ─── streamEnhance — exception path ─────────────────────────────────────
 
     @Test
+    @SuppressWarnings("unchecked")
     void streamEnhance_ollamaUnavailable_throwsOllamaUnavailableException() {
         ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
-        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
 
         when(chatClient.prompt()).thenReturn(promptSpec);
-        when(promptSpec.user(anyString())).thenReturn(userSpec);
-        when(userSpec.stream()).thenThrow(new RuntimeException("Connection refused"));
+        when(promptSpec.system(anyString())).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(promptSpec);
+        when(promptSpec.advisors(any(Consumer.class))).thenReturn(promptSpec);
+        when(promptSpec.stream()).thenThrow(new RuntimeException("Connection refused"));
 
         ResumeDocument document = new ResumeDocument(List.of());
+        MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
 
-        assertThatThrownBy(() -> aiService.streamEnhance(document))
+        assertThatThrownBy(() -> aiService.streamEnhance(document, "conv-enhance-2", memory))
                 .isInstanceOf(OllamaUnavailableException.class)
                 .hasMessageContaining("Ollama is unavailable");
     }
@@ -267,14 +272,16 @@ class AiServiceTest {
     // ─── streamTailor — success path ────────────────────────────────────────
 
     @Test
+    @SuppressWarnings("unchecked")
     void streamTailor_returnsPatchFlux() {
         ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
-        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
         ChatClient.StreamResponseSpec streamSpec = mock(ChatClient.StreamResponseSpec.class);
 
         when(chatClient.prompt()).thenReturn(promptSpec);
-        when(promptSpec.user(anyString())).thenReturn(userSpec);
-        when(userSpec.stream()).thenReturn(streamSpec);
+        when(promptSpec.system(anyString())).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(promptSpec);
+        when(promptSpec.advisors(any(Consumer.class))).thenReturn(promptSpec);
+        when(promptSpec.stream()).thenReturn(streamSpec);
         when(streamSpec.content()).thenReturn(
                 Flux.just(
                         "{\"sectionId\":\"WORK_EXPERIENCE\",",
@@ -283,7 +290,8 @@ class AiServiceTest {
         );
 
         ResumeDocument document = new ResumeDocument(List.of());
-        Flux<String> result = aiService.streamTailor(document, "Software Engineer at Google");
+        MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
+        Flux<String> result = aiService.streamTailor(document, "Software Engineer at Google", "conv-tailor-1", memory);
 
         StepVerifier.create(result)
                 .expectNext("{\"sectionId\":\"WORK_EXPERIENCE\",")
@@ -294,17 +302,20 @@ class AiServiceTest {
     // ─── streamTailor — exception path ──────────────────────────────────────
 
     @Test
+    @SuppressWarnings("unchecked")
     void streamTailor_ollamaUnavailable_throwsOllamaUnavailableException() {
         ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
-        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
 
         when(chatClient.prompt()).thenReturn(promptSpec);
-        when(promptSpec.user(anyString())).thenReturn(userSpec);
-        when(userSpec.stream()).thenThrow(new RuntimeException("Connection refused"));
+        when(promptSpec.system(anyString())).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(promptSpec);
+        when(promptSpec.advisors(any(Consumer.class))).thenReturn(promptSpec);
+        when(promptSpec.stream()).thenThrow(new RuntimeException("Connection refused"));
 
         ResumeDocument document = new ResumeDocument(List.of());
+        MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
 
-        assertThatThrownBy(() -> aiService.streamTailor(document, "Software Engineer at Google"))
+        assertThatThrownBy(() -> aiService.streamTailor(document, "Software Engineer at Google", "conv-tailor-2", memory))
                 .isInstanceOf(OllamaUnavailableException.class)
                 .hasMessageContaining("Ollama is unavailable");
     }
@@ -325,22 +336,22 @@ class AiServiceTest {
         assertThat(prompt).contains("Job Description:");
     }
 
-    // ─── streamChat(prompt, conversationId, chatMemory) — exception path ─────
+    // ─── streamChat(prompt, conversationId, chatMemory, resumeContext) — exception path ─────
 
     @Test
     @SuppressWarnings("unchecked")
     void streamChat_withConversationId_throws_OllamaUnavailableException_when_chatClient_fails() {
         ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
-        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
 
         when(chatClient.prompt()).thenReturn(promptSpec);
-        when(promptSpec.user(anyString())).thenReturn(userSpec);
-        when(userSpec.advisors(any(Consumer.class))).thenReturn(userSpec);
-        when(userSpec.stream()).thenThrow(new RuntimeException("Connection refused"));
+        when(promptSpec.system(anyString())).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(promptSpec);
+        when(promptSpec.advisors(any(Consumer.class))).thenReturn(promptSpec);
+        when(promptSpec.stream()).thenThrow(new RuntimeException("Connection refused"));
 
         MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
 
-        assertThatThrownBy(() -> aiService.streamChat("test", "conv-999", memory))
+        assertThatThrownBy(() -> aiService.streamChat("test", "conv-999", memory, null))
                 .isInstanceOf(OllamaUnavailableException.class)
                 .hasMessageContaining("Ollama is unavailable");
     }
@@ -351,13 +362,13 @@ class AiServiceTest {
     @SuppressWarnings("unchecked")
     void streamChatNoMemory_returns_flux_of_tokens() {
         ChatClient.ChatClientRequestSpec promptSpec = mock(ChatClient.ChatClientRequestSpec.class);
-        ChatClient.ChatClientRequestSpec userSpec = mock(ChatClient.ChatClientRequestSpec.class);
         ChatClient.StreamResponseSpec streamSpec = mock(ChatClient.StreamResponseSpec.class);
 
         when(chatClient.prompt()).thenReturn(promptSpec);
-        when(promptSpec.user(anyString())).thenReturn(userSpec);
-        when(userSpec.advisors(any(Consumer.class))).thenReturn(userSpec);
-        when(userSpec.stream()).thenReturn(streamSpec);
+        when(promptSpec.system(anyString())).thenReturn(promptSpec);
+        when(promptSpec.user(anyString())).thenReturn(promptSpec);
+        when(promptSpec.advisors(any(Consumer.class))).thenReturn(promptSpec);
+        when(promptSpec.stream()).thenReturn(streamSpec);
         when(streamSpec.content()).thenReturn(Flux.just("token1", "token2"));
 
         Flux<String> result = aiService.streamChatNoMemory("test prompt");

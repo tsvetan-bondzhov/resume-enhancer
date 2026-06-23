@@ -15,9 +15,8 @@ describe("DiffHighlight", () => {
         new text
       </DiffHighlight>
     )
-    const mark = screen.getByRole("mark")
+    const mark = screen.getByRole("region", { name: "AI addition" })
     expect(mark).toBeInTheDocument()
-    expect(mark).toHaveAttribute("aria-label", "AI addition")
     expect(mark.className).toContain("bg-emerald-100")
     expect(mark.className).toContain("text-emerald-700")
     // + icon is present
@@ -35,29 +34,44 @@ describe("DiffHighlight", () => {
         updated text
       </DiffHighlight>
     )
-    const mark = screen.getByRole("mark")
+    const mark = screen.getByRole("region", {
+      name: "Modified: hover to compare original and new text",
+    })
     expect(mark).toBeInTheDocument()
-    expect(mark).toHaveAttribute("aria-label", "AI rewrite")
     expect(mark.className).toContain("bg-amber-100")
     expect(mark.className).toContain("text-amber-700")
     // ~ icon is present
     expect(mark.textContent).toContain("~")
   })
 
-  it("faded state — renders mark with opacity-50 class", () => {
+  it("rewrite hover — shows tooltip with both old and new values; new value always rendered", async () => {
     render(
       <DiffHighlight
-        kind="addition"
-        state="faded"
+        kind="rewrite"
+        state="visible"
+        previousValue="old text"
         onAccept={vi.fn()}
         onReject={vi.fn()}
       >
-        faded text
+        new text
       </DiffHighlight>
     )
-    const mark = screen.getByRole("mark")
-    expect(mark).toBeInTheDocument()
-    expect(mark.className).toContain("opacity-50")
+    const mark = screen.getByRole("region", {
+      name: "Modified: hover to compare original and new text",
+    })
+    // new value is always visible (no jitter / text swap)
+    expect(mark.textContent).toContain("new text")
+    // tooltip hidden until hover
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+
+    await userEvent.hover(mark)
+    const tooltip = screen.getByRole("tooltip")
+    expect(tooltip).toBeInTheDocument()
+    expect(tooltip.textContent).toContain("old text")
+    expect(tooltip.textContent).toContain("new text")
+
+    await userEvent.unhover(mark)
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
   })
 
   it("hidden state — renders nothing; mark not in DOM", () => {
@@ -71,7 +85,7 @@ describe("DiffHighlight", () => {
         hidden text
       </DiffHighlight>
     )
-    expect(screen.queryByRole("mark")).not.toBeInTheDocument()
+    expect(screen.queryByRole("region", { name: "AI addition" })).not.toBeInTheDocument()
     expect(screen.queryByText("hidden text")).not.toBeInTheDocument()
   })
 
