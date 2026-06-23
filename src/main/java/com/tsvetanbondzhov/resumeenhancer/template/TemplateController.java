@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -40,10 +41,16 @@ public class TemplateController {
         return templateService.getPublishedTemplate(templateId);
     }
 
+    @GetMapping("/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<TemplateDto> listAllTemplates() {
+        return templateService.listAllTemplates();
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> createTemplate(@Valid @RequestBody TemplateRequest request) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    public ResponseEntity<TemplateDto> createTemplate(@Valid @RequestBody TemplateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(templateService.createTemplate(request));
     }
 
     @PutMapping("/{templateId}")
@@ -53,9 +60,22 @@ public class TemplateController {
         return ResponseEntity.ok(templateService.updateTemplate(templateId, request));
     }
 
+    @PatchMapping("/{templateId}/publish")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TemplateDto> publishTemplate(@PathVariable UUID templateId) {
+        return ResponseEntity.ok(templateService.setPublished(templateId, true));
+    }
+
+    @PatchMapping("/{templateId}/unpublish")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TemplateDto> unpublishTemplate(@PathVariable UUID templateId) {
+        return ResponseEntity.ok(templateService.setPublished(templateId, false));
+    }
+
     @DeleteMapping("/{templateId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteTemplate(@PathVariable UUID templateId) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        templateService.deleteTemplate(templateId);
+        return ResponseEntity.noContent().build();
     }
 }

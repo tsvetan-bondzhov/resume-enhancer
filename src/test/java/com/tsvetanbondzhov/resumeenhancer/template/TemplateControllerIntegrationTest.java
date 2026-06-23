@@ -1,7 +1,9 @@
 package com.tsvetanbondzhov.resumeenhancer.template;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tsvetanbondzhov.resumeenhancer.auth.TokenService;
 import com.tsvetanbondzhov.resumeenhancer.auth.UserRepository;
+import com.tsvetanbondzhov.resumeenhancer.auth.domain.User;
 import com.tsvetanbondzhov.resumeenhancer.auth.dto.SignupRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -43,10 +46,28 @@ class TemplateControllerIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private TokenService tokenService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private WebTestClient webTestClient() {
         return WebTestClient.bindToServer()
                 .baseUrl("http://localhost:" + port)
                 .build();
+    }
+
+    /**
+     * Seeds a user with the given role directly (signup only yields USER role) and returns a JWT.
+     */
+    private String seedUserAndGetToken(String email, String role) {
+        User u = new User();
+        u.setEmail(email);
+        u.setRole(role);
+        u.setEnabled(true);
+        u.setPasswordHash(passwordEncoder.encode("Password1"));
+        return tokenService.generateToken(userRepository.save(u));
     }
 
     /**
@@ -180,5 +201,179 @@ class TemplateControllerIntegrationTest {
                 .header("Authorization", "Bearer " + token)
                 .exchange()
                 .expectStatus().isForbidden();
+    }
+
+    // ─── Non-admin 403 on admin list-all and publish/unpublish ───────────────
+
+    @Test
+    void listAllTemplates_nonAdmin_returns403() {
+        String token = seedUserAndGetToken("listall_403@example.com", "USER");
+
+        webTestClient().get()
+                .uri("/api/v1/resume-templates/admin")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void publishTemplate_nonAdmin_returns403() {
+        String token = seedUserAndGetToken("publish_403@example.com", "USER");
+
+        webTestClient().patch()
+                .uri("/api/v1/resume-templates/11111111-0000-0000-0000-000000000001/publish")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void unpublishTemplate_nonAdmin_returns403() {
+        String token = seedUserAndGetToken("unpublish_403@example.com", "USER");
+
+        webTestClient().patch()
+                .uri("/api/v1/resume-templates/11111111-0000-0000-0000-000000000001/unpublish")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    // ─── Admin happy paths: create → list-all → publish → unpublish → delete ──
+
+    @Test
+    void adminTemplateLifecycle_create_list_publish_unpublish_delete() throws Exception {
+        String adminToken = seedUserAndGetToken("template_admin@example.com", "ADMIN");
+
+        String createBody = """
+                { "name": "Draft Template", "description": "A draft", "templateDefinition": { "layoutType": "single-column" } }
+                """;
+
+        // Create → 201 with isPrebuilt=true / isPublished=false
+        webTestClient().post()
+                .uri("/api/v1/resume-templates")
+                .header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(createBody)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.isPrebuilt").isEqualTo(true)
+                .jsonPath("$.isPublished").isEqualTo(false)
+                .jsonPath("$.name").isEqualTo("Draft Template");
+
+        // Create a second draft and capture its id for the lifecycle assertions
+        String createdId = createTemplateAndGetId(adminToken, createBody);
+
+        // Admin list-all includes the new draft
+        String adminList = webTestClient().get()
+                .uri("/api/v1/resume-templates/admin")
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+        var adminArray = objectMapper.readTree(adminList);
+        assertThat(adminArray.isArray()).isTrue();
+        assertThat(idsOf(adminArray)).contains(createdId);
+
+        // Public list does NOT include the unpublished draft
+        String publicList = webTestClient().get()
+                .uri("/api/v1/resume-templates")
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+        assertThat(idsOf(objectMapper.readTree(publicList))).doesNotContain(createdId);
+
+        // Publish → 200, then it appears in public list (cache evicted)
+        webTestClient().patch()
+                .uri("/api/v1/resume-templates/" + createdId + "/publish")
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.isPublished").isEqualTo(true);
+
+        String publicAfterPublish = webTestClient().get()
+                .uri("/api/v1/resume-templates")
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+        assertThat(idsOf(objectMapper.readTree(publicAfterPublish))).contains(createdId);
+
+        // Unpublish → 200, then it disappears from public list
+        webTestClient().patch()
+                .uri("/api/v1/resume-templates/" + createdId + "/unpublish")
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.isPublished").isEqualTo(false);
+
+        String publicAfterUnpublish = webTestClient().get()
+                .uri("/api/v1/resume-templates")
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+        assertThat(idsOf(objectMapper.readTree(publicAfterUnpublish))).doesNotContain(createdId);
+
+        // Delete → 204, then admin list no longer returns it
+        webTestClient().delete()
+                .uri("/api/v1/resume-templates/" + createdId)
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isNoContent();
+
+        String adminAfterDelete = webTestClient().get()
+                .uri("/api/v1/resume-templates/admin")
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+        assertThat(idsOf(objectMapper.readTree(adminAfterDelete))).doesNotContain(createdId);
+    }
+
+    @Test
+    void deleteTemplate_unknownId_asAdmin_returns404() {
+        String adminToken = seedUserAndGetToken("delete_404_admin@example.com", "ADMIN");
+
+        webTestClient().delete()
+                .uri("/api/v1/resume-templates/00000000-0000-0000-0000-000000000000")
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Not Found");
+    }
+
+    private String createTemplateAndGetId(String adminToken, String createBody) throws Exception {
+        String body = webTestClient().post()
+                .uri("/api/v1/resume-templates")
+                .header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(createBody)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+        return objectMapper.readTree(body).get("id").asText();
+    }
+
+    private java.util.List<String> idsOf(com.fasterxml.jackson.databind.JsonNode array) {
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        array.forEach(node -> ids.add(node.get("id").asText()));
+        return ids;
     }
 }

@@ -11,10 +11,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,17 +35,21 @@ class TemplateControllerTest {
                 Map.of(), Instant.now(), Instant.now());
     }
 
-    // Line 46: createTemplate returns 501 NOT_IMPLEMENTED
     @Test
-    void createTemplate_returnsNotImplemented() {
+    void createTemplate_delegatesAndReturns201() {
         TemplateRequest request = new TemplateRequest("New Template", null, Map.of());
+        TemplateDto dto = buildTemplateDto("New Template");
+        when(templateService.createTemplate(request)).thenReturn(dto);
 
-        ResponseEntity<Void> response = templateController.createTemplate(request);
+        ResponseEntity<TemplateDto> response = templateController.createTemplate(request);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_IMPLEMENTED);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().name()).isEqualTo("New Template");
+        verify(templateService).createTemplate(request);
     }
 
-    // Line 53: updateTemplate delegates to service and returns 200 with TemplateDto
+    // updateTemplate delegates to service and returns 200 with TemplateDto
     @Test
     void updateTemplate_delegatesToServiceAndReturns200() {
         TemplateRequest request = new TemplateRequest("Updated", "desc", Map.of());
@@ -57,11 +63,45 @@ class TemplateControllerTest {
         assertThat(response.getBody().name()).isEqualTo("Updated");
     }
 
-    // Line 59: deleteTemplate returns 501 NOT_IMPLEMENTED
     @Test
-    void deleteTemplate_returnsNotImplemented() {
+    void deleteTemplate_delegatesAndReturns204() {
         ResponseEntity<Void> response = templateController.deleteTemplate(TEMPLATE_ID);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_IMPLEMENTED);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        verify(templateService).deleteTemplate(TEMPLATE_ID);
+    }
+
+    @Test
+    void publish_delegatesAndReturns200() {
+        TemplateDto dto = buildTemplateDto("Published");
+        when(templateService.setPublished(TEMPLATE_ID, true)).thenReturn(dto);
+
+        ResponseEntity<TemplateDto> response = templateController.publishTemplate(TEMPLATE_ID);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).isNotNull();
+        verify(templateService).setPublished(TEMPLATE_ID, true);
+    }
+
+    @Test
+    void unpublish_delegatesAndReturns200() {
+        TemplateDto dto = buildTemplateDto("Unpublished");
+        when(templateService.setPublished(TEMPLATE_ID, false)).thenReturn(dto);
+
+        ResponseEntity<TemplateDto> response = templateController.unpublishTemplate(TEMPLATE_ID);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).isNotNull();
+        verify(templateService).setPublished(TEMPLATE_ID, false);
+    }
+
+    @Test
+    void listAllTemplates_delegatesAndReturns200() {
+        when(templateService.listAllTemplates()).thenReturn(List.of(buildTemplateDto("A"), buildTemplateDto("B")));
+
+        List<TemplateDto> result = templateController.listAllTemplates();
+
+        assertThat(result).hasSize(2);
+        verify(templateService).listAllTemplates();
     }
 }

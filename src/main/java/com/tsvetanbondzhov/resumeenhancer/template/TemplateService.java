@@ -43,11 +43,62 @@ public class TemplateService {
 
     @CacheEvict(value = "templates", allEntries = true)
     @Transactional
+    public TemplateDto createTemplate(TemplateRequest request) {
+        validateCssVariables(request);
+
+        ResumeTemplate template = new ResumeTemplate();
+        template.setName(request.name());
+        template.setDescription(request.description());
+        template.setTemplateDefinition(request.templateDefinition());
+        template.setPrebuilt(true);
+        template.setPublished(false);
+        template.setOwnerId(null);
+        return toDto(templateRepository.save(template));
+    }
+
+    @CacheEvict(value = "templates", allEntries = true)
+    @Transactional
     public TemplateDto updateTemplate(UUID templateId, TemplateRequest request) {
         ResumeTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + templateId));
 
-        // Validate cssVariables — reject rem/em units
+        validateCssVariables(request);
+
+        template.setName(request.name());
+        template.setDescription(request.description());
+        template.setTemplateDefinition(request.templateDefinition());
+        return toDto(templateRepository.save(template));
+    }
+
+    @CacheEvict(value = "templates", allEntries = true)
+    @Transactional
+    public void deleteTemplate(UUID templateId) {
+        ResumeTemplate template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + templateId));
+        templateRepository.delete(template);
+    }
+
+    @CacheEvict(value = "templates", allEntries = true)
+    @Transactional
+    public TemplateDto setPublished(UUID templateId, boolean published) {
+        ResumeTemplate template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + templateId));
+        template.setPublished(published);
+        return toDto(templateRepository.save(template));
+    }
+
+    @Transactional(readOnly = true)
+    public List<TemplateDto> listAllTemplates() {
+        return templateRepository.findAll().stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    /**
+     * Rejects {@code cssVariables} values that use rem/em units. Only px and in are accepted.
+     * Shared by {@link #createTemplate(TemplateRequest)} and {@link #updateTemplate(UUID, TemplateRequest)}.
+     */
+    private void validateCssVariables(TemplateRequest request) {
         Object cssVarsRaw = request.templateDefinition().get("cssVariables");
         if (cssVarsRaw instanceof Map<?, ?> cssVars) {
             for (Map.Entry<?, ?> entry : cssVars.entrySet()) {
@@ -59,11 +110,6 @@ public class TemplateService {
                 }
             }
         }
-
-        template.setName(request.name());
-        template.setDescription(request.description());
-        template.setTemplateDefinition(request.templateDefinition());
-        return toDto(templateRepository.save(template));
     }
 
     private TemplateDto toDto(ResumeTemplate template) {
