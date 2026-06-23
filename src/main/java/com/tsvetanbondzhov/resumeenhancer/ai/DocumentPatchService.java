@@ -42,6 +42,24 @@ public class DocumentPatchService {
         return new ResumeDocument(updatedSections);
     }
 
+    /**
+     * Validates a patch against the given document by attempting to apply it.
+     * Returns true only when the patch is structurally valid and applies cleanly;
+     * any InvalidPatchException (or other failure) means the patch should be discarded.
+     * This reuses {@link #apply} so the validation always matches the real apply schema.
+     */
+    public boolean isValid(ResumeDocument document, DocumentPatchEvent patch) {
+        if (document == null || patch == null || patch.sectionId() == null || patch.sectionId().isBlank()) {
+            return false;
+        }
+        try {
+            apply(document, patch);
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
     private ResumeSectionType resolveSection(ResumeDocument document, String sectionId) {
         ResumeSectionType targetType;
         try {

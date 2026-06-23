@@ -5,6 +5,8 @@ import { useStreamingChat } from "@/hooks/useStreamingChat"
 import { apiClient } from "@/lib/apiClient"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import type { ChatMessage, PatchDiff } from "@/types/api"
 
 export interface ChatPanelProps {
@@ -104,6 +106,7 @@ export default function ChatPanel({ resumeId, conversationId }: ChatPanelProps) 
   const [inputValue, setInputValue] = useState("")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [lastPrompt, setLastPrompt] = useState<string>("")
+  const [allowEdits, setAllowEdits] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -174,6 +177,7 @@ export default function ChatPanel({ resumeId, conversationId }: ChatPanelProps) 
       prompt,
       resumeId: resumeId ?? null,
       conversationId: conversationIdRef.current,  // AC3: consistent per session
+      allowEdits,
     })
     cleanupRef.current = cleanup
   }
@@ -199,6 +203,7 @@ export default function ChatPanel({ resumeId, conversationId }: ChatPanelProps) 
       prompt: lastPrompt,
       resumeId: resumeId ?? null,
       conversationId: conversationIdRef.current,  // AC3: consistent per session
+      allowEdits,
     })
     cleanupRef.current = cleanup
   }
@@ -284,14 +289,26 @@ export default function ChatPanel({ resumeId, conversationId }: ChatPanelProps) 
             rows={3}
             aria-label="Chat message input"
           />
-          <Button
-            type="submit"
-            disabled={isStreaming || !inputValue.trim()}
-            className="self-end"
-            size="sm"
-          >
-            Send
-          </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="allow-resume-edits"
+                checked={allowEdits}
+                onCheckedChange={(checked) => setAllowEdits(checked === true)}
+                disabled={isStreaming}
+              />
+              <Label htmlFor="allow-resume-edits" className="text-xs text-muted-foreground">
+                Allow resume edits
+              </Label>
+            </div>
+            <Button
+              type="submit"
+              disabled={isStreaming || !inputValue.trim()}
+              size="sm"
+            >
+              Send
+            </Button>
+          </div>
         </form>
       </div>
     </div>

@@ -44,16 +44,19 @@ public class AiController {
     private final OllamaHealthGuard healthGuard;
     private final ObjectMapper objectMapper;
     private final ResumeService resumeService;
+    private final DocumentPatchService documentPatchService;
     private final MessageWindowChatMemory chatMemory;
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
     public AiController(AiService aiService, OllamaHealthGuard healthGuard,
                         ObjectMapper objectMapper, ResumeService resumeService,
+                        DocumentPatchService documentPatchService,
                         MessageWindowChatMemory chatMemory) {
         this.aiService = aiService;
         this.healthGuard = healthGuard;
         this.objectMapper = objectMapper;
         this.resumeService = resumeService;
+        this.documentPatchService = documentPatchService;
         this.chatMemory = chatMemory;
     }
 
@@ -73,13 +76,20 @@ public class AiController {
         // Capture OTel context in the request thread for propagation into async thread
         Context otelContext = Context.current();
 
-        String resumeContext = resolveResumeContext(request, authentication);
+        // Load the resume document once: used for prompt context and, when edits are
+        // allowed, for validating any patch the model produces.
+        ResumeDocument document = resolveResumeDocument(request.resumeId(), authentication);
+        String resumeContext = document != null ? ResumeContextBuilder.buildResumeContext(document) : null;
+        boolean allowEdits = request.allowEdits() && document != null;
 
         executor.execute(() -> {
             // Explicit OTel context propagation — does NOT auto-propagate across async boundary
             try (var ignored = otelContext.makeCurrent()) {
-                Flux<String> tokenFlux = aiService.streamChat(request.prompt(), conversationId, chatMemory, resumeContext);
-                Disposable disposable = buildChatDisposable(tokenFlux, emitter);
+                Flux<String> tokenFlux = aiService.streamChat(
+                        request.prompt(), conversationId, chatMemory, resumeContext, allowEdits);
+                Disposable disposable = allowEdits
+                        ? buildPatchAwareDisposable(tokenFlux, emitter, document)
+                        : buildChatDisposable(tokenFlux, emitter);
 
                 // Register emitter lifecycle callbacks to cancel the Flux on client disconnect / timeout
                 emitter.onCompletion(disposable::dispose);
@@ -172,16 +182,15 @@ public class AiController {
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
-    private String resolveResumeContext(ChatRequest request, Authentication authentication) {
-        if (request.resumeId() == null || authentication == null) {
+    private ResumeDocument resolveResumeDocument(String resumeId, Authentication authentication) {
+        if (resumeId == null || authentication == null) {
             return null;
         }
         try {
-            UUID resumeId = UUID.fromString(request.resumeId());
-            ResumeDocument document = resumeService.getResume(authentication.getName(), resumeId).content();
-            return ResumeContextBuilder.buildResumeContext(document);
+            UUID id = UUID.fromString(resumeId);
+            return resumeService.getResume(authentication.getName(), id).content();
         } catch (Exception e) {
-            log.warn("Could not load resume context for chat: {}", e.getMessage());
+            log.warn("Could not load resume for chat: {}", e.getMessage());
             return null;
         }
     }
@@ -223,49 +232,74 @@ public class AiController {
 
     @SuppressWarnings("java:S3063")
     private Disposable buildEnhanceDisposable(Flux<String> tokenFlux, SseEmitter emitter) {
+        return buildLineBufferedDisposable(tokenFlux, emitter, null, "Enhancement complete");
+    }
+
+    /**
+     * Chat disposable used when resume edits are allowed. Prose lines are streamed as
+     * tokens; lines that parse as a patch are validated against the document and emitted
+     * as complete (non-streamed) patch events. Invalid patches are discarded.
+     */
+    private Disposable buildPatchAwareDisposable(Flux<String> tokenFlux, SseEmitter emitter, ResumeDocument document) {
+        return buildLineBufferedDisposable(tokenFlux, emitter, document, "Stream complete");
+    }
+
+    /**
+     * Line-buffered SSE pipeline. Patch JSON lines are NEVER streamed as text tokens —
+     * they are validated (against {@code document} when provided) and emitted as complete
+     * patch events. All other lines stream to the chat panel as token events.
+     */
+    @SuppressWarnings("java:S3063")
+    private Disposable buildLineBufferedDisposable(Flux<String> tokenFlux, SseEmitter emitter,
+                                                   ResumeDocument document, String doneSummary) {
         StringBuilder lineBuffer = new StringBuilder();
 
         return tokenFlux.doOnNext(token -> {
-            try {
-                // Forward raw token to chat panel (narration)
-                emitter.send(SseEmitter.event()
-                        .name(EVENT_TOKEN)
-                        .data(objectMapper.writeValueAsString(Map.of(EVENT_TOKEN, token))));
-
-                // Accumulate tokens to detect complete patch JSON lines
-                lineBuffer.append(token);
-                int newlineIdx;
-                while ((newlineIdx = lineBuffer.indexOf("\n")) >= 0) {
-                    String line = lineBuffer.substring(0, newlineIdx).trim();
-                    lineBuffer.delete(0, newlineIdx + 1);
-                    if (!line.isEmpty()) {
-                        tryEmitPatch(emitter, line);
-                    }
-                }
-            } catch (IOException e) {
-                log.warn("SSE send failed for token: {}", e.getMessage());
-                emitter.completeWithError(e);
+            lineBuffer.append(token);
+            int newlineIdx;
+            while ((newlineIdx = lineBuffer.indexOf("\n")) >= 0) {
+                String line = lineBuffer.substring(0, newlineIdx);
+                lineBuffer.delete(0, newlineIdx + 1);
+                emitLine(emitter, line, document);
             }
         }).doOnComplete(() -> {
             try {
-                // Flush any remaining buffered content
-                String remaining = lineBuffer.toString().trim();
-                if (!remaining.isEmpty()) {
-                    tryEmitPatch(emitter, remaining);
-                }
+                // Flush any remaining buffered content as a final line
+                emitLine(emitter, lineBuffer.toString(), document);
                 emitter.send(SseEmitter.event()
                         .name(EVENT_DONE)
-                        .data(objectMapper.writeValueAsString(
-                                Map.of("summary", "Enhancement complete"))));
+                        .data(objectMapper.writeValueAsString(Map.of("summary", doneSummary))));
                 emitter.complete();
             } catch (IOException e) {
                 emitter.completeWithError(e);
             }
         }).doOnError(err -> {
-            log.warn("SSE enhance stream error: {}", err.getMessage(), err);
+            log.warn("SSE stream error: {}", err.getMessage(), err);
             trySendError(emitter);
             emitter.completeWithError(err);
         }).subscribe();
+    }
+
+    /**
+     * Emits a single completed line: as a validated patch event if it parses as one,
+     * otherwise as a streamed text token (preserving the trailing newline for prose).
+     */
+    private void emitLine(SseEmitter emitter, String line, ResumeDocument document) {
+        String trimmed = line.trim();
+        if (!trimmed.isEmpty() && tryEmitPatch(emitter, trimmed, document)) {
+            return; // patch line — not streamed as text
+        }
+        if (line.isEmpty()) {
+            return;
+        }
+        try {
+            emitter.send(SseEmitter.event()
+                    .name(EVENT_TOKEN)
+                    .data(objectMapper.writeValueAsString(Map.of(EVENT_TOKEN, line + "\n"))));
+        } catch (IOException e) {
+            log.warn("SSE send failed for token: {}", e.getMessage());
+            emitter.completeWithError(e);
+        }
     }
 
     private void trySendError(SseEmitter emitter) {
@@ -279,18 +313,35 @@ public class AiController {
         }
     }
 
-    private void tryEmitPatch(SseEmitter emitter, String line) {
+    /**
+     * Attempts to parse {@code line} as a patch and emit it as a complete (non-streamed)
+     * patch event. When a {@code document} is provided the patch is validated against the
+     * real apply schema and discarded if invalid. Returns true when the line was a patch
+     * (valid or invalid) so callers know not to stream it as text.
+     */
+    private boolean tryEmitPatch(SseEmitter emitter, String line, ResumeDocument document) {
+        DocumentPatchEvent patch;
         try {
-            // Attempt to parse as DocumentPatchEvent
-            DocumentPatchEvent patch = objectMapper.readValue(line, DocumentPatchEvent.class);
+            patch = objectMapper.readValue(line, DocumentPatchEvent.class);
+        } catch (JsonProcessingException e) {
+            // Line is not patch JSON — treat as prose
+            return false;
+        }
+        if (patch.sectionId() == null || patch.sectionId().isBlank()) {
+            // Parsed JSON that is not a real patch (e.g. some other object) — treat as prose
+            return false;
+        }
+        if (document != null && !documentPatchService.isValid(document, patch)) {
+            log.debug("Discarding invalid patch from chat stream: {}", line);
+            return true; // recognized as a patch attempt but invalid — discard, do not stream
+        }
+        try {
             emitter.send(SseEmitter.event()
                     .name("patch")
                     .data(objectMapper.writeValueAsString(patch)));
-        } catch (JsonProcessingException e) {
-            // Line is not a valid patch JSON — skip silently (may be partial token or prose)
-            log.debug("Skipping non-patch line from enhance stream: {}", line);
         } catch (IOException e) {
             log.warn("Failed to emit patch event: {}", e.getMessage());
         }
+        return true;
     }
 }

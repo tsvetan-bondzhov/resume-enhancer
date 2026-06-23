@@ -23,6 +23,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.matches;
@@ -50,7 +51,8 @@ class AiControllerTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
-        aiController = new AiController(aiService, healthGuard, objectMapper, resumeService, memory);
+        DocumentPatchService documentPatchService = new DocumentPatchService(objectMapper);
+        aiController = new AiController(aiService, healthGuard, objectMapper, resumeService, documentPatchService, memory);
     }
 
     // ─── /chat — unavailable path ─────────────────────────────────────────────
@@ -59,7 +61,7 @@ class AiControllerTest {
     void chat_returns503_when_ollama_unavailable() {
         when(healthGuard.isAvailable()).thenReturn(false);
 
-        ChatRequest request = new ChatRequest("Hello AI", null, null);
+        ChatRequest request = new ChatRequest("Hello AI", null, null, false);
         ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
@@ -69,7 +71,7 @@ class AiControllerTest {
     void chat_response_body_has_problem_detail_when_unavailable() {
         when(healthGuard.isAvailable()).thenReturn(false);
 
-        ChatRequest request = new ChatRequest("Hello AI", null, null);
+        ChatRequest request = new ChatRequest("Hello AI", null, null, false);
         ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getBody()).isNotNull();
@@ -81,10 +83,10 @@ class AiControllerTest {
     @Test
     void chat_returns200_with_sse_emitter_when_ollama_available() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
-        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any()))
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any(), anyBoolean()))
                 .thenReturn(Flux.just("Hello", " world"));
 
-        ChatRequest request = new ChatRequest("Say hello", null, null);
+        ChatRequest request = new ChatRequest("Say hello", null, null, false);
         ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -96,30 +98,30 @@ class AiControllerTest {
     @Test
     void chat_withConversationId_returns200_with_sse_emitter() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
-        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any()))
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any(), anyBoolean()))
                 .thenReturn(Flux.just("Hello", " world"));
 
-        ChatRequest request = new ChatRequest("Hello AI", null, "conv-123");
+        ChatRequest request = new ChatRequest("Hello AI", null, "conv-123", false);
         ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isInstanceOf(SseEmitter.class);
         Thread.sleep(100);
-        verify(aiService).streamChat(eq("Hello AI"), eq("conv-123"), any(ChatMemory.class), any());
+        verify(aiService).streamChat(eq("Hello AI"), eq("conv-123"), any(ChatMemory.class), any(), anyBoolean());
     }
 
     @Test
     void chat_withoutConversationId_generates_conversationId_and_returns200() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
-        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any()))
+        when(aiService.streamChat(anyString(), anyString(), any(ChatMemory.class), any(), anyBoolean()))
                 .thenReturn(Flux.just("token1"));
 
-        ChatRequest request = new ChatRequest("Hello AI", null, null);
+        ChatRequest request = new ChatRequest("Hello AI", null, null, false);
         ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         Thread.sleep(100);
-        verify(aiService).streamChat(anyString(), matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"), any(ChatMemory.class), any());
+        verify(aiService).streamChat(anyString(), matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"), any(ChatMemory.class), any(), anyBoolean());
     }
 
     // ─── /enhance — unavailable path ─────────────────────────────────────────
@@ -182,7 +184,7 @@ class AiControllerTest {
         String prompt = "Write my resume";
         String resumeId = "abc-123";
         String conversationId = "conv-456";
-        ChatRequest request = new ChatRequest(prompt, resumeId, conversationId);
+        ChatRequest request = new ChatRequest(prompt, resumeId, conversationId, false);
 
         assertThat(request.prompt()).isEqualTo(prompt);
         assertThat(request.resumeId()).isEqualTo(resumeId);
@@ -191,7 +193,7 @@ class AiControllerTest {
 
     @Test
     void chatRequest_with_null_resumeId_and_null_conversationId() {
-        ChatRequest request = new ChatRequest("prompt", null, null);
+        ChatRequest request = new ChatRequest("prompt", null, null, false);
 
         assertThat(request.prompt()).isEqualTo("prompt");
         assertThat(request.resumeId()).isNull();
@@ -418,10 +420,10 @@ class AiControllerTest {
     @Test
     void chat_withStreamError_exercisesDoOnErrorPath() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
-        when(aiService.streamChat(anyString(), anyString(), any(), any()))
+        when(aiService.streamChat(anyString(), anyString(), any(), any(), anyBoolean()))
                 .thenReturn(Flux.error(new RuntimeException("Connection reset")));
 
-        ChatRequest request = new ChatRequest("Say hello", null, null);
+        ChatRequest request = new ChatRequest("Say hello", null, null, false);
         ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -432,10 +434,10 @@ class AiControllerTest {
     void chat_withTokens_exercisesDoOnNextAndDoOnComplete() throws InterruptedException {
         when(healthGuard.isAvailable()).thenReturn(true);
         // Provides actual tokens so doOnNext and doOnComplete fire
-        when(aiService.streamChat(anyString(), anyString(), any(), any()))
+        when(aiService.streamChat(anyString(), anyString(), any(), any(), anyBoolean()))
                 .thenReturn(Flux.just("Hello", " ", "world"));
 
-        ChatRequest request = new ChatRequest("Say hello", null, "conv-existing");
+        ChatRequest request = new ChatRequest("Say hello", null, "conv-existing", false);
         ResponseEntity<?> response = aiController.chat(request, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);

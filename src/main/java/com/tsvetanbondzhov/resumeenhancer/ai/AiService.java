@@ -26,10 +26,12 @@ public class AiService {
 
     private final ChatClient chatClient;
     private final String chatSystemPrompt;
+    private final String chatPatchInstructions;
 
     public AiService(ChatClient.Builder chatClientBuilder) {
         this.chatClient = chatClientBuilder.build();
         this.chatSystemPrompt = loadPrompt("prompts/chat-system.st");
+        this.chatPatchInstructions = loadPrompt("prompts/chat-patch-instructions.st");
     }
 
     /**
@@ -81,10 +83,26 @@ public class AiService {
      * AiService is the ONLY class in the codebase that calls ChatClient directly.
      */
     public Flux<String> streamChat(String prompt, String conversationId, ChatMemory chatMemory, String resumeContext) {
+        return streamChat(prompt, conversationId, chatMemory, resumeContext, false);
+    }
+
+    /**
+     * Streaming chat overload that optionally allows the AI to emit resume patch
+     * modifications. When allowEdits is true the patch instructions are appended to
+     * the system prompt so the model may produce patch JSON lines alongside prose;
+     * when false the prompt is unchanged and ONLY normal text is produced.
+     *
+     * AiService is the ONLY class in the codebase that calls ChatClient directly.
+     */
+    public Flux<String> streamChat(String prompt, String conversationId, ChatMemory chatMemory,
+                                   String resumeContext, boolean allowEdits) {
         try {
             String systemPrompt = resumeContext == null || resumeContext.isBlank()
                     ? chatSystemPrompt
                     : chatSystemPrompt + "\n" + resumeContext;
+            if (allowEdits) {
+                systemPrompt = systemPrompt + "\n" + chatPatchInstructions;
+            }
             return chatClient.prompt()
                     .system(systemPrompt)
                     .user(prompt)
