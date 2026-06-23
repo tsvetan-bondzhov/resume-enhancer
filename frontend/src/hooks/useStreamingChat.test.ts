@@ -183,6 +183,33 @@ describe("useStreamingChat", () => {
       })
     })
 
+    it("keeps streamed text and emits the patch as a separate following message", async () => {
+      const patchData = JSON.stringify({ sectionId: "WORK_EXPERIENCE", itemIndex: 0, field: "jobTitle", newValue: "Senior Eng" })
+      const chunks = [
+        "event: token\ndata: {\"token\": \"Here are \"}\n\n",
+        "event: token\ndata: {\"token\": \"some edits.\"}\n\n",
+        `event: patch\ndata: ${patchData}\n\n`,
+        "event: done\ndata: {\"summary\": \"patched\"}\n\n",
+      ]
+      mockFetchOk(chunks)
+      const { result } = renderHook(() => useStreamingChat())
+
+      await act(async () => {
+        result.current.startStreamWithPost("/api/v1/ai/chat", { prompt: "update" })
+        await new Promise((r) => setTimeout(r, 50))
+      })
+
+      const messages = useChatStore.getState().messages
+      // The streamed text message is preserved (not overwritten by the patch)
+      const textMsg = messages.find((m) => m.type !== "patch" && m.role === "assistant")
+      expect(textMsg?.content).toBe("Here are some edits.")
+      // The patch is rendered as a separate, later message
+      const patchMsg = messages.find((m) => m.type === "patch")
+      expect(patchMsg).toBeDefined()
+      expect(patchMsg?.diffs?.length).toBeGreaterThan(0)
+      expect(messages.indexOf(patchMsg!)).toBeGreaterThan(messages.indexOf(textMsg!))
+    })
+
     it("calls onError when server returns non-ok response", async () => {
       mockFetchNotOk()
       const onError = vi.fn()

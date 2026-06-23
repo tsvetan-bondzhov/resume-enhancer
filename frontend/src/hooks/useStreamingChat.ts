@@ -63,7 +63,16 @@ function handleBasicSseEvent(
     applyEnhancePatch(parsed as PatchEvent, pendingDiffs, applyPatch)
   } else if (eventName === "done") {
     if (pendingDiffs.length > 0) {
-      useChatStore.getState().updateMessage(assistantMsgId, { type: "patch", diffs: [...pendingDiffs] })
+      // Emit the patch as a separate message that follows the streamed text,
+      // so both the assistant text and the suggested edits render in order.
+      useChatStore.getState().addMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "",
+        timestamp: new Date().toISOString(),
+        type: "patch",
+        diffs: [...pendingDiffs],
+      })
     }
     setStreaming(false)
     options.onDone?.((parsed.summary as string) ?? "")
