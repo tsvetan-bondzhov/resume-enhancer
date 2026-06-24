@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { apiClient } from "@/lib/apiClient"
 import { getOrderedSections } from "@/lib/templateUtils"
 import ResumeSection from "@/components/resume/ResumeSection"
-import type { ResumeDocumentDto, ResumeItemDto, ResumeSectionType, TemplateCssVariables, TemplateDto } from "@/types/api"
+import type { ResumeDocumentDto, ResumeItemDto, ResumeSectionType, TemplateCssVariables, TemplateDefinitionDto, TemplateDto } from "@/types/api"
 import { usePageLayout, type PageSectionSlice } from "./usePageLayout"
 export { PAGE_HEIGHT_PX } from "./resumeConstants"
 import { PAGE_HEIGHT_PX } from "./resumeConstants"
@@ -11,6 +11,12 @@ import { PAGE_HEIGHT_PX } from "./resumeConstants"
 interface ResumeCanvasProps {
   readonly document: ResumeDocumentDto | null
   readonly templateId: string | null
+  /**
+   * Client-side, unsaved template definition (Story 8.2 live preview). When provided,
+   * the canvas renders from this definition and SKIPS the `templateId` network fetch.
+   * Leave undefined for all existing call sites — behavior then matches the fetch path.
+   */
+  readonly templatePreview?: TemplateDefinitionDto
   readonly isLoading?: boolean
   readonly state?: "idle" | "streaming" | "diff" | "print-preview"
   readonly onTitleChange?: (sectionId: string, title: string) => void
@@ -23,6 +29,7 @@ interface ResumeCanvasProps {
 export default function ResumeCanvas({
   document,
   templateId,
+  templatePreview,
   isLoading = false,
   state = "idle",
   onTitleChange,
@@ -31,35 +38,50 @@ export default function ResumeCanvas({
   onDeleteItem,
   onReorderItems,
 }: ResumeCanvasProps) {
-  const [template, setTemplate] = useState<TemplateDto | null>(null)
+  const [fetchedTemplate, setFetchedTemplate] = useState<TemplateDto | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    if (templateId) {
+    // Story 8.2: when an unsaved preview definition is supplied, render from it and
+    // skip the network fetch entirely.
+    if (templatePreview) {
+      // fetchedTemplate is already null in this path — nothing to reset.
+    } else if (templateId) {
       apiClient
         .get<TemplateDto>(`/api/v1/resume-templates/${templateId}`)
         .then((data) => {
-          if (!cancelled) setTemplate(data)
+          if (!cancelled) setFetchedTemplate(data)
         })
         .catch(() => {
-          if (!cancelled) setTemplate(null)
+          if (!cancelled) setFetchedTemplate(null)
         })
     } else {
       // ESLint react-hooks/set-state-in-effect forbids synchronous setState in effect body.
       // Promise.resolve().then() defers to microtask queue — satisfies the rule while
       // still resetting template when templateId becomes null (AC5/AC6).
       void Promise.resolve().then(() => {
-        if (!cancelled) setTemplate(null)
+        if (!cancelled) setFetchedTemplate(null)
       })
     }
     return () => {
       cancelled = true
     }
-  }, [templateId])
+  }, [templateId, templatePreview])
+
+  // Effective definition: an unsaved client-side preview takes precedence over the
+  // fetched template (Story 8.2). Otherwise use the fetched template definition.
+  const templateDefinition: TemplateDefinitionDto | undefined =
+    templatePreview ?? fetchedTemplate?.templateDefinition
+
+  // Synthesize a template object so the shared ordering/column logic keeps working
+  // whether the definition came from a preview or the fetched template.
+  const template: TemplateDto | null = templateDefinition
+    ? (fetchedTemplate ?? { templateDefinition } as unknown as TemplateDto)
+    : fetchedTemplate
 
   // CSS variable injection — empty object when no template (AC5/AC6: defaults apply via Tailwind)
-  const cssVars: TemplateCssVariables = template?.templateDefinition?.cssVariables ?? {}
-  const layoutType = template?.templateDefinition?.layoutType
+  const cssVars: TemplateCssVariables = templateDefinition?.cssVariables ?? {}
+  const layoutType = templateDefinition?.layoutType
 
   const baseStyle: React.CSSProperties = Object.fromEntries(
     Object.entries(cssVars).filter(([, v]) => v !== undefined)

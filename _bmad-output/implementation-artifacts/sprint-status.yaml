@@ -1,5 +1,5 @@
 # generated: 2026-05-14
-# last_updated: 2026-06-24 # 8-1 story created → ready-for-dev; Epic 8 backlog → in-progress (first story)
+# last_updated: 2026-06-24 # 8-2 done (clean third-pass review: 0 patch, 0 decision-needed; all P1-P8 fixes verified; AC1-9 satisfied) (custom template authoring UI implemented; frontend-only, builds on 8-1 /custom API)
 # project: resume-enhancer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -121,7 +121,7 @@ development_status:
   # ─── Epic 8: Custom Template Authoring (Deferred) ───
   epic-8: in-progress
   8-1-custom-template-data-model-and-crud-api: done
-  8-2-custom-template-authoring-ui: backlog
+  8-2-custom-template-authoring-ui: done
   epic-8-retrospective: optional
 
   # ─── Epic 9: Code Quality — SonarQube Remediation ───

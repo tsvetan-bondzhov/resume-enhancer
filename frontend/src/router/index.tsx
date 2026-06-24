@@ -18,6 +18,7 @@ import NotFoundPage from "@/pages/NotFoundPage"
 import AiTestPage from "@/pages/AiTestPage"
 
 const AdminPage = lazy(() => import("@/pages/AdminPage"))
+const TemplateEditorPage = lazy(() => import("@/pages/TemplateEditorPage"))
 
 function ProtectedRoute({ requireAdmin = false }: Readonly<{ requireAdmin?: boolean }>) {
   const { token, user } = useAuthStore()
@@ -61,6 +62,22 @@ export const router = createBrowserRouter([
       {
         path: "/ai-test",
         element: <AiTestPage />,
+      },
+      {
+        path: "/templates/custom/new",
+        element: (
+          <Suspense fallback={<Skeleton className="h-screen w-full" />}>
+            <TemplateEditorPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "/templates/custom/:templateId/edit",
+        element: (
+          <Suspense fallback={<Skeleton className="h-screen w-full" />}>
+            <TemplateEditorPage />
+          </Suspense>
+        ),
       },
     ],
   },

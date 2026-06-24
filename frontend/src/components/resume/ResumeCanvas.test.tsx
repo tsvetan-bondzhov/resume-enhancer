@@ -252,6 +252,26 @@ describe("ResumeCanvas", () => {
     expect(container.querySelector("[aria-label='Resume page 2']")).not.toBeInTheDocument()
   })
 
+  // Story 8.2: templatePreview prop renders client-side without fetching
+  it("renders from templatePreview without calling apiClient (Story 8.2)", async () => {
+    const { container } = render(
+      <ResumeCanvas
+        document={mockDocument}
+        templateId={null}
+        templatePreview={{
+          layoutType: "single-column",
+          cssVariables: { "--accent-color": "#abcdef", "--font-size-base": "11px" },
+          layout: { sectionOrder: ["WORK_EXPERIENCE", "SKILLS"] },
+        }}
+      />
+    )
+    expect(mockGet).not.toHaveBeenCalled()
+    await waitFor(() => {
+      const article = container.querySelector("article")!
+      expect(article.getAttribute("style")).toContain("--accent-color")
+    })
+  })
+
   // AC1: #resume-canvas is on the outer wrapper <div>, not an <article>
   it("places id=resume-canvas on the outer wrapper div, not an article", async () => {
     mockGet.mockResolvedValue(buildTemplate())
