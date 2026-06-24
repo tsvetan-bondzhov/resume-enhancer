@@ -32,6 +32,9 @@ class TemplateServiceTest {
     @Mock
     private TemplateRepository templateRepository;
 
+    @Mock
+    private com.tsvetanbondzhov.resumeenhancer.auth.UserRepository userRepository;
+
     @InjectMocks
     private TemplateService templateService;
 
@@ -408,6 +411,32 @@ class TemplateServiceTest {
         assertThatThrownBy(() -> templateService.deleteCustomTemplate(OWNER_ID, TEMPLATE_ID))
                 .isInstanceOf(TemplateAccessDeniedException.class);
         verify(templateRepository, never()).delete(any());
+    }
+
+    @Test
+    void listAllCustomTemplates_returnsAllOwnedTemplatesWithOwnerEmail() {
+        ResumeTemplate t1 = buildCustomTemplate("Mine A", OWNER_ID);
+        ResumeTemplate t2 = buildCustomTemplate("Other B", OTHER_OWNER_ID);
+        when(templateRepository.findAllByOwnerIdIsNotNull()).thenReturn(List.of(t1, t2));
+
+        com.tsvetanbondzhov.resumeenhancer.auth.domain.User u1 =
+                new com.tsvetanbondzhov.resumeenhancer.auth.domain.User();
+        ReflectionTestUtils.setField(u1, "id", OWNER_ID);
+        u1.setEmail("owner-a@example.com");
+        com.tsvetanbondzhov.resumeenhancer.auth.domain.User u2 =
+                new com.tsvetanbondzhov.resumeenhancer.auth.domain.User();
+        ReflectionTestUtils.setField(u2, "id", OTHER_OWNER_ID);
+        u2.setEmail("owner-b@example.com");
+        when(userRepository.findAllById(any())).thenReturn(List.of(u1, u2));
+
+        var result = templateService.listAllCustomTemplates();
+
+        assertThat(result).hasSize(2);
+        assertThat(result).anyMatch(dto ->
+                dto.name().equals("Mine A") && "owner-a@example.com".equals(dto.ownerEmail()));
+        assertThat(result).anyMatch(dto ->
+                dto.name().equals("Other B") && "owner-b@example.com".equals(dto.ownerEmail()));
+        verify(templateRepository).findAllByOwnerIdIsNotNull();
     }
 
     @Test

@@ -1,6 +1,7 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import UserTable from "@/components/admin/UserTable"
 import TemplateManager from "@/components/admin/TemplateManager"
+import CustomTemplateManager from "@/components/admin/CustomTemplateManager"
 
 export default function AdminPage() {
   return (
@@ -20,7 +21,18 @@ export default function AdminPage() {
           <UserTable />
         </TabsContent>
         <TabsContent value="templates" className="mt-4">
-          <TemplateManager />
+          <Tabs defaultValue="system">
+            <TabsList>
+              <TabsTrigger value="system">System Templates</TabsTrigger>
+              <TabsTrigger value="user">User Templates</TabsTrigger>
+            </TabsList>
+            <TabsContent value="system" className="mt-4">
+              <TemplateManager />
+            </TabsContent>
+            <TabsContent value="user" className="mt-4">
+              <CustomTemplateManager />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>

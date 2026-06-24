@@ -516,6 +516,53 @@ class TemplateControllerIntegrationTest {
                 .expectStatus().isUnauthorized();
     }
 
+    // ─── Admin list-all custom templates includes owner email ───────────────
+
+    @Test
+    void listAllCustomTemplates_nonAdmin_returns403() {
+        String token = seedUserAndGetToken("listallcustom_403@example.com", "USER");
+
+        webTestClient().get()
+                .uri("/api/v1/resume-templates/admin/custom")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void listAllCustomTemplates_asAdmin_includesOwnerEmail() throws Exception {
+        String ownerEmail = "custom_owner_listed@example.com";
+        String ownerToken = registerAndGetToken(ownerEmail, "Password1");
+        String adminToken = seedUserAndGetToken("custom_list_admin@example.com", "ADMIN");
+
+        String createBody = """
+                { "name": "Owned Template", "description": "owned", "templateDefinition": { "layoutType": "single-column" } }
+                """;
+        String createdId = createCustomTemplateAndGetId(ownerToken, createBody);
+
+        String body = webTestClient().get()
+                .uri("/api/v1/resume-templates/admin/custom")
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        var array = objectMapper.readTree(body);
+        assertThat(array.isArray()).isTrue();
+        assertThat(idsOf(array)).contains(createdId);
+        boolean found = false;
+        for (var node : array) {
+            if (createdId.equals(node.get("id").asText())) {
+                assertThat(node.get("ownerEmail").asText()).isEqualTo(ownerEmail);
+                assertThat(node.get("isPrebuilt").asBoolean()).isFalse();
+                found = true;
+            }
+        }
+        assertThat(found).isTrue();
+    }
+
     private String createCustomTemplateAndGetId(String token, String createBody) throws Exception {
         String body = webTestClient().post()
                 .uri("/api/v1/resume-templates/custom")

@@ -2,6 +2,7 @@ package com.tsvetanbondzhov.resumeenhancer.template;
 
 import com.tsvetanbondzhov.resumeenhancer.auth.UserRepository;
 import com.tsvetanbondzhov.resumeenhancer.auth.domain.User;
+import com.tsvetanbondzhov.resumeenhancer.template.dto.CustomTemplateAdminDto;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.CustomTemplateRequest;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.TemplateDto;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.TemplateRequest;
@@ -61,6 +62,12 @@ public class TemplateController {
     @PreAuthorize("hasRole('ADMIN')")
     public List<TemplateDto> listAllTemplates() {
         return templateService.listAllTemplates();
+    }
+
+    @GetMapping("/admin/custom")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<CustomTemplateAdminDto> listAllCustomTemplates() {
+        return templateService.listAllCustomTemplates();
     }
 
     @PostMapping

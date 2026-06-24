@@ -1,6 +1,9 @@
 package com.tsvetanbondzhov.resumeenhancer.template;
 
+import com.tsvetanbondzhov.resumeenhancer.auth.UserRepository;
+import com.tsvetanbondzhov.resumeenhancer.auth.domain.User;
 import com.tsvetanbondzhov.resumeenhancer.template.domain.ResumeTemplate;
+import com.tsvetanbondzhov.resumeenhancer.template.dto.CustomTemplateAdminDto;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.CustomTemplateRequest;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.TemplateDto;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.TemplateRequest;
@@ -13,8 +16,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class TemplateService {
@@ -23,9 +28,11 @@ public class TemplateService {
     private static final String TEMPLATE_NOT_FOUND = "Template not found: ";
 
     private final TemplateRepository templateRepository;
+    private final UserRepository userRepository;
 
-    public TemplateService(TemplateRepository templateRepository) {
+    public TemplateService(TemplateRepository templateRepository, UserRepository userRepository) {
         this.templateRepository = templateRepository;
+        this.userRepository = userRepository;
     }
 
     @Cacheable("templates")
@@ -93,6 +100,23 @@ public class TemplateService {
     public List<TemplateDto> listAllTemplates() {
         return templateRepository.findAll().stream()
                 .map(this::toDto)
+                .toList();
+    }
+
+    /**
+     * Admin-only: lists every custom (user-owned) template across all users, annotated with the
+     * owner's email. Owner emails are resolved in a single batch query to avoid N+1 lookups.
+     */
+    @Transactional(readOnly = true)
+    public List<CustomTemplateAdminDto> listAllCustomTemplates() {
+        List<ResumeTemplate> templates = templateRepository.findAllByOwnerIdIsNotNull();
+        Set<UUID> ownerIds = templates.stream()
+                .map(ResumeTemplate::getOwnerId)
+                .collect(Collectors.toSet());
+        Map<UUID, String> emailsById = userRepository.findAllById(ownerIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getEmail));
+        return templates.stream()
+                .map(template -> toAdminDto(template, emailsById.get(template.getOwnerId())))
                 .toList();
     }
 
@@ -169,6 +193,23 @@ public class TemplateService {
                 }
             }
         }
+    }
+
+    private CustomTemplateAdminDto toAdminDto(ResumeTemplate template, String ownerEmail) {
+        return new CustomTemplateAdminDto(
+                template.getId(),
+                template.getName(),
+                template.getDescription(),
+                template.isPrebuilt(),
+                template.isPublished(),
+                template.getTemplateDefinition() != null
+                        ? Collections.unmodifiableMap(new HashMap<>(template.getTemplateDefinition()))
+                        : Map.of(),
+                template.getCreatedAt(),
+                template.getUpdatedAt(),
+                template.getOwnerId(),
+                ownerEmail
+        );
     }
 
     private TemplateDto toDto(ResumeTemplate template) {

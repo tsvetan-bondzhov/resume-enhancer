@@ -488,6 +488,11 @@ export interface TemplateDto {
   updatedAt: string
 }
 
+export interface CustomTemplateAdminDto extends TemplateDto {
+  ownerId: string
+  ownerEmail: string
+}
+
 export interface TemplateRequest {
   name: string
   description: string | null
