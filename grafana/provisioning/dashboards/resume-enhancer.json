@@ -1,0 +1,239 @@
+{
+  "title": "Resume Enhancer — Observability",
+  "uid": "resume-enhancer-obs",
+  "schemaVersion": 39,
+  "editable": true,
+  "timezone": "browser",
+  "tags": ["resume-enhancer", "observability"],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "templating": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Explore Traces (Tempo)",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Open Grafana Explore on the Tempo data source to search traces by traceId",
+      "url": "/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22query%22:%22%22,%22queryType%22:%22traceql%22%7D%5D%7D",
+      "targetBlank": true
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Request rate per endpoint (req/s)",
+      "description": "Per-endpoint HTTP request rate from the Micrometer http.server.requests counter, exported via OTLP to Mimir as http_server_requests_seconds_count.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull", "max"]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (uri) (rate(http_server_requests_seconds_count[5m]))",
+          "legendFormat": "{{uri}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Avg latency per endpoint (p99 requires histogram buckets — see backlog)",
+      "description": "Average request latency = rate(http_server_requests_seconds_sum) / rate(http_server_requests_seconds_count). True p99 requires management.metrics.distribution.percentiles-histogram.http.server.requests=true, which is NOT enabled (out of scope for story 7.4). Use Tempo span durations for per-trace latency.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull", "max"]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (uri) (rate(http_server_requests_seconds_sum[5m])) / sum by (uri) (rate(http_server_requests_seconds_count[5m]))",
+          "legendFormat": "{{uri}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Error rate (5xx ratio)",
+      "description": "Fraction of HTTP responses with a 5xx status: sum(rate(...{status=~\"5..\"})) / sum(rate(...)). Surfaces server-side failures across all endpoints.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(http_server_requests_seconds_count{status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count[5m]))",
+          "legendFormat": "5xx error rate",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "AI inference / SSE stream duration (ai.sse.* spans)",
+      "description": "AI work runs as named child spans ai.sse.chat / ai.sse.enhance / ai.sse.tailor (Story 7.3). This Tempo TraceQL panel surfaces those spans and their durations. There is no dedicated Micrometer SSE timer (intentionally out of scope for 7.4). Panel may show 'No data' until AI traffic is generated.",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "options": {},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "queryType": "traceql",
+          "query": "{ name =~ \"ai.sse..*\" }",
+          "tableType": "spans",
+          "limit": 20
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Trace search (paste a traceId or use TraceQL)",
+      "description": "Search traces by traceId or TraceQL. Edit the query (e.g. set it to a specific traceId) or use the 'Explore Traces (Tempo)' dashboard link to open Grafana Explore on the Tempo data source. Satisfies AC2 'traces searchable by traceId'.",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "options": {},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "queryType": "traceql",
+          "query": "{}",
+          "tableType": "traces",
+          "limit": 20
+        }
+      ]
+    }
+  ]
+}
