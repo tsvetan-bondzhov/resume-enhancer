@@ -111,29 +111,36 @@ describe("TemplateGallery", () => {
     expect(onApply).toHaveBeenCalledWith("t1")
   })
 
-  it("filters to minimal tab when Minimal tab is clicked (AC1)", async () => {
+  it("renders exactly two tabs: Default and My Templates", async () => {
+    mockGalleryFetches([buildTemplate({ id: "t1", name: "Minimal" })], [])
+    renderGallery()
+    await waitFor(() => screen.getByLabelText(/apply minimal template/i))
+    const tabs = screen.getAllByRole("tab")
+    expect(tabs).toHaveLength(2)
+    expect(screen.getByRole("tab", { name: /^default$/i })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /my templates/i })).toBeInTheDocument()
+  })
+
+  it("shows all pre-built templates under the Default tab (AC1)", async () => {
     const templates = [
       buildTemplate({ id: "t1", name: "Minimal" }),
       buildTemplate({ id: "t2", name: "Classic" }),
+      buildTemplate({ id: "t3", name: "Modern" }),
     ]
     mockGalleryFetches(templates, [])
     renderGallery()
-    await waitFor(() => screen.getByLabelText(/apply minimal template/i))
-    fireEvent.click(screen.getByRole("tab", { name: /minimal/i }))
     await waitFor(() =>
-      expect(screen.queryByLabelText(/apply classic template/i)).not.toBeInTheDocument()
+      expect(screen.getByLabelText(/apply minimal template/i)).toBeInTheDocument()
     )
-    expect(screen.getByLabelText(/apply minimal template/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/apply classic template/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/apply modern template/i)).toBeInTheDocument()
   })
 
-  it("shows 'No templates in this category' when filtered list is empty (AC1)", async () => {
-    // Only Classic template — clicking Modern tab should show empty state
-    mockGalleryFetches([buildTemplate({ id: "t1", name: "Classic" })], [])
+  it("shows empty state when no default templates are available", async () => {
+    mockGalleryFetches([], [])
     renderGallery()
-    await waitFor(() => screen.getByLabelText(/apply classic template/i))
-    fireEvent.click(screen.getByRole("tab", { name: /modern/i }))
     await waitFor(() =>
-      expect(screen.getByText(/no templates in this category/i)).toBeInTheDocument()
+      expect(screen.getByText(/no templates available/i)).toBeInTheDocument()
     )
   })
 

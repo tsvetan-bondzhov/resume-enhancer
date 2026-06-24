@@ -78,9 +78,6 @@ function TemplateThumbnail({ template }: { readonly template: TemplateDto }) {
   )
 }
 
-const FILTER_TABS = ["all", "minimal", "classic", "modern"] as const
-type FilterTab = (typeof FILTER_TABS)[number]
-
 export default function TemplateGallery({
   activeTemplateId,
   onApply,
@@ -88,7 +85,7 @@ export default function TemplateGallery({
   const navigate = useNavigate()
   const [templates, setTemplates] = useState<TemplateDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("all")
+  const [activeTab, setActiveTab] = useState("default")
 
   // My Templates (custom) — own fetch / loading / error state (AC1)
   const [customTemplates, setCustomTemplates] = useState<TemplateDto[]>([])
@@ -175,14 +172,9 @@ export default function TemplateGallery({
     }
   }
 
-  const filteredTemplates = (tab: FilterTab) =>
-    tab === "all"
-      ? templates
-      : templates.filter((t) => t.name.toLowerCase().includes(tab))
-
   const activeTemplate = templates.find(t => t.id === activeTemplateId)
 
-  function renderTabContent(tab: FilterTab) {
+  function renderDefaultTemplates() {
     if (isLoading) {
       return (
         <div className="grid grid-cols-2 gap-2">
@@ -192,11 +184,11 @@ export default function TemplateGallery({
         </div>
       )
     }
-    const items = filteredTemplates(tab)
+    const items = templates
     if (items.length === 0) {
       return (
         <p className="text-xs text-muted-foreground text-center py-4">
-          No templates in this category
+          No templates available
         </p>
       )
     }
@@ -334,28 +326,17 @@ export default function TemplateGallery({
       )}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full mb-3">
-          <TabsTrigger value="all" className="flex-1 text-xs">
-            All
-          </TabsTrigger>
-          <TabsTrigger value="minimal" className="flex-1 text-xs">
-            Minimal
-          </TabsTrigger>
-          <TabsTrigger value="classic" className="flex-1 text-xs">
-            Classic
-          </TabsTrigger>
-          <TabsTrigger value="modern" className="flex-1 text-xs">
-            Modern
+          <TabsTrigger value="default" className="flex-1 text-xs">
+            Default
           </TabsTrigger>
           <TabsTrigger value="my" className="flex-1 text-xs">
             My Templates
           </TabsTrigger>
         </TabsList>
 
-        {FILTER_TABS.map((tab) => (
-          <TabsContent key={tab} value={tab} className="mt-0">
-            {renderTabContent(tab)}
-          </TabsContent>
-        ))}
+        <TabsContent value="default" className="mt-0">
+          {renderDefaultTemplates()}
+        </TabsContent>
         <TabsContent value="my" className="mt-0">
           {renderMyTemplates()}
         </TabsContent>
