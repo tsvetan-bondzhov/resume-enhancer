@@ -117,6 +117,13 @@ public class TemplateController {
         return templateService.listCustomTemplates(resolveOwnerId(principal));
     }
 
+    @GetMapping("/custom/{templateId}")
+    public TemplateDto getCustomTemplate(
+            @AuthenticationPrincipal User principal,
+            @PathVariable UUID templateId) {
+        return templateService.getCustomTemplate(resolveOwnerId(principal), templateId);
+    }
+
     @PutMapping("/custom/{templateId}")
     public ResponseEntity<TemplateDto> updateCustomTemplate(
             @AuthenticationPrincipal User principal,

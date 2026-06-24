@@ -143,6 +143,11 @@ public class TemplateService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public TemplateDto getCustomTemplate(UUID ownerId, UUID templateId) {
+        return toDto(resolveOwnedTemplate(ownerId, templateId));
+    }
+
     @Transactional
     public TemplateDto updateCustomTemplate(UUID ownerId, UUID templateId, CustomTemplateRequest request) {
         ResumeTemplate template = resolveOwnedTemplate(ownerId, templateId);

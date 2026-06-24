@@ -516,6 +516,64 @@ class TemplateControllerIntegrationTest {
                 .expectStatus().isUnauthorized();
     }
 
+    @Test
+    void getCustomTemplate_owner_returns200() throws Exception {
+        String token = registerAndGetToken("get_custom_owner@example.com", "Password1");
+        String createBody = """
+                { "name": "Editable", "description": "mine", "templateDefinition": { "layoutType": "single-column" } }
+                """;
+        String createdId = createCustomTemplateAndGetId(token, createBody);
+
+        webTestClient().get()
+                .uri("/api/v1/resume-templates/custom/" + createdId)
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.id").isEqualTo(createdId)
+                .jsonPath("$.name").isEqualTo("Editable")
+                .jsonPath("$.isPrebuilt").isEqualTo(false);
+    }
+
+    @Test
+    void getCustomTemplate_otherUsersTemplate_returns403() throws Exception {
+        String tokenA = registerAndGetToken("get_custom_a@example.com", "Password1");
+        String tokenB = registerAndGetToken("get_custom_b@example.com", "Password1");
+        String createBody = """
+                { "name": "A's Template", "description": null, "templateDefinition": {} }
+                """;
+        String aTemplateId = createCustomTemplateAndGetId(tokenA, createBody);
+
+        webTestClient().get()
+                .uri("/api/v1/resume-templates/custom/" + aTemplateId)
+                .header("Authorization", "Bearer " + tokenB)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Forbidden");
+    }
+
+    @Test
+    void getCustomTemplate_unknownId_returns404() throws Exception {
+        String token = registerAndGetToken("get_custom_404@example.com", "Password1");
+
+        webTestClient().get()
+                .uri("/api/v1/resume-templates/custom/00000000-0000-0000-0000-000000000000")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Not Found");
+    }
+
+    @Test
+    void getCustomTemplate_unauthenticated_returns401() {
+        webTestClient().get()
+                .uri("/api/v1/resume-templates/custom/00000000-0000-0000-0000-000000000000")
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
     // ─── Admin list-all custom templates includes owner email ───────────────
 
     @Test

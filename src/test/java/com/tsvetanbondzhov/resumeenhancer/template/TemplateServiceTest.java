@@ -348,6 +348,37 @@ class TemplateServiceTest {
     }
 
     @Test
+    void getCustomTemplate_ownSucceeds_returnsDto() {
+        ResumeTemplate t = buildCustomTemplate("Mine", OWNER_ID);
+        when(templateRepository.findByIdAndOwnerId(TEMPLATE_ID, OWNER_ID)).thenReturn(Optional.of(t));
+
+        TemplateDto result = templateService.getCustomTemplate(OWNER_ID, TEMPLATE_ID);
+
+        assertThat(result.name()).isEqualTo("Mine");
+        verify(templateRepository).findByIdAndOwnerId(TEMPLATE_ID, OWNER_ID);
+    }
+
+    @Test
+    void getCustomTemplate_otherUsersTemplate_throwsAccessDenied() {
+        when(templateRepository.findByIdAndOwnerId(TEMPLATE_ID, OWNER_ID)).thenReturn(Optional.empty());
+        when(templateRepository.findById(TEMPLATE_ID))
+                .thenReturn(Optional.of(buildCustomTemplate("Not Yours", OTHER_OWNER_ID)));
+
+        assertThatThrownBy(() -> templateService.getCustomTemplate(OWNER_ID, TEMPLATE_ID))
+                .isInstanceOf(TemplateAccessDeniedException.class);
+    }
+
+    @Test
+    void getCustomTemplate_unknownId_throwsNotFound() {
+        when(templateRepository.findByIdAndOwnerId(TEMPLATE_ID, OWNER_ID)).thenReturn(Optional.empty());
+        when(templateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> templateService.getCustomTemplate(OWNER_ID, TEMPLATE_ID))
+                .isInstanceOf(TemplateNotFoundException.class)
+                .hasMessageContaining(TEMPLATE_ID.toString());
+    }
+
+    @Test
     void updateCustomTemplate_ownSucceeds_returnsUpdatedDto() {
         ResumeTemplate t = buildCustomTemplate("Old Name", OWNER_ID);
         when(templateRepository.findByIdAndOwnerId(TEMPLATE_ID, OWNER_ID)).thenReturn(Optional.of(t));
