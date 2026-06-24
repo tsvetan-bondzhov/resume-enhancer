@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeService;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
 import com.tsvetanbondzhov.resumeenhancer.resume.dto.ResumeDto;
+import io.opentelemetry.api.OpenTelemetry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,7 +53,8 @@ class AiControllerTest {
         objectMapper = new ObjectMapper();
         MessageWindowChatMemory memory = MessageWindowChatMemory.builder().maxMessages(20).build();
         DocumentPatchService documentPatchService = new DocumentPatchService(objectMapper);
-        aiController = new AiController(aiService, healthGuard, objectMapper, resumeService, documentPatchService, memory);
+        aiController = new AiController(aiService, healthGuard, objectMapper, resumeService,
+                documentPatchService, memory, OpenTelemetry.noop());
     }
 
     // ─── /chat — unavailable path ─────────────────────────────────────────────

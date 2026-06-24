@@ -4,7 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeService;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.ResumeDocument;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,18 +51,23 @@ public class AiController {
     private final ResumeService resumeService;
     private final DocumentPatchService documentPatchService;
     private final MessageWindowChatMemory chatMemory;
+    private final Tracer tracer;
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+
+    private static final String TRACER_SCOPE = "com.tsvetanbondzhov.resumeenhancer.ai";
 
     public AiController(AiService aiService, OllamaHealthGuard healthGuard,
                         ObjectMapper objectMapper, ResumeService resumeService,
                         DocumentPatchService documentPatchService,
-                        MessageWindowChatMemory chatMemory) {
+                        MessageWindowChatMemory chatMemory,
+                        OpenTelemetry openTelemetry) {
         this.aiService = aiService;
         this.healthGuard = healthGuard;
         this.objectMapper = objectMapper;
         this.resumeService = resumeService;
         this.documentPatchService = documentPatchService;
         this.chatMemory = chatMemory;
+        this.tracer = openTelemetry.getTracer(TRACER_SCOPE);
     }
 
     @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -82,23 +92,12 @@ public class AiController {
         String resumeContext = document != null ? ResumeContextBuilder.buildResumeContext(document) : null;
         boolean allowEdits = request.allowEdits() && document != null;
 
-        executor.execute(() -> {
-            // Explicit OTel context propagation — does NOT auto-propagate across async boundary
-            try (var ignored = otelContext.makeCurrent()) {
-                Flux<String> tokenFlux = aiService.streamChat(
-                        request.prompt(), conversationId, chatMemory, resumeContext, allowEdits);
-                Disposable disposable = allowEdits
-                        ? buildPatchAwareDisposable(tokenFlux, emitter, document)
-                        : buildChatDisposable(tokenFlux, emitter);
-
-                // Register emitter lifecycle callbacks to cancel the Flux on client disconnect / timeout
-                emitter.onCompletion(disposable::dispose);
-                emitter.onTimeout(disposable::dispose);
-                emitter.onError(e -> disposable.dispose());
-            } catch (Exception e) {
-                log.error("SSE emitter setup failed", e);
-                emitter.completeWithError(e);
-            }
+        runInChildSpan(otelContext, "ai.sse.chat", emitter, span -> {
+            Flux<String> tokenFlux = aiService.streamChat(
+                    request.prompt(), conversationId, chatMemory, resumeContext, allowEdits);
+            return allowEdits
+                    ? buildPatchAwareDisposable(tokenFlux, emitter, document, span)
+                    : buildChatDisposable(tokenFlux, emitter, span);
         });
 
         return ResponseEntity.ok(emitter);
@@ -123,18 +122,9 @@ public class AiController {
                 ? request.conversationId()
                 : UUID.randomUUID().toString();
 
-        executor.execute(() -> {
-            try (var ignored = otelContext.makeCurrent()) {
-                Flux<String> tokenFlux = aiService.streamEnhance(document, enhanceConversationId, chatMemory);
-                Disposable disposable = buildEnhanceDisposable(tokenFlux, emitter);
-
-                emitter.onCompletion(disposable::dispose);
-                emitter.onTimeout(disposable::dispose);
-                emitter.onError(e -> disposable.dispose());
-            } catch (Exception e) {
-                log.error("SSE enhance emitter setup failed", e);
-                emitter.completeWithError(e);
-            }
+        runInChildSpan(otelContext, "ai.sse.enhance", emitter, span -> {
+            Flux<String> tokenFlux = aiService.streamEnhance(document, enhanceConversationId, chatMemory);
+            return buildEnhanceDisposable(tokenFlux, emitter, span);
         });
 
         return ResponseEntity.ok(emitter);
@@ -157,18 +147,10 @@ public class AiController {
                 ? request.conversationId()
                 : UUID.randomUUID().toString();
 
-        executor.execute(() -> {
-            try (var ignored = otelContext.makeCurrent()) {
-                Flux<String> tokenFlux = aiService.streamTailor(document, request.jobDescription(), tailorConversationId, chatMemory);
-                Disposable disposable = buildEnhanceDisposable(tokenFlux, emitter);
-
-                emitter.onCompletion(disposable::dispose);
-                emitter.onTimeout(disposable::dispose);
-                emitter.onError(e -> disposable.dispose());
-            } catch (Exception e) {
-                log.error("SSE tailor emitter setup failed", e);
-                emitter.completeWithError(e);
-            }
+        runInChildSpan(otelContext, "ai.sse.tailor", emitter, span -> {
+            Flux<String> tokenFlux = aiService.streamTailor(
+                    document, request.jobDescription(), tailorConversationId, chatMemory);
+            return buildEnhanceDisposable(tokenFlux, emitter, span);
         });
 
         return ResponseEntity.ok(emitter);
@@ -178,6 +160,61 @@ public class AiController {
     public ResponseEntity<Void> clearConversation(@PathVariable String conversationId) {
         aiService.clearConversation(conversationId, chatMemory);
         return ResponseEntity.noContent().build();
+    }
+
+    // ── OpenTelemetry span propagation ───────────────────────────────────────
+
+    /**
+     * Builds the SSE pipeline for one streaming endpoint inside a child span.
+     * The {@code disposableFactory} receives the live child {@link Span} so its
+     * terminal callbacks can record errors and end the span; it returns the
+     * subscribed {@link Disposable}.
+     */
+    @FunctionalInterface
+    private interface SseDisposableFactory {
+        Disposable build(Span span);
+    }
+
+    /**
+     * Hardens the existing OTel context-propagation idiom: the request thread captures
+     * {@link Context#current()} and this method re-binds it on the async (virtual) thread
+     * via {@code makeCurrent()} — OTel context does NOT auto-propagate across the async
+     * boundary. Within that re-bound context it opens a NAMED child span so the AI
+     * inference work is a child of the originating HTTP request span (NOT a new root),
+     * runs the setup with the span current, and ends the span exactly once on the Flux
+     * terminal signal (complete / error / cancel) via {@code doFinally} in the builders.
+     */
+    private void runInChildSpan(Context otelContext, String spanName,
+                                SseEmitter emitter, SseDisposableFactory disposableFactory) {
+        executor.execute(() -> {
+            // Explicit OTel context propagation — does NOT auto-propagate across async boundary
+            try (Scope ignoredCtx = otelContext.makeCurrent()) {
+                Span span = tracer.spanBuilder(spanName).startSpan();
+                try (Scope ignoredSpan = span.makeCurrent()) {
+                    Disposable disposable = disposableFactory.build(span);
+
+                    // Cancel the Flux on client disconnect / timeout. The span itself ends
+                    // via the Flux terminal signal (doFinally) inside the disposable builders.
+                    emitter.onCompletion(disposable::dispose);
+                    emitter.onTimeout(disposable::dispose);
+                    emitter.onError(e -> disposable.dispose());
+                } catch (Exception e) {
+                    log.error("SSE emitter setup failed for {}", spanName, e);
+                    markSpanError(span, e);
+                    span.end();
+                    emitter.completeWithError(e);
+                }
+            }
+        });
+    }
+
+    /** Records an exception on the span and sets its status to ERROR with a message. */
+    private void markSpanError(Span span, Throwable err) {
+        if (span == null) {
+            return;
+        }
+        span.setStatus(StatusCode.ERROR, err.getMessage() != null ? err.getMessage() : err.toString());
+        span.recordException(err);
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────
@@ -203,7 +240,7 @@ public class AiController {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(problem);
     }
 
-    private Disposable buildChatDisposable(Flux<String> tokenFlux, SseEmitter emitter) {
+    private Disposable buildChatDisposable(Flux<String> tokenFlux, SseEmitter emitter, Span span) {
         return tokenFlux.doOnNext(token -> {
             try {
                 emitter.send(SseEmitter.event()
@@ -211,6 +248,7 @@ public class AiController {
                         .data(objectMapper.writeValueAsString(Map.of(EVENT_TOKEN, token))));
             } catch (IOException e) {
                 log.warn("SSE send failed for token: {}", e.getMessage());
+                markSpanError(span, e);
                 emitter.completeWithError(e);
             }
         }).doOnComplete(() -> {
@@ -220,19 +258,21 @@ public class AiController {
                         .data(objectMapper.writeValueAsString(Map.of("summary", "Stream complete"))));
                 emitter.complete();
             } catch (IOException e) {
+                markSpanError(span, e);
                 emitter.completeWithError(e);
             }
         }).doOnError(err -> {
             // F4: log full error server-side; send generic message to client
             log.warn("SSE stream error: {}", err.getMessage(), err);
+            markSpanError(span, err);
             trySendError(emitter);
             emitter.completeWithError(err);
-        }).subscribe();
+        }).doFinally(signal -> span.end()).subscribe();
     }
 
     @SuppressWarnings("java:S3063")
-    private Disposable buildEnhanceDisposable(Flux<String> tokenFlux, SseEmitter emitter) {
-        return buildLineBufferedDisposable(tokenFlux, emitter, null, "Enhancement complete");
+    private Disposable buildEnhanceDisposable(Flux<String> tokenFlux, SseEmitter emitter, Span span) {
+        return buildLineBufferedDisposable(tokenFlux, emitter, null, "Enhancement complete", span);
     }
 
     /**
@@ -240,8 +280,9 @@ public class AiController {
      * tokens; lines that parse as a patch are validated against the document and emitted
      * as complete (non-streamed) patch events. Invalid patches are discarded.
      */
-    private Disposable buildPatchAwareDisposable(Flux<String> tokenFlux, SseEmitter emitter, ResumeDocument document) {
-        return buildLineBufferedDisposable(tokenFlux, emitter, document, "Stream complete");
+    private Disposable buildPatchAwareDisposable(Flux<String> tokenFlux, SseEmitter emitter,
+                                                 ResumeDocument document, Span span) {
+        return buildLineBufferedDisposable(tokenFlux, emitter, document, "Stream complete", span);
     }
 
     /**
@@ -251,7 +292,7 @@ public class AiController {
      */
     @SuppressWarnings("java:S3063")
     private Disposable buildLineBufferedDisposable(Flux<String> tokenFlux, SseEmitter emitter,
-                                                   ResumeDocument document, String doneSummary) {
+                                                   ResumeDocument document, String doneSummary, Span span) {
         StringBuilder lineBuffer = new StringBuilder();
 
         return tokenFlux.doOnNext(token -> {
@@ -260,33 +301,35 @@ public class AiController {
             while ((newlineIdx = lineBuffer.indexOf("\n")) >= 0) {
                 String line = lineBuffer.substring(0, newlineIdx);
                 lineBuffer.delete(0, newlineIdx + 1);
-                emitLine(emitter, line, document);
+                emitLine(emitter, line, document, span);
             }
         }).doOnComplete(() -> {
             try {
                 // Flush any remaining buffered content as a final line
-                emitLine(emitter, lineBuffer.toString(), document);
+                emitLine(emitter, lineBuffer.toString(), document, span);
                 emitter.send(SseEmitter.event()
                         .name(EVENT_DONE)
                         .data(objectMapper.writeValueAsString(Map.of("summary", doneSummary))));
                 emitter.complete();
             } catch (IOException e) {
+                markSpanError(span, e);
                 emitter.completeWithError(e);
             }
         }).doOnError(err -> {
             log.warn("SSE stream error: {}", err.getMessage(), err);
+            markSpanError(span, err);
             trySendError(emitter);
             emitter.completeWithError(err);
-        }).subscribe();
+        }).doFinally(signal -> span.end()).subscribe();
     }
 
     /**
      * Emits a single completed line: as a validated patch event if it parses as one,
      * otherwise as a streamed text token (preserving the trailing newline for prose).
      */
-    private void emitLine(SseEmitter emitter, String line, ResumeDocument document) {
+    private void emitLine(SseEmitter emitter, String line, ResumeDocument document, Span span) {
         String trimmed = line.trim();
-        if (!trimmed.isEmpty() && tryEmitPatch(emitter, trimmed, document)) {
+        if (!trimmed.isEmpty() && tryEmitPatch(emitter, trimmed, document, span)) {
             return; // patch line — not streamed as text
         }
         if (line.isEmpty()) {
@@ -319,7 +362,7 @@ public class AiController {
      * real apply schema and discarded if invalid. Returns true when the line was a patch
      * (valid or invalid) so callers know not to stream it as text.
      */
-    private boolean tryEmitPatch(SseEmitter emitter, String line, ResumeDocument document) {
+    private boolean tryEmitPatch(SseEmitter emitter, String line, ResumeDocument document, Span span) {
         DocumentPatchEvent patch;
         try {
             patch = objectMapper.readValue(line, DocumentPatchEvent.class);
@@ -333,6 +376,10 @@ public class AiController {
         }
         if (document != null && !documentPatchService.isValid(document, patch)) {
             log.debug("Discarding invalid patch from chat stream: {}", line);
+            // Visible in the trace without failing the whole stream span (AC4).
+            if (span != null) {
+                span.addEvent("ai.patch.discarded.invalid");
+            }
             return true; // recognized as a patch attempt but invalid — discard, do not stream
         }
         try {
