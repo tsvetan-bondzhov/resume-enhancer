@@ -107,7 +107,7 @@ describe("UserTable", () => {
     await user.click(screen.getByRole("button", { name: /deactivate/i }))
     // Confirm button inside the dialog footer
     const confirmButtons = screen.getAllByRole("button", { name: /deactivate/i })
-    await user.click(confirmButtons[confirmButtons.length - 1])
+    await user.click(confirmButtons.at(-1)!)
 
     await waitFor(() => {
       expect(mockedPatch).toHaveBeenCalledWith("/api/v1/admin/users/u1/deactivate")
@@ -152,7 +152,7 @@ describe("UserTable", () => {
 
     await user.click(screen.getByRole("button", { name: /deactivate/i }))
     const confirmButtons = screen.getAllByRole("button", { name: /deactivate/i })
-    await user.click(confirmButtons[confirmButtons.length - 1])
+    await user.click(confirmButtons.at(-1)!)
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("Failed to deactivate user")

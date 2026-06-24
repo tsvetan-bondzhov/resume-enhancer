@@ -87,7 +87,7 @@ describe("TemplateEditorPage", () => {
     renderCreate()
 
     // Default seed is single-column.
-    expect(screen.getByTestId("preview").getAttribute("data-layout")).toBe("single-column")
+    expect(screen.getByTestId("preview").dataset.layout).toBe("single-column")
 
     const textarea = screen.getByLabelText(/template definition/i)
     const newDef = JSON.stringify({
@@ -97,13 +97,13 @@ describe("TemplateEditorPage", () => {
     fireEvent.change(textarea, { target: { value: newDef } })
 
     // Before the debounce flush the preview still shows the previous valid def.
-    expect(screen.getByTestId("preview").getAttribute("data-layout")).toBe("single-column")
+    expect(screen.getByTestId("preview").dataset.layout).toBe("single-column")
 
     act(() => {
       vi.advanceTimersByTime(500)
     })
 
-    expect(screen.getByTestId("preview").getAttribute("data-layout")).toBe("modern-accent")
+    expect(screen.getByTestId("preview").dataset.layout).toBe("modern-accent")
   })
 
   // AC9(b): invalid definition shows a validation error and does NOT call apiClient.post.

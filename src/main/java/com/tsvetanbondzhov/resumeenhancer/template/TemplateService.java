@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 public class TemplateService {
 
     private static final Pattern DISALLOWED_CSS_UNIT = Pattern.compile("\\d+(rem|em)");
+    private static final String TEMPLATE_NOT_FOUND = "Template not found: ";
 
     private final TemplateRepository templateRepository;
 
@@ -39,7 +40,7 @@ public class TemplateService {
     public TemplateDto getPublishedTemplate(UUID templateId) {
         return templateRepository.findByIdAndIsPublishedTrue(templateId)
                 .map(this::toDto)
-                .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + templateId));
+                .orElseThrow(() -> new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId));
     }
 
     @CacheEvict(value = "templates", allEntries = true)
@@ -61,7 +62,7 @@ public class TemplateService {
     @Transactional
     public TemplateDto updateTemplate(UUID templateId, TemplateRequest request) {
         ResumeTemplate template = templateRepository.findById(templateId)
-                .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + templateId));
+                .orElseThrow(() -> new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId));
 
         validateCssVariables(request.templateDefinition());
 
@@ -75,7 +76,7 @@ public class TemplateService {
     @Transactional
     public void deleteTemplate(UUID templateId) {
         ResumeTemplate template = templateRepository.findById(templateId)
-                .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + templateId));
+                .orElseThrow(() -> new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId));
         templateRepository.delete(template);
     }
 
@@ -83,7 +84,7 @@ public class TemplateService {
     @Transactional
     public TemplateDto setPublished(UUID templateId, boolean published) {
         ResumeTemplate template = templateRepository.findById(templateId)
-                .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + templateId));
+                .orElseThrow(() -> new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId));
         template.setPublished(published);
         return toDto(templateRepository.save(template));
     }
@@ -148,7 +149,7 @@ public class TemplateService {
                         return new TemplateAccessDeniedException(
                                 "Template is not owned by the requesting user: " + templateId);
                     }
-                    return new TemplateNotFoundException("Template not found: " + templateId);
+                    return new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId);
                 });
     }
 

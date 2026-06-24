@@ -264,7 +264,7 @@ export default function TemplateManager() {
               onClick={handleConfirmDelete}
               disabled={deletingId !== null}
             >
-              {deletingId !== null ? "Deleting…" : "Delete"}
+              {deletingId === null ? "Delete" : "Deleting…"}
             </Button>
           </DialogFooter>
         </DialogContent>

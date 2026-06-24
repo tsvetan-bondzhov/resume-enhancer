@@ -392,7 +392,7 @@ export default function TemplateGallery({
               onClick={handleConfirmDelete}
               disabled={deletingId !== null}
             >
-              {deletingId !== null ? "Deleting…" : "Delete"}
+              {deletingId === null ? "Delete" : "Deleting…"}
             </Button>
           </DialogFooter>
         </DialogContent>

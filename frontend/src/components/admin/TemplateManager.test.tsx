@@ -84,7 +84,7 @@ describe("TemplateManager", () => {
     ).toBeInTheDocument()
 
     const deleteButtons = screen.getAllByRole("button", { name: /delete/i })
-    await user.click(deleteButtons[deleteButtons.length - 1])
+    await user.click(deleteButtons.at(-1)!)
 
     await waitFor(() => {
       expect(mockedDelete).toHaveBeenCalledWith("/api/v1/resume-templates/t1")

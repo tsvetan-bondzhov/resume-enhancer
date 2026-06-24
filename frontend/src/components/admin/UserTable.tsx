@@ -187,7 +187,7 @@ export default function UserTable() {
               onClick={handleConfirmDeactivate}
               disabled={deactivatingId !== null}
             >
-              {deactivatingId !== null ? "Deactivating…" : "Deactivate"}
+              {deactivatingId === null ? "Deactivate" : "Deactivating…"}
             </Button>
           </DialogFooter>
         </DialogContent>

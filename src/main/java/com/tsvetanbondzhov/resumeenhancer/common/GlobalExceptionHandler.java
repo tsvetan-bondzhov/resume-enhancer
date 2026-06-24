@@ -33,6 +33,8 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private static final String BAD_REQUEST = "Bad Request";
+    private static final String TITLE_FORBIDDEN = "Forbidden";
+    private static final String TITLE_NOT_FOUND = "Not Found";
 
     @ExceptionHandler(InvalidCurrentPasswordException.class)
     public ProblemDetail handleInvalidCurrentPassword(InvalidCurrentPasswordException ex) {
@@ -92,7 +94,7 @@ public class GlobalExceptionHandler {
         log.warn("Resume access denied for request");
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN, ex.getMessage());
-        problem.setTitle("Forbidden");
+        problem.setTitle(TITLE_FORBIDDEN);
         return problem;
     }
 
@@ -100,7 +102,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleResumeNotFound(ResumeNotFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND, ex.getMessage());
-        problem.setTitle("Not Found");
+        problem.setTitle(TITLE_NOT_FOUND);
         return problem;
     }
 
@@ -108,7 +110,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleUserNotFound(UserNotFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND, ex.getMessage());
-        problem.setTitle("Not Found");
+        problem.setTitle(TITLE_NOT_FOUND);
         return problem;
     }
 
@@ -117,7 +119,7 @@ public class GlobalExceptionHandler {
         log.warn("Template access denied for request");
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN, ex.getMessage());
-        problem.setTitle("Forbidden");
+        problem.setTitle(TITLE_FORBIDDEN);
         return problem;
     }
 
@@ -125,7 +127,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleTemplateNotFound(TemplateNotFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND, ex.getMessage());
-        problem.setTitle("Not Found");
+        problem.setTitle(TITLE_NOT_FOUND);
         return problem;
     }
 
@@ -188,7 +190,7 @@ public class GlobalExceptionHandler {
         log.warn("Authorization denied");
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN, "Access denied");
-        problem.setTitle("Forbidden");
+        problem.setTitle(TITLE_FORBIDDEN);
         return problem;
     }
 
