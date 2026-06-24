@@ -7,6 +7,7 @@ import com.tsvetanbondzhov.resumeenhancer.auth.InvalidCurrentPasswordException;
 import com.tsvetanbondzhov.resumeenhancer.export.UnsupportedExportFormatException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeAccessDeniedException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeNotFoundException;
+import com.tsvetanbondzhov.resumeenhancer.template.TemplateAccessDeniedException;
 import com.tsvetanbondzhov.resumeenhancer.template.TemplateNotFoundException;
 import com.tsvetanbondzhov.resumeenhancer.template.TemplateValidationException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -108,6 +109,15 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Not Found");
+        return problem;
+    }
+
+    @ExceptionHandler(TemplateAccessDeniedException.class)
+    public ProblemDetail handleTemplateAccessDenied(TemplateAccessDeniedException ex) {
+        log.warn("Template access denied for request");
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setTitle("Forbidden");
         return problem;
     }
 

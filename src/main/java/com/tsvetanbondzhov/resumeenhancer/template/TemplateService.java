@@ -1,6 +1,7 @@
 package com.tsvetanbondzhov.resumeenhancer.template;
 
 import com.tsvetanbondzhov.resumeenhancer.template.domain.ResumeTemplate;
+import com.tsvetanbondzhov.resumeenhancer.template.dto.CustomTemplateRequest;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.TemplateDto;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.TemplateRequest;
 import org.springframework.cache.annotation.CacheEvict;
@@ -44,7 +45,7 @@ public class TemplateService {
     @CacheEvict(value = "templates", allEntries = true)
     @Transactional
     public TemplateDto createTemplate(TemplateRequest request) {
-        validateCssVariables(request);
+        validateCssVariables(request.templateDefinition());
 
         ResumeTemplate template = new ResumeTemplate();
         template.setName(request.name());
@@ -62,7 +63,7 @@ public class TemplateService {
         ResumeTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + templateId));
 
-        validateCssVariables(request);
+        validateCssVariables(request.templateDefinition());
 
         template.setName(request.name());
         template.setDescription(request.description());
@@ -94,12 +95,69 @@ public class TemplateService {
                 .toList();
     }
 
+    // ─── Custom (user-owned) templates ────────────────────────────────────────
+
+    @Transactional
+    public TemplateDto createCustomTemplate(UUID ownerId, CustomTemplateRequest request) {
+        validateCssVariables(request.templateDefinition());
+
+        ResumeTemplate template = new ResumeTemplate();
+        template.setName(request.name());
+        template.setDescription(request.description());
+        template.setTemplateDefinition(request.templateDefinition());
+        template.setOwnerId(ownerId);
+        template.setPrebuilt(false);
+        template.setPublished(false);
+        return toDto(templateRepository.save(template));
+    }
+
+    @Transactional(readOnly = true)
+    public List<TemplateDto> listCustomTemplates(UUID ownerId) {
+        return templateRepository.findAllByOwnerId(ownerId).stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    @Transactional
+    public TemplateDto updateCustomTemplate(UUID ownerId, UUID templateId, CustomTemplateRequest request) {
+        ResumeTemplate template = resolveOwnedTemplate(ownerId, templateId);
+
+        validateCssVariables(request.templateDefinition());
+
+        template.setName(request.name());
+        template.setDescription(request.description());
+        template.setTemplateDefinition(request.templateDefinition());
+        return toDto(templateRepository.save(template));
+    }
+
+    @Transactional
+    public void deleteCustomTemplate(UUID ownerId, UUID templateId) {
+        ResumeTemplate template = resolveOwnedTemplate(ownerId, templateId);
+        templateRepository.delete(template);
+    }
+
+    /**
+     * Resolves a custom template the caller owns. Distinguishes 404 from 403:
+     * not found at all → {@link TemplateNotFoundException} (404); exists but belongs to
+     * another user or is a prebuilt template → {@link TemplateAccessDeniedException} (403).
+     */
+    private ResumeTemplate resolveOwnedTemplate(UUID ownerId, UUID templateId) {
+        return templateRepository.findByIdAndOwnerId(templateId, ownerId)
+                .orElseThrow(() -> {
+                    if (templateRepository.findById(templateId).isPresent()) {
+                        return new TemplateAccessDeniedException(
+                                "Template is not owned by the requesting user: " + templateId);
+                    }
+                    return new TemplateNotFoundException("Template not found: " + templateId);
+                });
+    }
+
     /**
      * Rejects {@code cssVariables} values that use rem/em units. Only px and in are accepted.
-     * Shared by {@link #createTemplate(TemplateRequest)} and {@link #updateTemplate(UUID, TemplateRequest)}.
+     * Shared by all template create/update paths (admin and custom).
      */
-    private void validateCssVariables(TemplateRequest request) {
-        Object cssVarsRaw = request.templateDefinition().get("cssVariables");
+    private void validateCssVariables(Map<String, Object> templateDefinition) {
+        Object cssVarsRaw = templateDefinition.get("cssVariables");
         if (cssVarsRaw instanceof Map<?, ?> cssVars) {
             for (Map.Entry<?, ?> entry : cssVars.entrySet()) {
                 String value = String.valueOf(entry.getValue());

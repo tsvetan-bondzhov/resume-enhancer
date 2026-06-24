@@ -357,6 +357,179 @@ class TemplateControllerIntegrationTest {
                 .jsonPath("$.title").isEqualTo("Not Found");
     }
 
+    // ─── Custom templates (Story 8.1) ────────────────────────────────────────
+
+    @Test
+    void customTemplateLifecycle_create_list_update_delete() throws Exception {
+        String token = registerAndGetToken("custom_lifecycle@example.com", "Password1");
+
+        String createBody = """
+                { "name": "My Custom", "description": "mine", "templateDefinition": { "layoutType": "single-column" } }
+                """;
+
+        // Create → 201 with ownerId-scoped, isPrebuilt=false / isPublished=false
+        webTestClient().post()
+                .uri("/api/v1/resume-templates/custom")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(createBody)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.name").isEqualTo("My Custom")
+                .jsonPath("$.isPrebuilt").isEqualTo(false)
+                .jsonPath("$.isPublished").isEqualTo(false);
+
+        // Create a second custom template and capture its id for lifecycle assertions
+        String createdId = createCustomTemplateAndGetId(token, createBody);
+
+        // List own → contains the created template
+        String listBody = webTestClient().get()
+                .uri("/api/v1/resume-templates/custom")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+        assertThat(idsOf(objectMapper.readTree(listBody))).contains(createdId);
+
+        // Update own → 200 with new name
+        String updateBody = """
+                { "name": "My Custom Renamed", "description": "edited", "templateDefinition": {} }
+                """;
+        webTestClient().put()
+                .uri("/api/v1/resume-templates/custom/" + createdId)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(updateBody)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.name").isEqualTo("My Custom Renamed");
+
+        // Delete own → 204, then it is gone from the list
+        webTestClient().delete()
+                .uri("/api/v1/resume-templates/custom/" + createdId)
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isNoContent();
+
+        String listAfterDelete = webTestClient().get()
+                .uri("/api/v1/resume-templates/custom")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+        assertThat(idsOf(objectMapper.readTree(listAfterDelete))).doesNotContain(createdId);
+    }
+
+    @Test
+    void customTemplate_crossUserOwnership_returns403() throws Exception {
+        String tokenA = registerAndGetToken("owner_a@example.com", "Password1");
+        String tokenB = registerAndGetToken("owner_b@example.com", "Password1");
+
+        String createBody = """
+                { "name": "A's Template", "description": null, "templateDefinition": {} }
+                """;
+        String aTemplateId = createCustomTemplateAndGetId(tokenA, createBody);
+
+        // User B cannot PUT user A's custom template → 403
+        String updateBody = """
+                { "name": "Hijacked", "description": null, "templateDefinition": {} }
+                """;
+        webTestClient().put()
+                .uri("/api/v1/resume-templates/custom/" + aTemplateId)
+                .header("Authorization", "Bearer " + tokenB)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(updateBody)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Forbidden");
+
+        // User B cannot DELETE user A's custom template → 403
+        webTestClient().delete()
+                .uri("/api/v1/resume-templates/custom/" + aTemplateId)
+                .header("Authorization", "Bearer " + tokenB)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Forbidden");
+
+        // B's list does not include A's template
+        String bList = webTestClient().get()
+                .uri("/api/v1/resume-templates/custom")
+                .header("Authorization", "Bearer " + tokenB)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+        assertThat(idsOf(objectMapper.readTree(bList))).doesNotContain(aTemplateId);
+    }
+
+    @Test
+    void customTemplate_unknownId_returns404() throws Exception {
+        String token = registerAndGetToken("custom_404@example.com", "Password1");
+
+        String updateBody = """
+                { "name": "X", "description": null, "templateDefinition": {} }
+                """;
+        webTestClient().put()
+                .uri("/api/v1/resume-templates/custom/00000000-0000-0000-0000-000000000000")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(updateBody)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Not Found");
+    }
+
+    @Test
+    void customTemplate_prebuiltTemplate_returns403() throws Exception {
+        String token = registerAndGetToken("custom_prebuilt_403@example.com", "Password1");
+
+        String updateBody = """
+                { "name": "X", "description": null, "templateDefinition": {} }
+                """;
+        // Seeded prebuilt template (owner_id NULL) → exists but not the caller's → 403, not 404
+        webTestClient().put()
+                .uri("/api/v1/resume-templates/custom/11111111-0000-0000-0000-000000000001")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(updateBody)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Forbidden");
+    }
+
+    @Test
+    void customTemplate_unauthenticated_returns401() {
+        webTestClient().get()
+                .uri("/api/v1/resume-templates/custom")
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    private String createCustomTemplateAndGetId(String token, String createBody) throws Exception {
+        String body = webTestClient().post()
+                .uri("/api/v1/resume-templates/custom")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(createBody)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+        return objectMapper.readTree(body).get("id").asText();
+    }
+
     private String createTemplateAndGetId(String adminToken, String createBody) throws Exception {
         String body = webTestClient().post()
                 .uri("/api/v1/resume-templates")
