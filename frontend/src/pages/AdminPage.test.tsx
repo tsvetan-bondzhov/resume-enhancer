@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { MemoryRouter } from "react-router-dom"
 import AdminPage from "./AdminPage"
 import { apiClient } from "@/lib/apiClient"
 import type { AdminUserDto, Page, TemplateDto } from "@/types/api"
@@ -59,7 +60,11 @@ describe("AdminPage", () => {
   it("renders the Administration heading and the Users tab table by default", async () => {
     mockGetByPath()
 
-    render(<AdminPage />)
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    )
 
     expect(screen.getByRole("heading", { name: /administration/i })).toBeInTheDocument()
     // Users tab is active by default; UserTable fetches on mount
@@ -71,7 +76,11 @@ describe("AdminPage", () => {
     mockGetByPath()
     const user = userEvent.setup()
 
-    render(<AdminPage />)
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    )
     await screen.findByText("No users found.")
 
     await user.click(screen.getByRole("tab", { name: /templates/i }))

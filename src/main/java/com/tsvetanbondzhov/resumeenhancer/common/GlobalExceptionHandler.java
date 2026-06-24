@@ -1,5 +1,6 @@
 package com.tsvetanbondzhov.resumeenhancer.common;
 
+import com.tsvetanbondzhov.resumeenhancer.admin.ImpersonationNotAllowedException;
 import com.tsvetanbondzhov.resumeenhancer.admin.UserNotFoundException;
 import com.tsvetanbondzhov.resumeenhancer.ai.InvalidPatchException;
 import com.tsvetanbondzhov.resumeenhancer.ai.OllamaUnavailableException;
@@ -111,6 +112,15 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle(TITLE_NOT_FOUND);
+        return problem;
+    }
+
+    @ExceptionHandler(ImpersonationNotAllowedException.class)
+    public ProblemDetail handleImpersonationNotAllowed(ImpersonationNotAllowedException ex) {
+        log.warn("Impersonation not allowed for request");
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Conflict");
         return problem;
     }
 

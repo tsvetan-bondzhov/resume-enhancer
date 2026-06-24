@@ -1,8 +1,10 @@
 package com.tsvetanbondzhov.resumeenhancer.admin;
 
 import com.tsvetanbondzhov.resumeenhancer.admin.dto.AdminUserDto;
+import com.tsvetanbondzhov.resumeenhancer.auth.TokenService;
 import com.tsvetanbondzhov.resumeenhancer.auth.UserRepository;
 import com.tsvetanbondzhov.resumeenhancer.auth.domain.User;
+import com.tsvetanbondzhov.resumeenhancer.auth.dto.AuthResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -30,6 +32,9 @@ class AdminServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private TokenService tokenService;
 
     @InjectMocks
     private AdminService adminService;
@@ -103,5 +108,75 @@ class AdminServiceTest {
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
         assertThat(captor.getValue().isEnabled()).isFalse();
+    }
+
+    @Test
+    void activateUser_setsEnabledTrueAndReturnsActiveDto() {
+        UUID id = UUID.randomUUID();
+        User existing = user("dormant@example.com", "USER", false);
+        when(userRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AdminUserDto dto = adminService.activateUser(id);
+
+        assertThat(dto.status()).isEqualTo("ACTIVE");
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().isEnabled()).isTrue();
+    }
+
+    @Test
+    void activateUser_missingUser_throwsUserNotFoundException() {
+        UUID id = UUID.randomUUID();
+        when(userRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> adminService.activateUser(id))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining(id.toString());
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void impersonateUser_activeRegularUser_returnsTokenAndUser() {
+        UUID id = UUID.randomUUID();
+        User existing = user("target@example.com", "USER", true);
+        when(userRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(tokenService.generateToken(existing)).thenReturn("impersonation-token");
+
+        AuthResponse response = adminService.impersonateUser(id);
+
+        assertThat(response.token()).isEqualTo("impersonation-token");
+        assertThat(response.user().email()).isEqualTo("target@example.com");
+    }
+
+    @Test
+    void impersonateUser_adminTarget_throwsImpersonationNotAllowed() {
+        UUID id = UUID.randomUUID();
+        User existing = user("other-admin@example.com", "ADMIN", true);
+        when(userRepository.findById(id)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> adminService.impersonateUser(id))
+                .isInstanceOf(ImpersonationNotAllowedException.class)
+                .hasMessageContaining(id.toString());
+    }
+
+    @Test
+    void impersonateUser_disabledTarget_throwsImpersonationNotAllowed() {
+        UUID id = UUID.randomUUID();
+        User existing = user("disabled@example.com", "USER", false);
+        when(userRepository.findById(id)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> adminService.impersonateUser(id))
+                .isInstanceOf(ImpersonationNotAllowedException.class);
+    }
+
+    @Test
+    void impersonateUser_missingUser_throwsUserNotFoundException() {
+        UUID id = UUID.randomUUID();
+        when(userRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> adminService.impersonateUser(id))
+                .isInstanceOf(UserNotFoundException.class);
     }
 }

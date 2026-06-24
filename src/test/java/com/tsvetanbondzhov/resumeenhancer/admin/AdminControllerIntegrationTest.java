@@ -139,4 +139,67 @@ class AdminControllerIntegrationTest {
                 .expectBody()
                 .jsonPath("$.title").isEqualTo("Not Found");
     }
+
+    @Test
+    void activateUser_asAdmin_returns200ActiveAndPersistsEnabledTrue() {
+        User dormant = seedUser("dormant@example.com", "USER", false);
+        UUID targetId = dormant.getId();
+
+        webTestClient().patch()
+                .uri("/api/v1/admin/users/{userId}/activate", targetId)
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.id").isEqualTo(targetId.toString())
+                .jsonPath("$.status").isEqualTo("ACTIVE");
+
+        User reloaded = userRepository.findById(targetId).orElseThrow();
+        org.assertj.core.api.Assertions.assertThat(reloaded.isEnabled()).isTrue();
+    }
+
+    @Test
+    void activateUser_asNonAdmin_returns403() {
+        webTestClient().patch()
+                .uri("/api/v1/admin/users/{userId}/activate", regular.getId())
+                .header("Authorization", "Bearer " + userToken)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Forbidden");
+    }
+
+    @Test
+    void impersonateUser_asAdmin_returns200WithTokenForTargetUser() {
+        webTestClient().post()
+                .uri("/api/v1/admin/users/{userId}/impersonate", regular.getId())
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.token").exists()
+                .jsonPath("$.user.email").isEqualTo("user@example.com");
+    }
+
+    @Test
+    void impersonateUser_adminTarget_returns409Conflict() {
+        webTestClient().post()
+                .uri("/api/v1/admin/users/{userId}/impersonate", admin.getId())
+                .header("Authorization", "Bearer " + adminToken)
+                .exchange()
+                .expectStatus().isEqualTo(409)
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Conflict");
+    }
+
+    @Test
+    void impersonateUser_asNonAdmin_returns403() {
+        webTestClient().post()
+                .uri("/api/v1/admin/users/{userId}/impersonate", regular.getId())
+                .header("Authorization", "Bearer " + userToken)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Forbidden");
+    }
 }

@@ -9,6 +9,7 @@ vi.mock("@/lib/apiClient", () => ({
   apiClient: {
     get: vi.fn(),
     patch: vi.fn(),
+    post: vi.fn(),
   },
 }))
 
@@ -19,10 +20,25 @@ vi.mock("sonner", () => ({
   }),
 }))
 
+const mockNavigate = vi.fn()
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router-dom")>()
+  return { ...actual, useNavigate: () => mockNavigate }
+})
+
+const mockSetAuth = vi.fn()
+vi.mock("@/stores/useAuthStore", () => ({
+  useAuthStore: (selector?: (s: { setAuth: typeof mockSetAuth }) => unknown) => {
+    const state = { setAuth: mockSetAuth }
+    return selector ? selector(state) : state
+  },
+}))
+
 import { toast } from "sonner"
 
 const mockedGet = vi.mocked(apiClient.get)
 const mockedPatch = vi.mocked(apiClient.patch)
+const mockedPost = vi.mocked(apiClient.post)
 
 function buildUser(overrides?: Partial<AdminUserDto>): AdminUserDto {
   return {
@@ -158,5 +174,81 @@ describe("UserTable", () => {
       expect(toast.error).toHaveBeenCalledWith("Failed to deactivate user")
     })
     expect(screen.getByText("Active")).toBeInTheDocument()
+  })
+
+  it("renders Activate for an INACTIVE user and PATCHes to activate it", async () => {
+    mockedGet.mockResolvedValue(
+      buildPage([buildUser({ id: "u2", email: "bob@example.com", status: "INACTIVE" })]),
+    )
+    mockedPatch.mockResolvedValue(
+      buildUser({ id: "u2", email: "bob@example.com", status: "ACTIVE" }),
+    )
+    const user = userEvent.setup()
+
+    render(<UserTable />)
+    await screen.findByText("bob@example.com")
+
+    await user.click(screen.getByRole("button", { name: /activate/i }))
+
+    await waitFor(() => {
+      expect(mockedPatch).toHaveBeenCalledWith("/api/v1/admin/users/u2/activate")
+    })
+    expect(toast.success).toHaveBeenCalledWith("User activated")
+    expect(await screen.findByText("Active")).toBeInTheDocument()
+  })
+
+  it("does not render Impersonate for an INACTIVE user", async () => {
+    mockedGet.mockResolvedValue(
+      buildPage([buildUser({ id: "u2", email: "bob@example.com", status: "INACTIVE" })]),
+    )
+
+    render(<UserTable />)
+    await screen.findByText("bob@example.com")
+
+    expect(screen.queryByRole("button", { name: /impersonate/i })).not.toBeInTheDocument()
+  })
+
+  it("Impersonate POSTs, stores the returned token, and navigates home", async () => {
+    mockedGet.mockResolvedValue(
+      buildPage([buildUser({ id: "u1", email: "alice@example.com", status: "ACTIVE" })]),
+    )
+    mockedPost.mockResolvedValue({
+      token: "impersonation-token",
+      user: { id: "u1", email: "alice@example.com", role: "USER" },
+    })
+    const user = userEvent.setup()
+
+    render(<UserTable />)
+    await screen.findByText("alice@example.com")
+
+    await user.click(screen.getByRole("button", { name: /impersonate/i }))
+
+    await waitFor(() => {
+      expect(mockedPost).toHaveBeenCalledWith("/api/v1/admin/users/u1/impersonate", {})
+    })
+    expect(mockSetAuth).toHaveBeenCalledWith("impersonation-token", {
+      id: "u1",
+      email: "alice@example.com",
+      role: "USER",
+    })
+    expect(mockNavigate).toHaveBeenCalledWith("/")
+  })
+
+  it("shows an error toast when impersonation fails", async () => {
+    mockedGet.mockResolvedValue(
+      buildPage([buildUser({ id: "u1", email: "alice@example.com", status: "ACTIVE" })]),
+    )
+    mockedPost.mockRejectedValue(new Error("boom"))
+    const user = userEvent.setup()
+
+    render(<UserTable />)
+    await screen.findByText("alice@example.com")
+
+    await user.click(screen.getByRole("button", { name: /impersonate/i }))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to impersonate user")
+    })
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 })

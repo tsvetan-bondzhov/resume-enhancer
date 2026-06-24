@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -12,7 +13,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { apiClient } from "@/lib/apiClient"
-import type { AdminUserDto, Page } from "@/types/api"
+import { useAuthStore } from "@/stores/useAuthStore"
+import type { AdminUserDto, AuthResponse, Page } from "@/types/api"
 
 function formatCreatedAt(iso: string): string {
   const d = new Date(iso)
@@ -25,11 +27,15 @@ function formatCreatedAt(iso: string): string {
 }
 
 export default function UserTable() {
+  const navigate = useNavigate()
+  const setAuth = useAuthStore((state) => state.setAuth)
   const [users, setUsers] = useState<AdminUserDto[]>([])
   const [isLoadingUsers, setIsLoadingUsers] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [target, setTarget] = useState<AdminUserDto | null>(null)
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null)
+  const [activatingId, setActivatingId] = useState<string | null>(null)
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -88,6 +94,42 @@ export default function UserTable() {
     }
   }
 
+  const handleActivate = async (user: AdminUserDto) => {
+    const userId = user.id
+    setActivatingId(userId)
+    try {
+      const updated = await apiClient.patch<AdminUserDto>(
+        `/api/v1/admin/users/${userId}/activate`,
+      )
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, status: updated.status } : u)),
+      )
+      toast.success("User activated")
+    } catch {
+      toast.error("Failed to activate user")
+    } finally {
+      setActivatingId(null)
+    }
+  }
+
+  const handleImpersonate = async (user: AdminUserDto) => {
+    const userId = user.id
+    setImpersonatingId(userId)
+    try {
+      const response = await apiClient.post<AuthResponse>(
+        `/api/v1/admin/users/${userId}/impersonate`,
+        {},
+      )
+      setAuth(response.token, response.user ?? null)
+      toast.success(`Now acting as ${user.email}`)
+      navigate("/")
+    } catch {
+      toast.error("Failed to impersonate user")
+    } finally {
+      setImpersonatingId(null)
+    }
+  }
+
   if (isLoadingUsers) {
     return (
       <div className="space-y-2" aria-busy="true">
@@ -136,16 +178,37 @@ export default function UserTable() {
                     </td>
                     <td className="px-4 py-2">{formatCreatedAt(user.createdAt)}</td>
                     <td className="px-4 py-2">
-                      {!isInactive && (
+                      {isInactive ? (
                         <Button
                           type="button"
-                          variant="destructive"
+                          variant="secondary"
                           size="sm"
-                          onClick={() => setTarget(user)}
-                          disabled={deactivatingId === user.id}
+                          onClick={() => handleActivate(user)}
+                          disabled={activatingId === user.id}
                         >
-                          Deactivate
+                          {activatingId === user.id ? "Activating…" : "Activate"}
                         </Button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleImpersonate(user)}
+                            disabled={impersonatingId === user.id}
+                          >
+                            {impersonatingId === user.id ? "Impersonating…" : "Impersonate"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setTarget(user)}
+                            disabled={deactivatingId === user.id}
+                          >
+                            Deactivate
+                          </Button>
+                        </div>
                       )}
                     </td>
                   </tr>
