@@ -110,6 +110,8 @@ export default function EditorPage() {
   const [duplicatingSidebarId, setDuplicatingSidebarId] = useState<string | null>(null)
   const [exportingResume, setExportingResume] = useState<ResumeDto | null>(null)
   const [isSidebarExporting, setIsSidebarExporting] = useState(false)
+  // Editor-page export dialog (current open resume) — lets the user pick format + mode.
+  const [isExportOpen, setIsExportOpen] = useState(false)
   // In-progress visual PDF export. `isOpen` distinguishes the open resume (use the
   // already-loaded document) from a sidebar resume (fetched by id inside the preview).
   const [visualPdfRequest, setVisualPdfRequest] = useState<{
@@ -294,6 +296,20 @@ export default function EditorPage() {
     }
   }, [id, currentResume, setExporting])
 
+  // Editor-page export: route the chosen format/mode to the existing export callbacks,
+  // which use the already-loaded currentResume.content + currentTemplateId (no refetch).
+  const handleEditorExport = useCallback(
+    (format: "pdf" | "docx", mode: ExportMode) => {
+      setIsExportOpen(false)
+      if (format === "pdf") {
+        void exportPdf(mode)
+      } else {
+        void exportDocx(mode)
+      }
+    },
+    [exportPdf, exportDocx],
+  )
+
   const handleDuplicateFromSidebar = useCallback(async (resume: ResumeDto) => {
     setDuplicatingSidebarId(resume.id)
     try {
@@ -458,8 +474,7 @@ export default function EditorPage() {
               onSave={saveNow}
               onSaveAs={() => setIsSaveAsOpen(true)}
               onBack={handleBack}
-              onExportPdf={() => exportPdf("visual")}
-              onExportDocx={() => exportDocx("visual")}
+              onExport={() => setIsExportOpen(true)}
             />
             <AIActionBar resumeId={id} conversationId={conversationIdRef.current} />
             {error !== null && !isLoading ? (
@@ -505,6 +520,13 @@ export default function EditorPage() {
         isExporting={isSidebarExporting}
         onExport={handleSidebarExport}
         onClose={() => { if (!isSidebarExporting) setExportingResume(null) }}
+      />
+      <ExportFormatDialog
+        open={isExportOpen}
+        resumeName={currentResume?.name ?? ""}
+        isExporting={isExporting}
+        onExport={handleEditorExport}
+        onClose={() => { if (!isExporting) setIsExportOpen(false) }}
       />
       {visualPdfRequest && (
         <ExportablePreview
