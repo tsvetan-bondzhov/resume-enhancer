@@ -39,8 +39,9 @@ function buildTwoColumnTemplateDto(columns: { left: string[]; right: string[] })
 describe("getOrderedSections", () => {
   // ── AC1 / AC4 ──────────────────────────────────────────────────────────────
 
-  it("single-column: returns sections in user document order, not template sectionOrder", () => {
-    // User has reordered: SKILLS first, then EDUCATION, then WORK_EXPERIENCE
+  it("single-column: orders sections to follow template sectionOrder", () => {
+    // User array order: SKILLS, EDUCATION, WORK_EXPERIENCE.
+    // Template sectionOrder reorders to WORK_EXPERIENCE, EDUCATION, SKILLS.
     const sections: ResumeSectionDto[] = [
       makeSection("SKILLS"),
       makeSection("EDUCATION"),
@@ -49,10 +50,22 @@ describe("getOrderedSections", () => {
     const template = buildSingleColumnTemplateDto(["WORK_EXPERIENCE", "EDUCATION", "SKILLS"])
 
     const result = getOrderedSections(sections, template)
+    expect(result.map((s) => s.sectionType)).toEqual(["WORK_EXPERIENCE", "EDUCATION", "SKILLS"])
+  })
+
+  it("single-column: with no sectionOrder, returns sections in user document order", () => {
+    const sections: ResumeSectionDto[] = [
+      makeSection("SKILLS"),
+      makeSection("EDUCATION"),
+      makeSection("WORK_EXPERIENCE"),
+    ]
+    const template = buildSingleColumnTemplateDto([])
+
+    const result = getOrderedSections(sections, template)
     expect(result.map((s) => s.sectionType)).toEqual(["SKILLS", "EDUCATION", "WORK_EXPERIENCE"])
   })
 
-  it("modern-accent: returns sections in user document order, not template sectionOrder", () => {
+  it("modern-accent: orders sections to follow template sectionOrder", () => {
     const sections: ResumeSectionDto[] = [
       makeSection("CERTIFICATIONS"),
       makeSection("WORK_EXPERIENCE"),
@@ -71,18 +84,24 @@ describe("getOrderedSections", () => {
     } as unknown as TemplateDto
 
     const result = getOrderedSections(sections, template)
-    expect(result.map((s) => s.sectionType)).toEqual(["CERTIFICATIONS", "WORK_EXPERIENCE"])
+    expect(result.map((s) => s.sectionType)).toEqual(["WORK_EXPERIENCE", "CERTIFICATIONS"])
   })
 
-  it("single-column: sections absent from template sectionOrder are still returned (no drops)", () => {
+  it("single-column: visible sections absent from sectionOrder are appended (no drops)", () => {
     const sections: ResumeSectionDto[] = [
-      makeSection("WORK_EXPERIENCE"),
       makeSection("VOLUNTEER_WORK"), // not in template sectionOrder
+      makeSection("SKILLS"),         // not in template sectionOrder
+      makeSection("WORK_EXPERIENCE"), // listed
     ]
     const template = buildSingleColumnTemplateDto(["WORK_EXPERIENCE"])
 
     const result = getOrderedSections(sections, template)
-    expect(result.map((s) => s.sectionType)).toEqual(["WORK_EXPERIENCE", "VOLUNTEER_WORK"])
+    // Listed section first, then unlisted in their original array order.
+    expect(result.map((s) => s.sectionType)).toEqual([
+      "WORK_EXPERIENCE",
+      "VOLUNTEER_WORK",
+      "SKILLS",
+    ])
   })
 
   // ── AC2 / AC3 ──────────────────────────────────────────────────────────────

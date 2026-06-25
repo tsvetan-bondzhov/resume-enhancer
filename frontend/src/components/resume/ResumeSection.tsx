@@ -205,7 +205,11 @@ export default function ResumeSection({
 
   return (
     <SectionIdContext.Provider value={section.sectionType}>
-      <section aria-labelledby={`section-title-${section.sectionType}`} className="mb-6" data-section-type={section.sectionType}>
+      <section
+        aria-labelledby={`section-title-${section.sectionType}`}
+        style={{ marginBottom: "var(--section-spacing, 24px)" }}
+        data-section-type={section.sectionType}
+      >
           {showTitle && (
             <h2
               ref={titleRef}
@@ -214,6 +218,7 @@ export default function ResumeSection({
               suppressContentEditableWarning
               onFocus={isTitleEmpty ? handleTitleFocus : undefined}
               onBlur={handleTitleBlur}
+              style={isTitleEmpty ? undefined : { color: "var(--primary-color, inherit)" }}
               className={`text-base font-semibold border-b-2 border-[var(--accent-color,theme(colors.zinc.200))] pb-1 mb-2 uppercase tracking-wide outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1 rounded-sm cursor-text${isTitleEmpty ? " text-gray-300 italic" : ""}`}
               aria-label={`Edit section title: ${section.title}`}
             >

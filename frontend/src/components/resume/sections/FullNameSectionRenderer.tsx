@@ -18,7 +18,7 @@ export default function FullNameSectionRenderer({
   onReorderItems,
 }: FullNameSectionRendererProps) {
   const content = (
-    <div className="group/section">
+    <div className="flex flex-col group/section" style={{ gap: "var(--item-spacing, 4px)" }}>
       {items.map((item, index) => {
         // In read-only mode skip empty items; in editor mode always render so user can click to add
         if (item.firstName == null && item.lastName == null && !onFieldChange) return null

@@ -87,10 +87,10 @@ describe("ResumeCanvas", () => {
     )
   })
 
-  // AC1: section render order follows user document array order, not template sectionOrder
-  it("renders sections in user document order (experience before skills), ignoring template sectionOrder", async () => {
-    // mockDocument has WORK_EXPERIENCE first, then SKILLS — template sectionOrder has SKILLS first
-    // After the fix, user array order wins: Experience should appear before Skills
+  // section render order follows template sectionOrder when present
+  it("renders sections in template sectionOrder (skills before experience)", async () => {
+    // mockDocument has WORK_EXPERIENCE first, then SKILLS — template sectionOrder has SKILLS first.
+    // sectionOrder is honored: Skills should appear before Experience.
     mockGet.mockResolvedValue(buildTemplate())
     const { container } = render(
       <ResumeCanvas document={mockDocument} templateId="t1" />
@@ -99,7 +99,7 @@ describe("ResumeCanvas", () => {
     await waitFor(() => {
       const sectionHeadings = container.querySelectorAll("h2")
       const titles = Array.from(sectionHeadings).map((h) => h.textContent)
-      expect(titles.indexOf("Experience")).toBeLessThan(titles.indexOf("Skills"))
+      expect(titles.indexOf("Skills")).toBeLessThan(titles.indexOf("Experience"))
     })
   })
 
@@ -269,6 +269,48 @@ describe("ResumeCanvas", () => {
     await waitFor(() => {
       const article = container.querySelector("article")!
       expect(article.getAttribute("style")).toContain("--accent-color")
+    })
+  })
+
+  // Typography vars drive the rendered output: font-size / line-height / font-family on the page article
+  it("drives typography from CSS variables on each page article", async () => {
+    mockGet.mockResolvedValue(buildTemplate())
+    const { container } = render(
+      <ResumeCanvas document={mockDocument} templateId="t1" />
+    )
+    await waitFor(() => expect(mockGet).toHaveBeenCalled())
+    await waitFor(() => {
+      const article = container.querySelector("article")!
+      const style = article.getAttribute("style") ?? ""
+      expect(style).toContain("font-size: var(--font-size-base")
+      expect(style).toContain("line-height: var(--line-height-base")
+      expect(style).toContain("font-family: var(--font-family-sans")
+    })
+  })
+
+  // --section-spacing drives the gap between sections (section wrapper inline style)
+  it("applies --section-spacing to the section wrapper margin", async () => {
+    mockGet.mockResolvedValue(buildTemplate())
+    const { container } = render(
+      <ResumeCanvas document={mockDocument} templateId="t1" />
+    )
+    await waitFor(() => expect(mockGet).toHaveBeenCalled())
+    await waitFor(() => {
+      const section = container.querySelector("section[data-section-type]")!
+      expect(section.getAttribute("style") ?? "").toContain("margin-bottom: var(--section-spacing")
+    })
+  })
+
+  // --primary-color is consumed by section title text color
+  it("consumes --primary-color on section title headings", async () => {
+    mockGet.mockResolvedValue(buildTemplate())
+    const { container } = render(
+      <ResumeCanvas document={mockDocument} templateId="t1" />
+    )
+    await waitFor(() => expect(mockGet).toHaveBeenCalled())
+    await waitFor(() => {
+      const heading = container.querySelector("h2[id^='section-title-']")!
+      expect(heading.getAttribute("style") ?? "").toContain("color: var(--primary-color")
     })
   })
 

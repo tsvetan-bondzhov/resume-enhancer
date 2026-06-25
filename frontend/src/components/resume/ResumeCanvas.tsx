@@ -90,6 +90,9 @@ export default function ResumeCanvas({
   const rootStyle: React.CSSProperties = {
     ...baseStyle,
     color: "var(--text-color, #111827)",
+    fontFamily: "var(--font-family-sans, ui-sans-serif, system-ui, sans-serif)",
+    fontSize: "var(--font-size-base, 11px)",
+    lineHeight: "var(--line-height-base, 1.4)",
   }
 
   // Compute ordered sections once — used by both the two-column and single-column render paths.
@@ -176,10 +179,10 @@ export default function ResumeCanvas({
 
         return (
           <div className="flex gap-6">
-            <div className="flex flex-col gap-4 basis-1/3">
+            <div className="flex flex-col basis-1/3" style={{ gap: "var(--section-spacing, 24px)" }}>
               {leftSections.map(renderSection)}
             </div>
-            <div className="flex flex-col gap-4 flex-1">
+            <div className="flex flex-col flex-1" style={{ gap: "var(--section-spacing, 24px)" }}>
               {rightSections.map(renderSection)}
             </div>
           </div>
