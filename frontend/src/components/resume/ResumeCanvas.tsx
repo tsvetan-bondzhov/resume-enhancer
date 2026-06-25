@@ -47,8 +47,12 @@ export default function ResumeCanvas({
     if (templatePreview) {
       // fetchedTemplate is already null in this path — nothing to reset.
     } else if (templateId) {
+      // Published (prebuilt) templates resolve via the standard endpoint. A user's
+      // custom template is NOT published, so that request fails — fall back to the
+      // custom endpoint before giving up.
       apiClient
         .get<TemplateDto>(`/api/v1/resume-templates/${templateId}`)
+        .catch(() => apiClient.get<TemplateDto>(`/api/v1/resume-templates/custom/${templateId}`))
         .then((data) => {
           if (!cancelled) setFetchedTemplate(data)
         })

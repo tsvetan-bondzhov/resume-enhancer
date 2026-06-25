@@ -103,6 +103,53 @@ describe("ResumeCanvas", () => {
     })
   })
 
+  // Custom template fallback: published endpoint fails → custom endpoint is tried and applied
+  it("falls back to the custom endpoint when the published-template request fails", async () => {
+    const customTemplate = buildTemplate({
+      id: "c1",
+      isPrebuilt: false,
+      isPublished: false,
+      templateDefinition: {
+        layoutType: "single-column",
+        cssVariables: { "--accent-color": "#0f9d58", "--font-size-base": "11px" },
+        layout: { sectionOrder: ["SKILLS", "WORK_EXPERIENCE"] },
+      },
+    })
+    mockGet.mockImplementation((url: string) =>
+      url === "/api/v1/resume-templates/custom/c1"
+        ? Promise.resolve(customTemplate)
+        : Promise.reject(new Error("not published"))
+    )
+    const { container } = render(
+      <ResumeCanvas document={mockDocument} templateId="c1" />
+    )
+    await waitFor(() => expect(mockGet).toHaveBeenCalledWith("/api/v1/resume-templates/c1"))
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenCalledWith("/api/v1/resume-templates/custom/c1")
+    )
+    // The custom template's CSS variables are applied to the page article.
+    await waitFor(() => {
+      const article = container.querySelector("article")!
+      expect(article.getAttribute("style")).toContain("--accent-color")
+    })
+  })
+
+  // Both endpoints fail → renders gracefully with no template applied (defaults)
+  it("renders gracefully when both published and custom endpoints reject", async () => {
+    mockGet.mockRejectedValue(new Error("not found"))
+    const { container } = render(
+      <ResumeCanvas document={mockDocument} templateId="x1" />
+    )
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenCalledWith("/api/v1/resume-templates/custom/x1")
+    )
+    // No template applied — no --accent-color injected on the article.
+    await waitFor(() => {
+      const article = container.querySelector("article")!
+      expect(article.getAttribute("style") ?? "").not.toContain("--accent-color")
+    })
+  })
+
   // AC5: templateId null — no API call, defaults applied
   it("does not call apiClient when templateId is null", () => {
     render(<ResumeCanvas document={mockDocument} templateId={null} />)
