@@ -1,9 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { MemoryRouter } from "react-router-dom"
+import type { ReactElement } from "react"
 import type { TemplateDto } from "@/types/api"
 import TemplateManager from "./TemplateManager"
 import { apiClient } from "@/lib/apiClient"
+
+const mockNavigate = vi.fn()
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom")
+  return { ...actual, useNavigate: () => mockNavigate }
+})
+
+/** Render within a router so the component's useNavigate works. */
+function renderWithRouter(ui: ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>)
+}
 
 vi.mock("@/lib/apiClient", () => ({
   apiClient: {
@@ -52,7 +65,7 @@ describe("TemplateManager", () => {
       buildTemplate({ id: "t2", name: "Draft One", isPublished: false }),
     ])
 
-    render(<TemplateManager />)
+    renderWithRouter(<TemplateManager />)
 
     expect(await screen.findByText("Minimal")).toBeInTheDocument()
     expect(screen.getByText("Draft One")).toBeInTheDocument()
@@ -64,7 +77,7 @@ describe("TemplateManager", () => {
   it("shows an inline error and error toast when loading fails", async () => {
     mockedGet.mockRejectedValue(new Error("boom"))
 
-    render(<TemplateManager />)
+    renderWithRouter(<TemplateManager />)
 
     expect(await screen.findByText("Failed to load templates.")).toBeInTheDocument()
     expect(toast.error).toHaveBeenCalledWith("Failed to load templates")
@@ -75,7 +88,7 @@ describe("TemplateManager", () => {
     mockedDelete.mockResolvedValue(undefined)
     const user = userEvent.setup()
 
-    render(<TemplateManager />)
+    renderWithRouter(<TemplateManager />)
     await screen.findByText("Minimal")
 
     await user.click(screen.getByRole("button", { name: /delete/i }))
@@ -99,7 +112,7 @@ describe("TemplateManager", () => {
     mockedGet.mockResolvedValue([buildTemplate({ id: "t1", name: "Minimal" })])
     const user = userEvent.setup()
 
-    render(<TemplateManager />)
+    renderWithRouter(<TemplateManager />)
     await screen.findByText("Minimal")
 
     await user.click(screen.getByRole("button", { name: /delete/i }))
@@ -122,7 +135,7 @@ describe("TemplateManager", () => {
     )
     const user = userEvent.setup()
 
-    render(<TemplateManager />)
+    renderWithRouter(<TemplateManager />)
     await screen.findByText("Draft One")
 
     await user.click(screen.getByRole("button", { name: /^publish$/i }))
@@ -143,7 +156,7 @@ describe("TemplateManager", () => {
     )
     const user = userEvent.setup()
 
-    render(<TemplateManager />)
+    renderWithRouter(<TemplateManager />)
     await screen.findByText("Minimal")
 
     await user.click(screen.getByRole("button", { name: /unpublish/i }))
@@ -155,6 +168,18 @@ describe("TemplateManager", () => {
     expect(await screen.findByText("Draft")).toBeInTheDocument()
   })
 
+  it("navigates to the system definition editor when 'Edit definition' is clicked", async () => {
+    mockedGet.mockResolvedValue([buildTemplate({ id: "t1", name: "Minimal" })])
+    const user = userEvent.setup()
+
+    renderWithRouter(<TemplateManager />)
+    await screen.findByText("Minimal")
+
+    await user.click(screen.getByRole("button", { name: /edit definition/i }))
+
+    expect(mockNavigate).toHaveBeenCalledWith("/templates/system/t1/edit")
+  })
+
   it("shows an error toast and keeps the row when publish fails", async () => {
     mockedGet.mockResolvedValue([
       buildTemplate({ id: "t2", name: "Draft One", isPublished: false }),
@@ -162,7 +187,7 @@ describe("TemplateManager", () => {
     mockedPatch.mockRejectedValue(new Error("boom"))
     const user = userEvent.setup()
 
-    render(<TemplateManager />)
+    renderWithRouter(<TemplateManager />)
     await screen.findByText("Draft One")
 
     await user.click(screen.getByRole("button", { name: /^publish$/i }))

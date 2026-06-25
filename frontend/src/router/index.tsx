@@ -92,6 +92,14 @@ export const router = createBrowserRouter([
           </Suspense>
         ),
       },
+      {
+        path: "/templates/system/:templateId/edit",
+        element: (
+          <Suspense fallback={<Skeleton className="h-screen w-full" />}>
+            <TemplateEditorPage />
+          </Suspense>
+        ),
+      },
     ],
   },
   { path: "*", element: <NotFoundPage /> },

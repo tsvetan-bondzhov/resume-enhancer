@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -17,6 +18,7 @@ import { apiClient } from "@/lib/apiClient"
 import type { TemplateDto, TemplateRequest } from "@/types/api"
 
 export default function TemplateManager() {
+  const navigate = useNavigate()
   const [templates, setTemplates] = useState<TemplateDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -213,6 +215,14 @@ export default function TemplateManager() {
                           onClick={() => openEditDialog(template)}
                         >
                           Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/templates/system/${template.id}/edit`)}
+                        >
+                          Edit definition
                         </Button>
                         <Button
                           type="button"

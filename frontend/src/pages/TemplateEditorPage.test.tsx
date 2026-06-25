@@ -73,6 +73,18 @@ function renderEdit(templateId: string) {
   )
 }
 
+/** Render TemplateEditorPage at the ADMIN system-template edit route. */
+function renderEditSystem(templateId: string) {
+  return render(
+    <MemoryRouter initialEntries={[`/templates/system/${templateId}/edit`]}>
+      <Routes>
+        <Route path="/templates/system/:templateId/edit" element={<TemplateEditorPage />} />
+        <Route path="*" element={<div data-testid="back-page" />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
 describe("TemplateEditorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -202,6 +214,35 @@ describe("TemplateEditorPage", () => {
       expect(mockPut).toHaveBeenCalledWith(
         "/api/v1/resume-templates/custom/custom-1",
         expect.objectContaining({ name: "Renamed", description: null })
+      )
+    )
+    expect(mockPost).not.toHaveBeenCalled()
+  })
+
+  // Admin system mode: loads via the admin GET /{id} and saves via PUT /{id}.
+  it("loads via GET /{id} and saves via PUT /{id} in admin system mode", async () => {
+    const template = buildTemplate({ id: "sys-1", name: "System One", isPrebuilt: true })
+    mockGet.mockResolvedValue(template)
+    mockPut.mockResolvedValue({ ...template, name: "System Renamed" })
+
+    renderEditSystem("sys-1")
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^name$/i)).toHaveValue("System One")
+    )
+    expect(mockGet).toHaveBeenCalledWith("/api/v1/resume-templates/sys-1")
+    expect(mockGet).not.toHaveBeenCalledWith("/api/v1/resume-templates/custom/sys-1")
+
+    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "System Renamed" } })
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /^save$/i })).not.toBeDisabled()
+    )
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }))
+
+    await waitFor(() =>
+      expect(mockPut).toHaveBeenCalledWith(
+        "/api/v1/resume-templates/sys-1",
+        expect.objectContaining({ name: "System Renamed" })
       )
     )
     expect(mockPost).not.toHaveBeenCalled()
