@@ -51,12 +51,6 @@ import java.util.Map;
 public class VisualDocxRenderer implements DocumentRenderer {
 
     private static final String SEPARATOR_PIPE = "  |  ";
-    private static final float PT_PER_PX = 0.75f;
-    private static final String DEFAULT_FONT_FAMILY = "Calibri";
-    private static final int DEFAULT_FONT_SIZE_PT = 8; // 11px * 0.75
-    private static final String DEFAULT_PRIMARY = "1F2937";
-    private static final String DEFAULT_TEXT = "111827";
-    private static final String DEFAULT_ACCENT = "3B82F6";
     private static final String WHITE = "FFFFFF";
 
     private final TemplateDefinitionService templateDefinitionService;
@@ -367,53 +361,20 @@ public class VisualDocxRenderer implements DocumentRenderer {
     // ─── Style resolution ─────────────────────────────────────────────────────
 
     private Style resolveStyle(TemplateDefinition templateDef) {
-        Map<String, Object> css = templateDef.cssVariables() != null
-                ? templateDef.cssVariables() : Map.of();
+        Map<String, Object> css = RendererUtils.cssVariables(templateDef);
 
-        String fontFamily = parseFontFamily(css.get("--font-family-sans"));
-        int bodyFontSize = parseFontSizePt(css.get("--font-size-base"));
+        String fontFamily = RendererUtils.parseFontFamily(css.get("--font-family-sans"));
+        int bodyFontSize = RendererUtils.parseFontSizePt(css.get("--font-size-base"));
         int headingFontSize = bodyFontSize + 3;
         int nameFontSize = bodyFontSize + 8;
 
-        String headingColor = parseColor(css.get("--primary-color"),
-                parseColor(css.get("--accent-color"), DEFAULT_PRIMARY));
-        String textColor = parseColor(css.get("--text-color"), DEFAULT_TEXT);
-        String accentColor = parseColor(css.get("--accent-color"), DEFAULT_ACCENT);
+        String headingColor = RendererUtils.parseColor(css.get("--primary-color"),
+                RendererUtils.parseColor(css.get("--accent-color"), RendererUtils.DEFAULT_PRIMARY));
+        String textColor = RendererUtils.parseColor(css.get("--text-color"), RendererUtils.DEFAULT_TEXT);
+        String accentColor = RendererUtils.parseColor(css.get("--accent-color"), RendererUtils.DEFAULT_ACCENT);
 
         return new Style(fontFamily, bodyFontSize, nameFontSize, headingFontSize,
                 headingColor, textColor, accentColor);
-    }
-
-    /** First family token of a CSS font stack, e.g. "Inter, Arial" → "Inter". */
-    private String parseFontFamily(Object cssValue) {
-        if (cssValue == null) return DEFAULT_FONT_FAMILY;
-        String val = cssValue.toString().trim();
-        if (val.isEmpty()) return DEFAULT_FONT_FAMILY;
-        String first = val.split(",")[0].trim().replace("\"", "").replace("'", "");
-        return first.isEmpty() ? DEFAULT_FONT_FAMILY : first;
-    }
-
-    /** Parse "11px" → 8pt (px × 0.75, rounded). */
-    private int parseFontSizePt(Object cssValue) {
-        if (cssValue == null) return DEFAULT_FONT_SIZE_PT;
-        String val = cssValue.toString().trim();
-        if (val.endsWith("px")) {
-            try {
-                float px = Float.parseFloat(val.substring(0, val.length() - 2).trim());
-                return Math.max(1, Math.round(px * PT_PER_PX));
-            } catch (NumberFormatException ignored) {
-                return DEFAULT_FONT_SIZE_PT;
-            }
-        }
-        return DEFAULT_FONT_SIZE_PT;
-    }
-
-    /** Strip a leading '#' from a CSS hex color; fall back when absent/invalid. */
-    private String parseColor(Object cssValue, String fallback) {
-        if (cssValue == null) return fallback;
-        String val = cssValue.toString().trim();
-        if (val.startsWith("#")) val = val.substring(1);
-        return val.matches("(?i)[0-9a-f]{6}") ? val.toUpperCase() : fallback;
     }
 
     // ─── Function + exception types ───────────────────────────────────────────

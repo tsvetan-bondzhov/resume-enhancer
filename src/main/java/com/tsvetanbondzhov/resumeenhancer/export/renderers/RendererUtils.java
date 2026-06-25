@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Shared utilities for {@link DocxRenderer} and {@link PdfRenderer}.
@@ -17,7 +18,59 @@ final class RendererUtils {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MMM yyyy");
 
+    private static final float PT_PER_PX = 0.75f;
+    static final String DEFAULT_FONT_FAMILY = "Calibri";
+    static final int DEFAULT_FONT_SIZE_PT = 8; // 11px * 0.75
+    static final String DEFAULT_PRIMARY = "1F2937";
+    static final String DEFAULT_TEXT = "111827";
+    static final String DEFAULT_ACCENT = "3B82F6";
+
     private RendererUtils() {}
+
+    // ─── CSS variable parsing ─────────────────────────────────────────────────
+
+    /** First family token of a CSS font stack, e.g. "Inter, Arial" → "Inter". */
+    static String parseFontFamily(Object cssValue) {
+        if (cssValue == null) return DEFAULT_FONT_FAMILY;
+        String val = cssValue.toString().trim();
+        if (val.isEmpty()) return DEFAULT_FONT_FAMILY;
+        String first = val.split(",")[0].trim().replace("\"", "").replace("'", "");
+        return first.isEmpty() ? DEFAULT_FONT_FAMILY : first;
+    }
+
+    /** Parse "11px" → 8pt (px × 0.75, rounded). */
+    static int parseFontSizePt(Object cssValue) {
+        return parsePxToPt(cssValue, DEFAULT_FONT_SIZE_PT);
+    }
+
+    /** Parse a "NNpx" CSS length into points (px × 0.75, rounded), falling back when absent/invalid. */
+    static int parsePxToPt(Object cssValue, int fallbackPt) {
+        if (cssValue == null) return fallbackPt;
+        String val = cssValue.toString().trim();
+        if (val.endsWith("px")) {
+            try {
+                float px = Float.parseFloat(val.substring(0, val.length() - 2).trim());
+                return Math.max(1, Math.round(px * PT_PER_PX));
+            } catch (NumberFormatException ignored) {
+                return fallbackPt;
+            }
+        }
+        return fallbackPt;
+    }
+
+    /** Strip a leading '#' from a CSS hex color; fall back when absent/invalid. */
+    static String parseColor(Object cssValue, String fallback) {
+        if (cssValue == null) return fallback;
+        String val = cssValue.toString().trim();
+        if (val.startsWith("#")) val = val.substring(1);
+        return val.matches("(?i)[0-9a-f]{6}") ? val.toUpperCase() : fallback;
+    }
+
+    /** Null-safe accessor for a template's CSS variable map. */
+    static Map<String, Object> cssVariables(TemplateDefinition templateDef) {
+        return templateDef != null && templateDef.cssVariables() != null
+                ? templateDef.cssVariables() : Map.of();
+    }
 
     /**
      * Orders sections for single-column ATS output. For two-column templates, left
