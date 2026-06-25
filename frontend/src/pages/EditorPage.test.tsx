@@ -19,6 +19,25 @@ vi.mock("@/components/resume/AIActionBar", () => ({
   ),
 }))
 
+// Mock the client-side visual PDF util so we can assert the visual path without
+// invoking the browser print engine.
+const { mockPrintVisualPdf } = vi.hoisted(() => ({
+  mockPrintVisualPdf: vi.fn((..._args: unknown[]) => Promise.resolve()),
+}))
+vi.mock("@/lib/printVisualPdf", () => ({
+  printVisualPdf: mockPrintVisualPdf,
+}))
+
+// Mock ExportablePreview to synchronously hand a fake container to onReady, so the
+// visual-PDF flow completes deterministically in tests.
+vi.mock("@/components/resume/ExportablePreview", () => ({
+  default: ({ onReady }: { onReady: (el: HTMLElement) => void }) => {
+    const el = document.createElement("div")
+    queueMicrotask(() => onReady(el))
+    return <div data-testid="exportable-preview" />
+  },
+}))
+
 // Mock TemplateGallery to expose its onApply callback as a simple button, so we can
 // drive EditorPage.handleApplyTemplate (which performs the real PUT) without needing
 // a fully-fetched template list with a templateDefinition.
@@ -96,9 +115,18 @@ function buildResume(overrides?: Partial<ResumeDto>): ResumeDto {
   }
 }
 
+// Open the editor-page export dialog from the toolbar Export button.
+async function openEditorExportDialog() {
+  await waitFor(() => screen.getByRole("textbox", { name: /resume name/i }))
+  fireEvent.click(screen.getByRole("button", { name: /^export resume$/i }))
+  await waitFor(() => screen.getByRole("dialog"))
+}
+
 describe("EditorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Restore default resolved implementation for the visual PDF util after clearAllMocks
+    mockPrintVisualPdf.mockResolvedValue(undefined)
     // Restore never-resolving put mock after clearAllMocks
     vi.mocked(apiClient.put).mockReturnValue(new Promise(() => {}))
     vi.mocked(apiClient.delete).mockResolvedValue(undefined)
@@ -374,12 +402,12 @@ describe("EditorPage", () => {
     expect(useResumeStore.getState().currentResume?.templateId).toBe("template-xyz")
   })
 
-  async function runExportSuccessTest(format: string, mimeType: string) {
+  async function runExportSuccessTest(format: string, mimeType: string, mode: "visual" | "ats") {
     const mockBlob = new Blob([format], { type: mimeType })
 
     mockGetWithResume(buildResume())
     render(<EditorPage />)
-    await waitFor(() => screen.getByRole("textbox", { name: /resume name/i }))
+    await openEditorExportDialog()
 
     // Stub fetch and DOM APIs AFTER initial render so they don't interfere with rendering
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
@@ -391,11 +419,15 @@ describe("EditorPage", () => {
     const appendChildSpy = vi.spyOn(document.body, "appendChild").mockImplementation((node) => node)
     const removeChildSpy = vi.spyOn(document.body, "removeChild").mockImplementation((node) => node)
 
-    fireEvent.click(screen.getByRole("button", { name: new RegExp(`export resume as ${format}`, "i") }))
+    if (mode === "ats") {
+      fireEvent.click(screen.getByRole("radio", { name: /ats-friendly/i }))
+    }
+    const buttonName = format === "pdf" ? /export as pdf/i : /export as docx/i
+    fireEvent.click(screen.getByRole("button", { name: buttonName }))
 
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        `/api/v1/resumes/test-resume-id/export?format=${format}`,
+        `/api/v1/resumes/test-resume-id/export?format=${format}&mode=${mode}`,
         expect.any(Object),
       ),
     )
@@ -407,36 +439,53 @@ describe("EditorPage", () => {
     removeChildSpy.mockRestore()
   }
 
-  it("exportPdf success — fetches binary, triggers download, shows toast", async () => {
-    await runExportSuccessTest("pdf", "application/pdf")
-  })
-
-  it("exportPdf failure — shows error toast", async () => {
+  it("editor export PDF/visual — uses client path, no export fetch, calls visual util", async () => {
     mockGetWithResume(buildResume())
     render(<EditorPage />)
-    await waitFor(() => screen.getByRole("textbox", { name: /resume name/i }))
+    await openEditorExportDialog()
 
-    // Stub fetch AFTER initial render
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: false,
-      json: () => Promise.resolve({ detail: "PDF failed" }),
-    }))
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy)
 
-    fireEvent.click(screen.getByRole("button", { name: /export resume as pdf/i }))
+    // Default mode is visual — clicking PDF takes the client path
+    fireEvent.click(screen.getByRole("button", { name: /export as pdf/i }))
 
+    await waitFor(() => expect(mockPrintVisualPdf).toHaveBeenCalled())
+    // No backend export fetch on the visual-PDF client path
+    expect(fetchSpy).not.toHaveBeenCalled()
     await waitFor(() =>
-      expect(vi.mocked(toast.error)).toHaveBeenCalledWith("PDF failed", expect.any(Object)),
+      expect(vi.mocked(toast.success)).toHaveBeenCalledWith(
+        expect.stringContaining("print dialog"),
+        expect.any(Object),
+      ),
     )
   })
 
-  it("exportDocx success — fetches binary, triggers download, shows toast", async () => {
-    await runExportSuccessTest("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-  })
-
-  it("exportDocx failure — shows error toast", async () => {
+  it("editor export PDF/visual failure — shows error toast", async () => {
+    mockPrintVisualPdf.mockRejectedValueOnce(new Error("Capture failed"))
     mockGetWithResume(buildResume())
     render(<EditorPage />)
-    await waitFor(() => screen.getByRole("textbox", { name: /resume name/i }))
+    await openEditorExportDialog()
+
+    fireEvent.click(screen.getByRole("button", { name: /export as pdf/i }))
+
+    await waitFor(() =>
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith("Capture failed", expect.any(Object)),
+    )
+  })
+
+  it("editor export PDF/ATS — fetches binary with mode=ats", async () => {
+    await runExportSuccessTest("pdf", "application/pdf", "ats")
+  })
+
+  it("editor export DOCX/visual — fetches binary with mode=visual, shows toast", async () => {
+    await runExportSuccessTest("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "visual")
+  })
+
+  it("editor export DOCX failure — shows error toast", async () => {
+    mockGetWithResume(buildResume())
+    render(<EditorPage />)
+    await openEditorExportDialog()
 
     // Stub fetch AFTER initial render
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
@@ -444,7 +493,7 @@ describe("EditorPage", () => {
       json: () => Promise.resolve({ detail: "DOCX failed" }),
     }))
 
-    fireEvent.click(screen.getByRole("button", { name: /export resume as docx/i }))
+    fireEvent.click(screen.getByRole("button", { name: /export as docx/i }))
 
     await waitFor(() =>
       expect(vi.mocked(toast.error)).toHaveBeenCalledWith("DOCX failed", expect.any(Object)),
@@ -530,7 +579,7 @@ describe("EditorPage", () => {
 
   // ─── handleSidebarExport success + failure (lines 333-359) ───────────────
 
-  it("handleSidebarExport success — fetches binary and shows download toast", async () => {
+  it("handleSidebarExport ATS PDF — fetches binary with mode=ats and shows download toast", async () => {
     const sidebarResume = buildResume({ id: "sidebar-resume", name: "Sidebar Resume" })
     useResumeStore.setState({ resumes: [sidebarResume] })
     mockGetWithResume(buildResume())
@@ -552,11 +601,13 @@ describe("EditorPage", () => {
     const appendChildSpy = vi.spyOn(document.body, "appendChild").mockImplementation((node) => node)
     const removeChildSpy = vi.spyOn(document.body, "removeChild").mockImplementation((node) => node)
 
+    // Choose ATS so PDF goes through the backend fetch path
+    fireEvent.click(screen.getByRole("radio", { name: /ats-friendly/i }))
     fireEvent.click(screen.getByRole("button", { name: /export as pdf/i }))
 
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        "/api/v1/resumes/sidebar-resume/export?format=pdf",
+        "/api/v1/resumes/sidebar-resume/export?format=pdf&mode=ats",
         expect.any(Object),
       ),
     )
@@ -566,6 +617,32 @@ describe("EditorPage", () => {
 
     appendChildSpy.mockRestore()
     removeChildSpy.mockRestore()
+  })
+
+  it("handleSidebarExport visual PDF — uses client path (no export fetch) via ExportablePreview", async () => {
+    const sidebarResume = buildResume({ id: "sidebar-resume", name: "Sidebar Resume" })
+    useResumeStore.setState({ resumes: [sidebarResume] })
+    mockGetWithResume(buildResume())
+    render(<EditorPage />)
+    await waitFor(() => screen.getByText("Sidebar Resume"))
+
+    fireEvent.click(screen.getByRole("button", { name: /export sidebar resume/i }))
+    await waitFor(() => screen.getByRole("dialog"))
+
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy)
+
+    // Default mode is visual — clicking PDF takes the client path
+    fireEvent.click(screen.getByRole("button", { name: /export as pdf/i }))
+
+    await waitFor(() => expect(mockPrintVisualPdf).toHaveBeenCalled())
+    expect(fetchSpy).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(vi.mocked(toast.success)).toHaveBeenCalledWith(
+        expect.stringContaining("print dialog"),
+        expect.any(Object),
+      ),
+    )
   })
 
   it("handleSidebarExport failure — shows error toast (lines 356-357)", async () => {

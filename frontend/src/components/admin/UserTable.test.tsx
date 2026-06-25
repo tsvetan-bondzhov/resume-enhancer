@@ -197,6 +197,43 @@ describe("UserTable", () => {
     expect(await screen.findByText("Active")).toBeInTheDocument()
   })
 
+  it("filters users by email, role, and status, and shows the empty state for no matches", async () => {
+    mockedGet.mockResolvedValue(
+      buildPage([
+        buildUser({ id: "u1", email: "alice@example.com", role: "USER", status: "ACTIVE" }),
+        buildUser({ id: "u2", email: "bob@example.com", role: "ADMIN", status: "INACTIVE" }),
+      ]),
+    )
+    const user = userEvent.setup()
+
+    render(<UserTable />)
+    await screen.findByText("alice@example.com")
+
+    const searchBox = screen.getByLabelText(/search users/i)
+
+    // Filter by email
+    await user.type(searchBox, "alice")
+    expect(screen.getByText("alice@example.com")).toBeInTheDocument()
+    expect(screen.queryByText("bob@example.com")).not.toBeInTheDocument()
+
+    // Filter by role
+    await user.clear(searchBox)
+    await user.type(searchBox, "admin")
+    expect(screen.getByText("bob@example.com")).toBeInTheDocument()
+    expect(screen.queryByText("alice@example.com")).not.toBeInTheDocument()
+
+    // Filter by status
+    await user.clear(searchBox)
+    await user.type(searchBox, "inactive")
+    expect(screen.getByText("bob@example.com")).toBeInTheDocument()
+    expect(screen.queryByText("alice@example.com")).not.toBeInTheDocument()
+
+    // Non-matching query shows empty state
+    await user.clear(searchBox)
+    await user.type(searchBox, "zzz-no-match")
+    expect(screen.getByText("No users found.")).toBeInTheDocument()
+  })
+
   it("does not render Impersonate for an INACTIVE user", async () => {
     mockedGet.mockResolvedValue(
       buildPage([buildUser({ id: "u2", email: "bob@example.com", status: "INACTIVE" })]),

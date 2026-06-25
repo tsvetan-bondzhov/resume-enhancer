@@ -390,6 +390,36 @@ class TemplateControllerIntegrationTest {
         assertThat(idsOf(objectMapper.readTree(adminAfterDelete))).doesNotContain(createdId);
     }
 
+    // ─── Admin updates a SYSTEM template's definition via PUT /{id} ───────────
+
+    @Test
+    void putTemplate_asAdmin_updatesSystemTemplateDefinition() throws Exception {
+        String adminToken = seedUserAndGetToken("put_def_admin@example.com", "ADMIN");
+
+        String createBody = """
+                { "name": "System Template", "description": "orig", "templateDefinition": { "layoutType": "single-column" } }
+                """;
+        String createdId = createTemplateAndGetId(adminToken, createBody);
+
+        // Admin updates the definition (and name) → 200 with the new definition persisted
+        String updateBody = """
+                { "name": "System Template v2", "description": "edited",
+                  "templateDefinition": { "layoutType": "two-column", "cssVariables": { "--accent-color": "#123456" } } }
+                """;
+        webTestClient().put()
+                .uri("/api/v1/resume-templates/" + createdId)
+                .header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(updateBody)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.name").isEqualTo("System Template v2")
+                .jsonPath("$.isPrebuilt").isEqualTo(true)
+                .jsonPath("$.templateDefinition.layoutType").isEqualTo("two-column")
+                .jsonPath("$.templateDefinition.cssVariables.--accent-color").isEqualTo("#123456");
+    }
+
     @Test
     void deleteTemplate_unknownId_asAdmin_returns404() {
         String adminToken = seedUserAndGetToken("delete_404_admin@example.com", "ADMIN");

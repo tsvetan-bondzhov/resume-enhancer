@@ -35,6 +35,9 @@
 		<itext.version>8.0.5</itext.version>
 		<springdoc.version>3.0.3</springdoc.version>
 		<frontend-maven-plugin.version>1.15.0</frontend-maven-plugin.version>
+		<!-- OpenTelemetry instrumentation (Logback OTLP appender). Aligns with the
+		     opentelemetry-bom 1.55.0 managed by Spring Boot 4.0.6. -->
+		<opentelemetry-instrumentation.version>2.21.0-alpha</opentelemetry-instrumentation.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -48,6 +51,14 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-opentelemetry</artifactId>
+		</dependency>
+		<!-- Bridges application logs (Logback) into the OpenTelemetry SDK so they are
+		     exported via OTLP to the otel-lgtm collector -> Loki. Without this appender
+		     no application logs reach Loki (Drilldown / trace-to-logs stay empty). -->
+		<dependency>
+			<groupId>io.opentelemetry.instrumentation</groupId>
+			<artifactId>opentelemetry-logback-appender-1.0</artifactId>
+			<version>${opentelemetry-instrumentation.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

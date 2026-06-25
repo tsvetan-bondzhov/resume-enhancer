@@ -10,7 +10,9 @@ import SectionsPanel from "@/components/resume/SectionsPanel"
 import ResumeCanvas from "@/components/resume/ResumeCanvas"
 import EditorToolbar from "@/components/resume/EditorToolbar"
 import SaveAsDialog from "@/components/resume/SaveAsDialog"
-import ExportFormatDialog from "@/components/resume/ExportFormatDialog"
+import ExportFormatDialog, { type ExportMode } from "@/components/resume/ExportFormatDialog"
+import ExportablePreview from "@/components/resume/ExportablePreview"
+import { printVisualPdf } from "@/lib/printVisualPdf"
 import TemplateGallery from "@/components/resume/TemplateGallery"
 import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
 import ChatPanel from "@/components/resume/ChatPanel"
@@ -22,6 +24,38 @@ import type { ResumeDto } from "@/types/api"
 function restoreResume(prev: ResumeDto[], resume: ResumeDto): ResumeDto[] {
   if (prev.some((r) => r.id === resume.id)) return prev
   return [...prev, resume]
+}
+
+/**
+ * Backend export path — fetches the binary blob for the given format/mode and triggers a
+ * download. Used for ATS exports (any format) and the visual DOCX export. The visual PDF
+ * is produced entirely client-side and does NOT go through here.
+ */
+async function downloadBackendExport(
+  resumeId: string,
+  resumeName: string,
+  format: "pdf" | "docx",
+  mode: ExportMode,
+): Promise<void> {
+  // Direct fetch (not apiClient) — export returns a binary blob, not JSON.
+  const token = useAuthStore.getState().token
+  const res = await fetch(
+    `/api/v1/resumes/${resumeId}/export?format=${format}&mode=${mode}`,
+    { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+  )
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body.detail ?? "Export failed")
+  }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `${resumeName ?? "resume"}.${format}`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }
 
 async function executeDeleteResume(
@@ -76,6 +110,16 @@ export default function EditorPage() {
   const [duplicatingSidebarId, setDuplicatingSidebarId] = useState<string | null>(null)
   const [exportingResume, setExportingResume] = useState<ResumeDto | null>(null)
   const [isSidebarExporting, setIsSidebarExporting] = useState(false)
+  // Editor-page export dialog (current open resume) — lets the user pick format + mode.
+  const [isExportOpen, setIsExportOpen] = useState(false)
+  // In-progress visual PDF export. `isOpen` distinguishes the open resume (use the
+  // already-loaded document) from a sidebar resume (fetched by id inside the preview).
+  const [visualPdfRequest, setVisualPdfRequest] = useState<{
+    resumeId: string
+    resumeName: string
+    isOpen: boolean
+    onSettled: () => void
+  } | null>(null)
   const pendingSidebarDeletes = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const conversationIdRef = useRef<string>(crypto.randomUUID())
 
@@ -203,7 +247,7 @@ export default function EditorPage() {
     navigate("/")
   }, [navigate])
 
-  const exportDocx = useCallback(async () => {
+  const exportDocx = useCallback(async (mode: ExportMode) => {
     if (!id) return
     if (!currentResume) {
       toast.error("Resume not loaded — please refresh")
@@ -211,23 +255,7 @@ export default function EditorPage() {
     }
     setExporting(true)
     try {
-      const token = useAuthStore.getState().token
-      const res = await fetch(`/api/v1/resumes/${id}/export?format=docx`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { detail?: string }
-        throw new Error(body.detail ?? "Export failed")
-      }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${currentResume?.name ?? "resume"}.docx`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
+      await downloadBackendExport(id, currentResume.name, "docx", mode)
       toast.success("Download ready", { duration: 4000 })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Export failed", { duration: 8000 })
@@ -236,35 +264,30 @@ export default function EditorPage() {
     }
   }, [id, currentResume, setExporting])
 
-  const exportPdf = useCallback(async () => {
+  const exportPdf = useCallback(async (mode: ExportMode) => {
     if (!id) return
     // D3: guard against exporting when the resume failed to load — avoids a blank PDF download
     if (!currentResume) {
       toast.error("Resume not loaded — please refresh")
       return
     }
+
+    // Visual PDF is produced entirely client-side: mount an off-screen read-only preview
+    // and capture its rendered A4 pages (the backend rejects format=pdf&mode=visual).
+    if (mode === "visual") {
+      setExporting(true)
+      setVisualPdfRequest({
+        resumeId: id,
+        resumeName: currentResume.name,
+        isOpen: true,
+        onSettled: () => setExporting(false),
+      })
+      return
+    }
+
     setExporting(true)
     try {
-      // Direct fetch (not apiClient) — export returns binary PDF, not JSON.
-      // apiClient.get<T>() calls res.json() which is wrong for binary blobs.
-      // This is an intentional, documented exception to the "all HTTP via apiClient" rule.
-      const token = useAuthStore.getState().token
-      const res = await fetch(`/api/v1/resumes/${id}/export?format=pdf`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { detail?: string }
-        throw new Error(body.detail ?? "Export failed")
-      }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${currentResume?.name ?? "resume"}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
+      await downloadBackendExport(id, currentResume.name, "pdf", mode)
       toast.success("Download ready", { duration: 4000 })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Export failed", { duration: 8000 })
@@ -272,6 +295,20 @@ export default function EditorPage() {
       setExporting(false)
     }
   }, [id, currentResume, setExporting])
+
+  // Editor-page export: route the chosen format/mode to the existing export callbacks,
+  // which use the already-loaded currentResume.content + currentTemplateId (no refetch).
+  const handleEditorExport = useCallback(
+    (format: "pdf" | "docx", mode: ExportMode) => {
+      setIsExportOpen(false)
+      if (format === "pdf") {
+        void exportPdf(mode)
+      } else {
+        void exportDocx(mode)
+      }
+    },
+    [exportPdf, exportDocx],
+  )
 
   const handleDuplicateFromSidebar = useCallback(async (resume: ResumeDto) => {
     setDuplicatingSidebarId(resume.id)
@@ -329,28 +366,29 @@ export default function EditorPage() {
     setExportingResume(resume)
   }, [])
 
-  const handleSidebarExport = useCallback(async (format: "pdf" | "docx") => {
+  const handleSidebarExport = useCallback(async (format: "pdf" | "docx", mode: ExportMode) => {
     if (!exportingResume) return
+
+    // Visual PDF for a sidebar resume — the preview fetches the resume by id and we
+    // capture its rendered pages client-side.
+    if (format === "pdf" && mode === "visual") {
+      setIsSidebarExporting(true)
+      const resume = exportingResume
+      setVisualPdfRequest({
+        resumeId: resume.id,
+        resumeName: resume.name,
+        isOpen: false,
+        onSettled: () => {
+          setIsSidebarExporting(false)
+          setExportingResume(null)
+        },
+      })
+      return
+    }
+
     setIsSidebarExporting(true)
     try {
-      const token = useAuthStore.getState().token
-      const res = await fetch(
-        `/api/v1/resumes/${exportingResume.id}/export?format=${format}`,
-        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
-      )
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { detail?: string }
-        throw new Error(body.detail ?? "Export failed")
-      }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${exportingResume.name ?? "resume"}.${format}`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
+      await downloadBackendExport(exportingResume.id, exportingResume.name, format, mode)
       toast.success("Download ready", { duration: 4000 })
       setExportingResume(null)
     } catch (err) {
@@ -359,6 +397,27 @@ export default function EditorPage() {
       setIsSidebarExporting(false)
     }
   }, [exportingResume])
+
+  const handleVisualPdfReady = useCallback(async (container: HTMLElement) => {
+    const request = visualPdfRequest
+    if (!request) return
+    try {
+      await printVisualPdf(container, request.resumeName ?? "resume")
+      toast.success("Opening print dialog — choose 'Save as PDF'", { duration: 5000 })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed", { duration: 8000 })
+    } finally {
+      request.onSettled()
+      setVisualPdfRequest(null)
+    }
+  }, [visualPdfRequest])
+
+  const handleVisualPdfError = useCallback((err: unknown) => {
+    const request = visualPdfRequest
+    toast.error(err instanceof Error ? err.message : "Export failed", { duration: 8000 })
+    request?.onSettled()
+    setVisualPdfRequest(null)
+  }, [visualPdfRequest])
 
   return (
     <>
@@ -415,8 +474,7 @@ export default function EditorPage() {
               onSave={saveNow}
               onSaveAs={() => setIsSaveAsOpen(true)}
               onBack={handleBack}
-              onExportPdf={exportPdf}
-              onExportDocx={exportDocx}
+              onExport={() => setIsExportOpen(true)}
             />
             <AIActionBar resumeId={id} conversationId={conversationIdRef.current} />
             {error !== null && !isLoading ? (
@@ -463,6 +521,23 @@ export default function EditorPage() {
         onExport={handleSidebarExport}
         onClose={() => { if (!isSidebarExporting) setExportingResume(null) }}
       />
+      <ExportFormatDialog
+        open={isExportOpen}
+        resumeName={currentResume?.name ?? ""}
+        isExporting={isExporting}
+        onExport={handleEditorExport}
+        onClose={() => { if (!isExporting) setIsExportOpen(false) }}
+      />
+      {visualPdfRequest && (
+        <ExportablePreview
+          key={visualPdfRequest.resumeId}
+          resumeId={visualPdfRequest.resumeId}
+          document={visualPdfRequest.isOpen ? currentResume?.content ?? null : undefined}
+          templateId={visualPdfRequest.isOpen ? currentTemplateId : undefined}
+          onReady={handleVisualPdfReady}
+          onError={handleVisualPdfError}
+        />
+      )}
     </>
   )
 }

@@ -182,6 +182,55 @@ class ExportControllerIntegrationTest {
                 .value(bytes -> assertThat(bytes).isNotNull().isNotEmpty());
     }
 
+    // ─── Test 6: Visual DOCX export ──────────────────────────────────────────
+
+    @Test
+    void get_exportResume_docxVisualMode_returns200WithDocxContent() throws Exception {
+        String token = registerAndGetToken("export_visual@example.com", "Password1");
+        String resumeId = createResume(token, "My Visual Resume");
+
+        webTestClient()
+                .get()
+                .uri("/api/v1/resumes/" + resumeId + "/export?format=docx&mode=visual")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueMatches("Content-Type",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document.*")
+                .expectBody(byte[].class)
+                .value(bytes -> assertThat(bytes).isNotNull().isNotEmpty());
+    }
+
+    // ─── Test 7: Visual PDF is rejected → 400 ────────────────────────────────
+
+    @Test
+    void get_exportResume_pdfVisualMode_returns400() throws Exception {
+        String token = registerAndGetToken("export_visualpdf@example.com", "Password1");
+        String resumeId = createResume(token, "Visual PDF Resume");
+
+        webTestClient()
+                .get()
+                .uri("/api/v1/resumes/" + resumeId + "/export?format=pdf&mode=visual")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    // ─── Test 8: Invalid mode → 400 ──────────────────────────────────────────
+
+    @Test
+    void get_exportResume_invalidMode_returns400() throws Exception {
+        String token = registerAndGetToken("export_badmode@example.com", "Password1");
+        String resumeId = createResume(token, "Bad Mode Resume");
+
+        webTestClient()
+                .get()
+                .uri("/api/v1/resumes/" + resumeId + "/export?format=docx&mode=bogus")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
     // ─── Test 4: Unsupported format → 400 ProblemDetail ──────────────────────
 
     @Test

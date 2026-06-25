@@ -16,6 +16,8 @@ import com.tsvetanbondzhov.resumeenhancer.resume.domain.VolunteeringItem;
 import com.tsvetanbondzhov.resumeenhancer.resume.domain.WorkExperienceItem;
 import com.tsvetanbondzhov.resumeenhancer.template.domain.ResumeTemplate;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,6 +61,59 @@ class DocxRendererTest {
         assertThat(docx).isNotEmpty();
         try (XWPFDocument parsed = new XWPFDocument(new ByteArrayInputStream(docx))) {
             assertThat(parsed.getParagraphs()).isNotEmpty();
+        }
+    }
+
+    // ─── Typography + spacing styling from template CSS variables ─────────────
+
+    @Test
+    void render_appliesTemplateTypographyColorAndSpacing() throws IOException {
+        ResumeDocument doc = buildFullDocument();
+        ResumeTemplate template = new ResumeTemplate(); // null templateDefinition → DEFAULT
+
+        byte[] docx = renderer.render(doc, template);
+
+        try (XWPFDocument parsed = new XWPFDocument(new ByteArrayInputStream(docx))) {
+            // DEFAULT template: --primary-color #1f2937, --font-family-sans Inter,
+            // --font-size-base 11px (→ 8pt), --section-spacing 12px.
+            XWPFParagraph workHeading = parsed.getParagraphs().stream()
+                    .filter(p -> p.getText().equalsIgnoreCase("EXPERIENCE"))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("EXPERIENCE heading paragraph not found"));
+
+            XWPFRun headingRun = workHeading.getRuns().get(0);
+            assertThat(headingRun.getColor())
+                    .as("Section heading should carry the template primary color")
+                    .isEqualTo("1F2937");
+            assertThat(headingRun.getFontFamily())
+                    .as("Heading run should use the template font family")
+                    .isEqualTo("Inter");
+            assertThat(headingRun.getFontSize())
+                    .as("Heading run should be larger than the 8pt body size")
+                    .isGreaterThan(8);
+
+            assertThat(workHeading.getSpacingBefore())
+                    .as("Section heading should have spacing-before > 0")
+                    .isGreaterThan(0);
+
+            // A body run should carry font family + a non-default (template) size.
+            XWPFParagraph dateParagraph = parsed.getParagraphs().stream()
+                    .filter(p -> p.getText().contains("–") || p.getText().contains("Present"))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("date-range body paragraph not found"));
+            XWPFRun bodyRun = dateParagraph.getRuns().get(0);
+            assertThat(bodyRun.getFontFamily()).isEqualTo("Inter");
+            assertThat(bodyRun.getFontSize()).isEqualTo(8);
+            assertThat(bodyRun.getColor())
+                    .as("Body run should carry the template text color")
+                    .isEqualTo("111827");
+
+            // At least one item paragraph should carry spacing-after (entries not cramped).
+            boolean anyItemSpacingAfter = parsed.getParagraphs().stream()
+                    .anyMatch(p -> p.getSpacingAfter() > 0);
+            assertThat(anyItemSpacingAfter)
+                    .as("Item/entry paragraphs should have spacing-after > 0")
+                    .isTrue();
         }
     }
 

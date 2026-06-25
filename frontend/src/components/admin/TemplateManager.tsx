@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -17,7 +18,9 @@ import { apiClient } from "@/lib/apiClient"
 import type { TemplateDto, TemplateRequest } from "@/types/api"
 
 export default function TemplateManager() {
+  const navigate = useNavigate()
   const [templates, setTemplates] = useState<TemplateDto[]>([])
+  const [search, setSearch] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
 
@@ -166,8 +169,26 @@ export default function TemplateManager() {
     return <p className="text-sm text-destructive">Failed to load templates.</p>
   }
 
+  const query = search.trim().toLowerCase()
+  const filteredTemplates = query
+    ? templates.filter((template) =>
+        [template.name, template.isPublished ? "Published" : "Draft"].some((field) =>
+          field.toLowerCase().includes(query),
+        ),
+      )
+    : templates
+
   return (
     <>
+      <div className="mb-4">
+        <Input
+          type="search"
+          placeholder="Search by name or status…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search templates"
+        />
+      </div>
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/50 text-left">
@@ -178,14 +199,14 @@ export default function TemplateManager() {
             </tr>
           </thead>
           <tbody>
-            {templates.length === 0 ? (
+            {filteredTemplates.length === 0 ? (
               <tr>
                 <td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">
                   No templates found.
                 </td>
               </tr>
             ) : (
-              templates.map((template) => {
+              filteredTemplates.map((template) => {
                 const inFlight = togglingId === template.id
                 return (
                   <tr key={template.id} className="border-b last:border-0">
@@ -213,6 +234,14 @@ export default function TemplateManager() {
                           onClick={() => openEditDialog(template)}
                         >
                           Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/templates/system/${template.id}/edit`)}
+                        >
+                          Edit definition
                         </Button>
                         <Button
                           type="button"

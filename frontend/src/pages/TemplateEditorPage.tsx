@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -54,7 +54,19 @@ function validateDefinition(parsed: unknown): string | null {
 export default function TemplateEditorPage() {
   const { templateId } = useParams<{ templateId?: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const isEdit = templateId !== undefined
+
+  // System (admin) mode edits a prebuilt template's definition via the admin
+  // endpoints; custom mode edits the caller's own user template. Distinguished
+  // by the route path so the same editor UI is reused for both.
+  const isSystem = location.pathname.startsWith("/templates/system/")
+
+  // Endpoint base differs by mode: admin updates a system template at
+  // `/api/v1/resume-templates/{id}`, a user updates their own at `/custom/{id}`.
+  const loadPath = isSystem
+    ? `/api/v1/resume-templates/${templateId}`
+    : `/api/v1/resume-templates/custom/${templateId}`
 
   // In edit mode we load the existing template; track loading state.
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(isEdit)
@@ -73,7 +85,7 @@ export default function TemplateEditorPage() {
     if (!isEdit) return
     let cancelled = false
     apiClient
-      .get<TemplateDto>(`/api/v1/resume-templates/custom/${templateId}`)
+      .get<TemplateDto>(loadPath)
       .then((template) => {
         if (cancelled) return
         setName(template.name)
@@ -90,7 +102,7 @@ export default function TemplateEditorPage() {
     return () => {
       cancelled = true
     }
-  }, [isEdit, templateId])
+  }, [isEdit, templateId, loadPath])
 
   // Synchronous validation (AC4): run immediately on every definitionText change so
   // the inline error message appears without delay. Does NOT touch lastValidDef (preview)
@@ -161,10 +173,7 @@ export default function TemplateEditorPage() {
     setIsSaving(true)
     try {
       if (isEdit) {
-        await apiClient.put<TemplateDto>(
-          `/api/v1/resume-templates/custom/${templateId}`,
-          body,
-        )
+        await apiClient.put<TemplateDto>(loadPath, body)
       } else {
         await apiClient.post<TemplateDto>("/api/v1/resume-templates/custom", body)
       }

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import type { CustomTemplateAdminDto } from "@/types/api"
 import CustomTemplateManager from "./CustomTemplateManager"
 import { apiClient } from "@/lib/apiClient"
@@ -62,6 +63,51 @@ describe("CustomTemplateManager", () => {
     render(<CustomTemplateManager />)
 
     expect(await screen.findByText("No user templates found.")).toBeInTheDocument()
+  })
+
+  it("filters templates by name, owner email, and status, and shows the empty state for no matches", async () => {
+    mockedGet.mockResolvedValue([
+      buildCustomTemplate({
+        id: "c1",
+        name: "Alpha Resume",
+        ownerEmail: "alice@example.com",
+        isPublished: true,
+      }),
+      buildCustomTemplate({
+        id: "c2",
+        name: "Beta Resume",
+        ownerEmail: "bob@example.com",
+        isPublished: false,
+      }),
+    ])
+    const user = userEvent.setup()
+
+    render(<CustomTemplateManager />)
+    await screen.findByText("Alpha Resume")
+
+    const searchBox = screen.getByLabelText(/search user templates/i)
+
+    // Filter by name
+    await user.type(searchBox, "alpha")
+    expect(screen.getByText("Alpha Resume")).toBeInTheDocument()
+    expect(screen.queryByText("Beta Resume")).not.toBeInTheDocument()
+
+    // Filter by owner email
+    await user.clear(searchBox)
+    await user.type(searchBox, "bob@example.com")
+    expect(screen.getByText("Beta Resume")).toBeInTheDocument()
+    expect(screen.queryByText("Alpha Resume")).not.toBeInTheDocument()
+
+    // Filter by status
+    await user.clear(searchBox)
+    await user.type(searchBox, "draft")
+    expect(screen.getByText("Beta Resume")).toBeInTheDocument()
+    expect(screen.queryByText("Alpha Resume")).not.toBeInTheDocument()
+
+    // Non-matching query shows empty state
+    await user.clear(searchBox)
+    await user.type(searchBox, "zzz-no-match")
+    expect(screen.getByText("No user templates found.")).toBeInTheDocument()
   })
 
   it("shows an inline error and error toast when loading fails", async () => {
