@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Input } from "@/components/ui/input"
 import { apiClient } from "@/lib/apiClient"
 import { useAuthStore } from "@/stores/useAuthStore"
 import type { AdminUserDto, AuthResponse, Page } from "@/types/api"
@@ -30,6 +31,7 @@ export default function UserTable() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((state) => state.setAuth)
   const [users, setUsers] = useState<AdminUserDto[]>([])
+  const [search, setSearch] = useState("")
   const [isLoadingUsers, setIsLoadingUsers] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [target, setTarget] = useState<AdminUserDto | null>(null)
@@ -144,8 +146,26 @@ export default function UserTable() {
     return <p className="text-sm text-destructive">Failed to load users.</p>
   }
 
+  const query = search.trim().toLowerCase()
+  const filteredUsers = query
+    ? users.filter((user) =>
+        [user.email, user.role, user.status].some((field) =>
+          field.toLowerCase().includes(query),
+        ),
+      )
+    : users
+
   return (
     <>
+      <div className="mb-4">
+        <Input
+          type="search"
+          placeholder="Search by email, role, or status…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search users"
+        />
+      </div>
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/50 text-left">
@@ -158,14 +178,14 @@ export default function UserTable() {
             </tr>
           </thead>
           <tbody>
-            {users.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
                   No users found.
                 </td>
               </tr>
             ) : (
-              users.map((user) => {
+              filteredUsers.map((user) => {
                 const isInactive = user.status === "INACTIVE"
                 return (
                   <tr key={user.id} className="border-b last:border-0">

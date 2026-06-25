@@ -74,6 +74,35 @@ describe("TemplateManager", () => {
     expect(mockedGet).toHaveBeenCalledWith("/api/v1/resume-templates/admin")
   })
 
+  it("filters templates by name and status, and shows the empty state for no matches", async () => {
+    mockedGet.mockResolvedValue([
+      buildTemplate({ id: "t1", name: "Minimal", isPublished: true }),
+      buildTemplate({ id: "t2", name: "Bold One", isPublished: false }),
+    ])
+    const user = userEvent.setup()
+
+    renderWithRouter(<TemplateManager />)
+    await screen.findByText("Minimal")
+
+    const searchBox = screen.getByLabelText(/search templates/i)
+
+    // Filter by name
+    await user.type(searchBox, "minimal")
+    expect(screen.getByText("Minimal")).toBeInTheDocument()
+    expect(screen.queryByText("Bold One")).not.toBeInTheDocument()
+
+    // Filter by status
+    await user.clear(searchBox)
+    await user.type(searchBox, "draft")
+    expect(screen.getByText("Bold One")).toBeInTheDocument()
+    expect(screen.queryByText("Minimal")).not.toBeInTheDocument()
+
+    // Non-matching query shows empty state
+    await user.clear(searchBox)
+    await user.type(searchBox, "zzz-no-match")
+    expect(screen.getByText("No templates found.")).toBeInTheDocument()
+  })
+
   it("shows an inline error and error toast when loading fails", async () => {
     mockedGet.mockRejectedValue(new Error("boom"))
 
