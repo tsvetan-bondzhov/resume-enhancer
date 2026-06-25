@@ -58,6 +58,14 @@ final class RendererUtils {
         return fallbackPt;
     }
 
+    /** POI paragraph spacing unit: 1pt = 20 twips. */
+    static final int TWIPS_PER_PT = 20;
+
+    /** Parse a "NNpx" CSS length into POI twips (px × 0.75 → pt → × 20). */
+    static int parseSpacingTwips(Object cssValue, int fallbackPt) {
+        return parsePxToPt(cssValue, fallbackPt) * TWIPS_PER_PT;
+    }
+
     /** Strip a leading '#' from a CSS hex color; fall back when absent/invalid. */
     static String parseColor(Object cssValue, String fallback) {
         if (cssValue == null) return fallback;

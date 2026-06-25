@@ -185,6 +185,34 @@ class VisualDocxRendererTest {
         }
     }
 
+    // ─── Section + item spacing ──────────────────────────────────────────────
+
+    @Test
+    void render_appliesSectionAndItemSpacing() throws IOException {
+        TemplateDefinition def = new TemplateDefinition(
+                "single-column",
+                Map.of("--section-spacing", "16px",
+                        "--item-spacing", "10px",
+                        "--font-size-base", "11px"),
+                new TemplateLayout("name-contact", List.of("WORK_EXPERIENCE"), null, Map.of()),
+                Map.of());
+        ResumeDocument doc = new ResumeDocument(List.of(workSection()));
+
+        byte[] docx = renderer.render(doc, templateFor(def));
+
+        try (XWPFDocument parsed = new XWPFDocument(new ByteArrayInputStream(docx))) {
+            XWPFParagraph heading = parsed.getParagraphs().stream()
+                    .filter(p -> "EXPERIENCE".equals(p.getText()))
+                    .findFirst().orElseThrow();
+            assertThat(heading.getSpacingBefore()).as("section gap before heading").isGreaterThan(0);
+
+            XWPFParagraph lastItemPara = parsed.getParagraphs().stream()
+                    .filter(p -> p.getText().contains("Did work."))
+                    .findFirst().orElseThrow();
+            assertThat(lastItemPara.getSpacingAfter()).as("item gap after entry").isGreaterThan(0);
+        }
+    }
+
     // ─── Name run carries heading color ──────────────────────────────────────
 
     @Test

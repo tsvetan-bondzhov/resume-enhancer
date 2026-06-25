@@ -52,6 +52,12 @@ public class VisualDocxRenderer implements DocumentRenderer {
 
     private static final String SEPARATOR_PIPE = "  |  ";
     private static final String WHITE = "FFFFFF";
+    /** Default section spacing (px) when --section-spacing is missing. */
+    private static final int DEFAULT_SECTION_SPACING_PT = 12;
+    /** Default item spacing (px) when --item-spacing is missing. */
+    private static final int DEFAULT_ITEM_SPACING_PT = 8;
+    /** Small breathing room after a heading rule. */
+    private static final int HEADING_AFTER_PT = 4;
 
     private final TemplateDefinitionService templateDefinitionService;
 
@@ -64,7 +70,7 @@ public class VisualDocxRenderer implements DocumentRenderer {
      */
     private record Style(String fontFamily, int bodyFontSize, int nameFontSize,
                          int headingFontSize, String headingColor, String textColor,
-                         String accentColor) {}
+                         String accentColor, int sectionSpacingTwips, int itemSpacingTwips) {}
 
     @Override
     public byte[] render(ResumeDocument doc, ResumeTemplate template) {
@@ -222,9 +228,12 @@ public class VisualDocxRenderer implements DocumentRenderer {
             title = section.sectionType() != null ? section.sectionType().name() : "Section";
         }
 
-        // Heading: bold + colored + uppercase + bottom border rule
+        // Heading: bold + colored + uppercase + bottom border rule, with spacing
+        // before (section gap) and a small gap after so sections aren't cramped.
         XWPFParagraph heading = factory.create();
         heading.setBorderBottom(Borders.SINGLE);
+        heading.setSpacingBefore(style.sectionSpacingTwips());
+        heading.setSpacingAfter(HEADING_AFTER_PT * RendererUtils.TWIPS_PER_PT);
         XWPFRun headingRun = heading.createRun();
         applyFont(headingRun, style);
         headingRun.setText(title.toUpperCase());
@@ -236,7 +245,7 @@ public class VisualDocxRenderer implements DocumentRenderer {
 
         if (section.sectionType() != null && "SKILLS".equals(section.sectionType().name())) {
             String skills = DocxItemFormatter.skillsJoin(items);
-            if (!skills.isBlank()) bodyParagraph(factory, skills, style);
+            if (!skills.isBlank()) bodyParagraph(factory, skills, style, true);
             return;
         }
 
@@ -264,27 +273,29 @@ public class VisualDocxRenderer implements DocumentRenderer {
         String titleLine = DocxItemFormatter.workTitleLine(w);
         if (!titleLine.isBlank()) boldParagraph(factory, titleLine, style);
         String dateRange = RendererUtils.formatDateRange(w.startDate(), w.endDate(), w.isCurrent());
-        if (!dateRange.isBlank()) bodyParagraph(factory, dateRange, style);
-        if (w.description() != null && !w.description().isBlank()) {
-            bodyParagraph(factory, w.description(), style);
+        boolean hasDescription = w.description() != null && !w.description().isBlank();
+        if (!dateRange.isBlank()) bodyParagraph(factory, dateRange, style, !hasDescription);
+        if (hasDescription) {
+            bodyParagraph(factory, w.description(), style, true);
         }
     }
 
     private void renderEducation(ParagraphFactory factory, EducationItem e, Style style) {
         String line = DocxItemFormatter.educationLine(e);
-        if (!line.isBlank()) boldParagraph(factory, line, style);
         String dateRange = RendererUtils.formatDateRange(e.startDate(), e.endDate(), false);
-        if (!dateRange.isBlank()) bodyParagraph(factory, dateRange, style);
+        boolean hasDate = !dateRange.isBlank();
+        if (!line.isBlank()) boldParagraph(factory, line, style, !hasDate);
+        if (hasDate) bodyParagraph(factory, dateRange, style, true);
     }
 
     private void renderCertification(ParagraphFactory factory, CertificationItem c, Style style) {
         String line = DocxItemFormatter.certificationLine(c);
-        if (!line.isBlank()) bodyParagraph(factory, line, style);
+        if (!line.isBlank()) bodyParagraph(factory, line, style, true);
     }
 
     private void renderLanguage(ParagraphFactory factory, LanguageItem l, Style style) {
         String line = DocxItemFormatter.languageLine(l);
-        if (!line.isBlank()) bodyParagraph(factory, line, style);
+        if (!line.isBlank()) bodyParagraph(factory, line, style, true);
     }
 
     private void renderProject(ParagraphFactory factory, ProjectItem p, Style style) {
@@ -292,9 +303,10 @@ public class VisualDocxRenderer implements DocumentRenderer {
         String technologies = DocxItemFormatter.projectTechnologies(p);
         if (!technologies.isBlank()) bodyParagraph(factory, technologies, style);
         String dateRange = RendererUtils.formatDateRange(p.startDate(), p.endDate(), p.isCurrent());
-        if (!dateRange.isBlank()) bodyParagraph(factory, dateRange, style);
-        if (p.description() != null && !p.description().isBlank()) {
-            bodyParagraph(factory, p.description(), style);
+        boolean hasDescription = p.description() != null && !p.description().isBlank();
+        if (!dateRange.isBlank()) bodyParagraph(factory, dateRange, style, !hasDescription);
+        if (hasDescription) {
+            bodyParagraph(factory, p.description(), style, true);
         }
     }
 
@@ -303,14 +315,14 @@ public class VisualDocxRenderer implements DocumentRenderer {
         if (!titleLine.isBlank()) boldParagraph(factory, titleLine, style);
         String dateRange = RendererUtils.formatDateRange(v.startDate(), v.endDate(), v.isCurrent());
         String descLine = DocxItemFormatter.volunteeringDescriptionLine(v, dateRange);
-        if (!descLine.isBlank()) bodyParagraph(factory, descLine, style);
+        if (!descLine.isBlank()) bodyParagraph(factory, descLine, style, true);
     }
 
     private void renderGeneric(ParagraphFactory factory, GenericItem g, Style style) {
         if (g.fields() == null || g.fields().isEmpty()) return;
         g.fields().forEach((key, value) -> {
             if (value != null && !value.isBlank()) {
-                bodyParagraph(factory, key + ": " + value, style);
+                bodyParagraph(factory, key + ": " + value, style, true);
             }
         });
     }
@@ -318,14 +330,27 @@ public class VisualDocxRenderer implements DocumentRenderer {
     // ─── Run / paragraph helpers ──────────────────────────────────────────────
 
     private void bodyParagraph(ParagraphFactory factory, String text, Style style) {
-        XWPFRun run = factory.create().createRun();
+        bodyParagraph(factory, text, style, false);
+    }
+
+    /** {@code endOfItem} adds item-spacing after the paragraph so entries aren't cramped. */
+    private void bodyParagraph(ParagraphFactory factory, String text, Style style, boolean endOfItem) {
+        XWPFParagraph para = factory.create();
+        if (endOfItem) para.setSpacingAfter(style.itemSpacingTwips());
+        XWPFRun run = para.createRun();
         applyFont(run, style);
         run.setText(text);
         run.setColor(style.textColor());
     }
 
     private void boldParagraph(ParagraphFactory factory, String text, Style style) {
-        XWPFRun run = factory.create().createRun();
+        boldParagraph(factory, text, style, false);
+    }
+
+    private void boldParagraph(ParagraphFactory factory, String text, Style style, boolean endOfItem) {
+        XWPFParagraph para = factory.create();
+        if (endOfItem) para.setSpacingAfter(style.itemSpacingTwips());
+        XWPFRun run = para.createRun();
         applyFont(run, style);
         run.setText(text);
         run.setBold(true);
@@ -373,8 +398,13 @@ public class VisualDocxRenderer implements DocumentRenderer {
         String textColor = RendererUtils.parseColor(css.get("--text-color"), RendererUtils.DEFAULT_TEXT);
         String accentColor = RendererUtils.parseColor(css.get("--accent-color"), RendererUtils.DEFAULT_ACCENT);
 
+        int sectionSpacingTwips = RendererUtils.parseSpacingTwips(
+                css.get("--section-spacing"), DEFAULT_SECTION_SPACING_PT);
+        int itemSpacingTwips = RendererUtils.parseSpacingTwips(
+                css.get("--item-spacing"), DEFAULT_ITEM_SPACING_PT);
+
         return new Style(fontFamily, bodyFontSize, nameFontSize, headingFontSize,
-                headingColor, textColor, accentColor);
+                headingColor, textColor, accentColor, sectionSpacingTwips, itemSpacingTwips);
     }
 
     // ─── Function + exception types ───────────────────────────────────────────
