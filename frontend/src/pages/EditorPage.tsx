@@ -12,7 +12,7 @@ import EditorToolbar from "@/components/resume/EditorToolbar"
 import SaveAsDialog from "@/components/resume/SaveAsDialog"
 import ExportFormatDialog, { type ExportMode } from "@/components/resume/ExportFormatDialog"
 import ExportablePreview from "@/components/resume/ExportablePreview"
-import { exportVisualPdf } from "@/lib/exportVisualPdf"
+import { printVisualPdf } from "@/lib/printVisualPdf"
 import TemplateGallery from "@/components/resume/TemplateGallery"
 import ResumeSidebarItem from "@/components/resume/ResumeSidebarItem"
 import ChatPanel from "@/components/resume/ChatPanel"
@@ -402,8 +402,8 @@ export default function EditorPage() {
     const request = visualPdfRequest
     if (!request) return
     try {
-      await exportVisualPdf(container, request.resumeName ?? "resume")
-      toast.success("Download ready", { duration: 4000 })
+      await printVisualPdf(container, request.resumeName ?? "resume")
+      toast.success("Opening print dialog — choose 'Save as PDF'", { duration: 5000 })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Export failed", { duration: 8000 })
     } finally {

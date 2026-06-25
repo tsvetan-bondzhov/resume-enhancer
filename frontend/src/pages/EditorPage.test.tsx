@@ -20,12 +20,12 @@ vi.mock("@/components/resume/AIActionBar", () => ({
 }))
 
 // Mock the client-side visual PDF util so we can assert the visual path without
-// running html-to-image / jsPDF.
-const { mockExportVisualPdf } = vi.hoisted(() => ({
-  mockExportVisualPdf: vi.fn((..._args: unknown[]) => Promise.resolve()),
+// invoking the browser print engine.
+const { mockPrintVisualPdf } = vi.hoisted(() => ({
+  mockPrintVisualPdf: vi.fn((..._args: unknown[]) => Promise.resolve()),
 }))
-vi.mock("@/lib/exportVisualPdf", () => ({
-  exportVisualPdf: mockExportVisualPdf,
+vi.mock("@/lib/printVisualPdf", () => ({
+  printVisualPdf: mockPrintVisualPdf,
 }))
 
 // Mock ExportablePreview to synchronously hand a fake container to onReady, so the
@@ -126,7 +126,7 @@ describe("EditorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Restore default resolved implementation for the visual PDF util after clearAllMocks
-    mockExportVisualPdf.mockResolvedValue(undefined)
+    mockPrintVisualPdf.mockResolvedValue(undefined)
     // Restore never-resolving put mock after clearAllMocks
     vi.mocked(apiClient.put).mockReturnValue(new Promise(() => {}))
     vi.mocked(apiClient.delete).mockResolvedValue(undefined)
@@ -450,16 +450,19 @@ describe("EditorPage", () => {
     // Default mode is visual — clicking PDF takes the client path
     fireEvent.click(screen.getByRole("button", { name: /export as pdf/i }))
 
-    await waitFor(() => expect(mockExportVisualPdf).toHaveBeenCalled())
+    await waitFor(() => expect(mockPrintVisualPdf).toHaveBeenCalled())
     // No backend export fetch on the visual-PDF client path
     expect(fetchSpy).not.toHaveBeenCalled()
     await waitFor(() =>
-      expect(vi.mocked(toast.success)).toHaveBeenCalledWith("Download ready", expect.any(Object)),
+      expect(vi.mocked(toast.success)).toHaveBeenCalledWith(
+        expect.stringContaining("print dialog"),
+        expect.any(Object),
+      ),
     )
   })
 
   it("editor export PDF/visual failure — shows error toast", async () => {
-    mockExportVisualPdf.mockRejectedValueOnce(new Error("Capture failed"))
+    mockPrintVisualPdf.mockRejectedValueOnce(new Error("Capture failed"))
     mockGetWithResume(buildResume())
     render(<EditorPage />)
     await openEditorExportDialog()
@@ -632,10 +635,13 @@ describe("EditorPage", () => {
     // Default mode is visual — clicking PDF takes the client path
     fireEvent.click(screen.getByRole("button", { name: /export as pdf/i }))
 
-    await waitFor(() => expect(mockExportVisualPdf).toHaveBeenCalled())
+    await waitFor(() => expect(mockPrintVisualPdf).toHaveBeenCalled())
     expect(fetchSpy).not.toHaveBeenCalled()
     await waitFor(() =>
-      expect(vi.mocked(toast.success)).toHaveBeenCalledWith("Download ready", expect.any(Object)),
+      expect(vi.mocked(toast.success)).toHaveBeenCalledWith(
+        expect.stringContaining("print dialog"),
+        expect.any(Object),
+      ),
     )
   })
 
