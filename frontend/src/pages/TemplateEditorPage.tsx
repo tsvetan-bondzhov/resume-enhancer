@@ -1,92 +1,25 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { apiClient } from "@/lib/apiClient"
 import ResumeCanvas from "@/components/resume/ResumeCanvas"
-import type {
-  ResumeDocumentDto,
-  TemplateDefinitionDto,
-  TemplateDto,
-  TemplateRequest,
-} from "@/types/api"
+import TemplateEditorSidebar from "@/components/template-editor/TemplateEditorSidebar"
+import {
+  DEFAULT_DEFINITION,
+  LAYOUT_PRESETS,
+  SAMPLE_DOC,
+  type LayoutPresetId,
+} from "@/pages/templateEditorPresets"
+import type { TemplateDefinitionDto, TemplateDto, TemplateRequest } from "@/types/api"
 
 const DEBOUNCE_MS = 500
 
-// Minimal valid single-column definition seeded in create mode (AC2). Includes
-// layoutType, --accent-color + --font-size-base in px, and a layout.sectionOrder.
-const DEFAULT_DEFINITION: TemplateDefinitionDto = {
-  layoutType: "single-column",
-  cssVariables: {
-    "--accent-color": "#3b82f6",
-    "--font-size-base": "11px",
-    "--section-spacing": "12px",
-    "--page-margin-top": "0.75in",
-    "--page-margin-right": "0.75in",
-    "--page-margin-bottom": "0.75in",
-    "--page-margin-left": "0.75in",
-  },
-  layout: {
-    headerFormat: "name-contact",
-    sectionOrder: ["WORK_EXPERIENCE", "EDUCATION", "SKILLS"],
-    sectionStyles: {},
-  },
-  metadata: { version: "1.0", atsCompatible: true, pageSize: "letter" },
-}
-
 const DEFAULT_DEFINITION_TEXT = JSON.stringify(DEFAULT_DEFINITION, null, 2)
-
-// Small sample document so layout / typography / accent changes are visible in
-// the live preview (AC3). Section types match the seeded sectionOrder.
-const SAMPLE_DOC: ResumeDocumentDto = {
-  sections: [
-    {
-      sectionType: "WORK_EXPERIENCE",
-      title: "Experience",
-      visible: true,
-      items: [
-        {
-          type: "WORK_EXPERIENCE",
-          id: "sample-we-1",
-          jobTitle: "Senior Engineer",
-          company: "Acme Corp",
-          startDate: "2021-01",
-          endDate: null,
-          isCurrent: true,
-          description: "Led the redesign of the core platform.",
-        },
-      ],
-    },
-    {
-      sectionType: "EDUCATION",
-      title: "Education",
-      visible: true,
-      items: [
-        {
-          type: "EDUCATION",
-          id: "sample-edu-1",
-          institution: "State University",
-          degree: "BSc",
-          fieldOfStudy: "Computer Science",
-          startDate: "2013",
-          endDate: "2017",
-        },
-      ],
-    },
-    {
-      sectionType: "SKILLS",
-      title: "Skills",
-      visible: true,
-      items: [
-        { type: "SKILLS", id: "sample-skill-1", name: "TypeScript" },
-        { type: "SKILLS", id: "sample-skill-2", name: "React" },
-      ],
-    },
-  ],
-}
 
 // Matches values like 12rem / 1.5em — the backend rejects these with HTTP 400,
 // so reject them client-side too (AC4). Only px/in are accepted for sized values.
@@ -133,6 +66,7 @@ export default function TemplateEditorPage() {
   const [lastValidDef, setLastValidDef] = useState<TemplateDefinitionDto>(DEFAULT_DEFINITION)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   // Load existing template when in edit mode.
   useEffect(() => {
@@ -193,6 +127,12 @@ export default function TemplateEditorPage() {
 
   const handleCancel = () => {
     navigate(-1)
+  }
+
+  // Prefill the JSON textarea with a complete, valid definition for the chosen
+  // layout type. The debounced effect then refreshes the live preview.
+  const handleApplyPreset = (preset: LayoutPresetId) => {
+    setDefinitionText(JSON.stringify(LAYOUT_PRESETS[preset], null, 2))
   }
 
   const handleSave = async () => {
@@ -273,16 +213,34 @@ export default function TemplateEditorPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    // h-screen + overflow-hidden: the OUTER body never scrolls. Header is fixed;
+    // each pane scrolls independently (AC5).
+    <div className="flex h-screen flex-col overflow-hidden">
       {/* Header bar */}
       <header className="flex items-center justify-between border-b px-6 py-3 shrink-0">
-        <div>
-          <h1 className="text-lg font-semibold leading-tight">
-            {isEdit ? "Edit template" : "Create new template"}
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            Edit the name and JSON definition. The preview updates as you type.
-          </p>
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen((o) => !o)}
+            aria-label={sidebarOpen ? "Hide instructions" : "Show instructions"}
+            aria-pressed={sidebarOpen}
+          >
+            {sidebarOpen ? (
+              <PanelLeftClose className="size-5" aria-hidden="true" />
+            ) : (
+              <PanelLeftOpen className="size-5" aria-hidden="true" />
+            )}
+          </Button>
+          <div>
+            <h1 className="text-lg font-semibold leading-tight">
+              {isEdit ? "Edit template" : "Create new template"}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Edit the name and JSON definition. The preview updates as you type.
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={handleCancel} disabled={isSaving}>
@@ -294,45 +252,55 @@ export default function TemplateEditorPage() {
         </div>
       </header>
 
-      {/* Two-column body — editor left, preview right */}
-      <div className="grid flex-1 grid-cols-2 gap-0 overflow-hidden">
-        {/* Left: editor */}
-        <div className="flex flex-col gap-4 overflow-y-auto border-r p-6">
-          <div className="space-y-2">
-            <Label htmlFor="template-editor-name">Name</Label>
-            <Input
-              id="template-editor-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={isSaving}
-              placeholder="My custom template"
-            />
-          </div>
-          <div className="flex flex-1 flex-col space-y-2">
-            <Label htmlFor="template-editor-definition">Template definition (JSON)</Label>
-            <Textarea
-              id="template-editor-definition"
-              value={definitionText}
-              onChange={(e) => setDefinitionText(e.target.value)}
-              disabled={isSaving}
-              spellCheck={false}
-              className="font-mono text-xs flex-1 min-h-[400px] resize-none"
-            />
-            {validationError && (
-              <p className="text-sm text-destructive" role="alert">
-                {validationError}
-              </p>
-            )}
-          </div>
-        </div>
+      {/* Body — min-h-0 lets the flex child clip and its children scroll internally. */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* Collapsible instructions / presets sidebar */}
+        {sidebarOpen && (
+          <aside className="w-72 shrink-0" data-testid="template-editor-sidebar">
+            <TemplateEditorSidebar onApplyPreset={handleApplyPreset} disabled={isSaving} />
+          </aside>
+        )}
 
-        {/* Right: live preview */}
-        <div
-          aria-live="polite"
-          aria-label="Template live preview"
-          className="overflow-hidden bg-muted/30"
-        >
-          <ResumeCanvas document={SAMPLE_DOC} templateId={null} templatePreview={lastValidDef} />
+        {/* Editor + preview panes */}
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-0 overflow-hidden">
+          {/* Left: editor (scrolls independently) */}
+          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto border-r p-6">
+            <div className="space-y-2">
+              <Label htmlFor="template-editor-name">Name</Label>
+              <Input
+                id="template-editor-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isSaving}
+                placeholder="My custom template"
+              />
+            </div>
+            <div className="flex flex-1 flex-col space-y-2">
+              <Label htmlFor="template-editor-definition">Template definition (JSON)</Label>
+              <Textarea
+                id="template-editor-definition"
+                value={definitionText}
+                onChange={(e) => setDefinitionText(e.target.value)}
+                disabled={isSaving}
+                spellCheck={false}
+                className="font-mono text-xs flex-1 min-h-[400px] resize-none"
+              />
+              {validationError && (
+                <p className="text-sm text-destructive" role="alert">
+                  {validationError}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Right: live preview (ResumeCanvas scrolls internally) */}
+          <div
+            aria-live="polite"
+            aria-label="Template live preview"
+            className="min-h-0 overflow-hidden bg-muted/30"
+          >
+            <ResumeCanvas document={SAMPLE_DOC} templateId={null} templatePreview={lastValidDef} />
+          </div>
         </div>
       </div>
     </div>

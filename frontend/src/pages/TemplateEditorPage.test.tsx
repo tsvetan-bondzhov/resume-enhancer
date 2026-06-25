@@ -235,4 +235,41 @@ describe("TemplateEditorPage", () => {
     )
     expect(screen.getByRole("button", { name: /go back/i })).toBeInTheDocument()
   })
+
+  // Sidebar toggle shows/hides the instructions pane.
+  it("toggles the instructions sidebar open and closed", () => {
+    renderCreate()
+
+    // Sidebar is open by default.
+    expect(screen.getByTestId("template-editor-sidebar")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: /css variables/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: /hide instructions/i }))
+    expect(screen.queryByTestId("template-editor-sidebar")).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: /show instructions/i }))
+    expect(screen.getByTestId("template-editor-sidebar")).toBeInTheDocument()
+  })
+
+  // Clicking a layout preset prefills the definition textarea with that layout.
+  it("prefills the definition textarea when a layout preset is clicked", () => {
+    renderCreate()
+
+    const textarea = screen.getByLabelText(/template definition/i) as HTMLTextAreaElement
+
+    fireEvent.click(screen.getByRole("button", { name: /apply two column preset/i }))
+    expect(textarea.value).toContain('"layoutType": "two-column"')
+    // Two-column preset must include a columns split.
+    expect(textarea.value).toContain('"left"')
+
+    fireEvent.click(screen.getByRole("button", { name: /apply modern accent preset/i }))
+    expect(textarea.value).toContain('"layoutType": "modern-accent"')
+  })
+
+  // DEFAULT_DEFINITION is valid: create mode renders without a validation error.
+  it("seeds a valid DEFAULT_DEFINITION with no validation error in create mode", () => {
+    renderCreate()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+    expect(screen.getByTestId("preview").dataset.layout).toBe("single-column")
+  })
 })
