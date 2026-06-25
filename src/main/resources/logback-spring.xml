@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logback configuration that, in addition to the default Spring Boot console output,
+  ships log records to the OpenTelemetry SDK via the OpenTelemetryAppender. The SDK's
+  OTLP log exporter (configured by management.opentelemetry.logging.export.otlp.endpoint
+  in application.yml) forwards them to the otel-lgtm collector -> Loki.
+
+  The appender only becomes active once OpenTelemetryAppender.install(openTelemetry) is
+  invoked at startup; see OpenTelemetryAppenderInitializer. Records logged before that are
+  buffered (numLogsCapturedBeforeOtelInstall) and flushed on install.
+
+  captureExperimentalAttributes/captureCodeAttributes enrich logs with trace_id and span_id
+  so Grafana's Loki -> Tempo "Logs for this span" correlation works.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
+        <captureExperimentalAttributes>true</captureExperimentalAttributes>
+        <captureCodeAttributes>true</captureCodeAttributes>
+        <captureMdcAttributes>*</captureMdcAttributes>
+        <numLogsCapturedBeforeOtelInstall>1000</numLogsCapturedBeforeOtelInstall>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="OTEL"/>
+    </root>
+</configuration>

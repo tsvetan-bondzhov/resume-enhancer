@@ -31,14 +31,27 @@ management:
     sampling:
       # probability 1.0 = sample every trace for local/dev observability
       probability: 1.0
-  otlp:
+  # Spring Boot 4 OTLP export keys. Traces and logs use management.opentelemetry.*
+  # (OpenTelemetry SDK exporters); metrics use management.otlp.metrics.* (Micrometer
+  # OTLP registry). The previous management.otlp.tracing/logging.* keys are NOT bound
+  # in Spring Boot 4 — traces only worked because the OTel SDK defaults to :4318.
+  opentelemetry:
     tracing:
-      endpoint: http://localhost:4318/v1/traces
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/traces
     logging:
-      endpoint: http://localhost:4318/v1/logs
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/logs
+  otlp:
     metrics:
       export:
         url: http://localhost:4318/v1/metrics
+        # Micrometer's OTLP registry defaults to MILLISECONDS, which would emit
+        # http_server_requests_milliseconds_* and leave the dashboard's
+        # http_server_requests_seconds_* panels empty. Force seconds to match.
+        base-time-unit: seconds
 
 app:
   jwt:
