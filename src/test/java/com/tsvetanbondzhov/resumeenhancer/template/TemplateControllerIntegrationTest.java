@@ -152,6 +152,52 @@ class TemplateControllerIntegrationTest {
                 .jsonPath("$.title").isEqualTo("Not Found");
     }
 
+    // ─── GET /{id} resolves the caller's own (unpublished) custom template ───
+
+    @Test
+    void getTemplate_byId_returnsOwnCustomTemplate() throws Exception {
+        String token = registerAndGetToken("get_own_custom@example.com", "Password1");
+        String createBody = """
+                { "name": "My Custom", "description": "mine", "templateDefinition": { "layoutType": "single-column" } }
+                """;
+        String createdId = createCustomTemplateAndGetId(token, createBody);
+
+        // The custom template is unpublished, yet the shared GET-by-id endpoint resolves it
+        // for its owner via the unified lookup.
+        webTestClient().get()
+                .uri("/api/v1/resume-templates/" + createdId)
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.id").isEqualTo(createdId)
+                .jsonPath("$.name").isEqualTo("My Custom")
+                .jsonPath("$.isPrebuilt").isEqualTo(false)
+                .jsonPath("$.isPublished").isEqualTo(false);
+    }
+
+    // ─── GET /{id} for another user's private custom id → 404 (not 403) ──────
+
+    @Test
+    void getTemplate_byId_otherUsersPrivateCustom_returns404() throws Exception {
+        String tokenA = registerAndGetToken("get_shared_a@example.com", "Password1");
+        String tokenB = registerAndGetToken("get_shared_b@example.com", "Password1");
+        String createBody = """
+                { "name": "A's Custom", "description": null, "templateDefinition": {} }
+                """;
+        String aTemplateId = createCustomTemplateAndGetId(tokenA, createBody);
+
+        // B requesting A's private custom id via the shared GET endpoint → clean 404,
+        // not a 403 (owner-scoped lookup simply misses).
+        webTestClient().get()
+                .uri("/api/v1/resume-templates/" + aTemplateId)
+                .header("Authorization", "Bearer " + tokenB)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.title").isEqualTo("Not Found");
+    }
+
     // ─── POST /api/v1/resume-templates → 403 for non-admin ───────────────────
 
     @Test

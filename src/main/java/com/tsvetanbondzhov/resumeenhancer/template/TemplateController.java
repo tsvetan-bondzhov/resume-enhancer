@@ -54,8 +54,10 @@ public class TemplateController {
     }
 
     @GetMapping("/{templateId}")
-    public TemplateDto getPublishedTemplate(@PathVariable UUID templateId) {
-        return templateService.getPublishedTemplate(templateId);
+    public TemplateDto getTemplate(
+            @AuthenticationPrincipal User principal,
+            @PathVariable UUID templateId) {
+        return templateService.getSharedOrOwnedTemplate(resolveOwnerId(principal), templateId);
     }
 
     @GetMapping("/admin")

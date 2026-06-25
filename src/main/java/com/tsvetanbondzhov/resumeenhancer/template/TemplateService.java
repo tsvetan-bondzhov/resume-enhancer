@@ -50,6 +50,21 @@ public class TemplateService {
                 .orElseThrow(() -> new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId));
     }
 
+    /**
+     * Resolves a template the caller is allowed to view by id, preferring a shared/published
+     * (prebuilt) template and falling back to the caller's own custom (unpublished) template.
+     * Uses Optional lookups for the fallback so a published-template miss produces no error
+     * logging. A request for another user's private custom id simply won't match the
+     * owner-scoped lookup and yields a clean 404 (no 403 leak on this shared GET path).
+     */
+    @Transactional(readOnly = true)
+    public TemplateDto getSharedOrOwnedTemplate(UUID ownerId, UUID templateId) {
+        return templateRepository.findByIdAndIsPublishedTrue(templateId)
+                .or(() -> templateRepository.findByIdAndOwnerId(templateId, ownerId))
+                .map(this::toDto)
+                .orElseThrow(() -> new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId));
+    }
+
     @CacheEvict(value = "templates", allEntries = true)
     @Transactional
     public TemplateDto createTemplate(TemplateRequest request) {

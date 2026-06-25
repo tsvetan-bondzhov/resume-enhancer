@@ -1,5 +1,7 @@
 package com.tsvetanbondzhov.resumeenhancer.template;
 
+import com.tsvetanbondzhov.resumeenhancer.auth.UserRepository;
+import com.tsvetanbondzhov.resumeenhancer.auth.domain.User;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.TemplateDto;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.TemplateRequest;
 import org.junit.jupiter.api.Test;
@@ -9,10 +11,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,14 +29,40 @@ class TemplateControllerTest {
     @Mock
     private TemplateService templateService;
 
+    @Mock
+    private UserRepository userRepository;
+
     @InjectMocks
     private TemplateController templateController;
 
     private static final UUID TEMPLATE_ID = UUID.fromString("11111111-0000-0000-0000-000000000001");
+    private static final UUID OWNER_ID = UUID.fromString("22222222-0000-0000-0000-000000000001");
 
     private TemplateDto buildTemplateDto(String name) {
         return new TemplateDto(TEMPLATE_ID, name, "A description", true, true,
                 Map.of(), Instant.now(), Instant.now());
+    }
+
+    private User buildPrincipal() {
+        User principal = new User();
+        principal.setEmail("user@example.com");
+        User persisted = new User();
+        persisted.setEmail("user@example.com");
+        ReflectionTestUtils.setField(persisted, "id", OWNER_ID);
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(persisted));
+        return principal;
+    }
+
+    @Test
+    void getTemplate_resolvesOwnerIdAndDelegatesToSharedOrOwnedLookup() {
+        User principal = buildPrincipal();
+        TemplateDto dto = buildTemplateDto("Modern");
+        when(templateService.getSharedOrOwnedTemplate(OWNER_ID, TEMPLATE_ID)).thenReturn(dto);
+
+        TemplateDto result = templateController.getTemplate(principal, TEMPLATE_ID);
+
+        assertThat(result.name()).isEqualTo("Modern");
+        verify(templateService).getSharedOrOwnedTemplate(OWNER_ID, TEMPLATE_ID);
     }
 
     @Test

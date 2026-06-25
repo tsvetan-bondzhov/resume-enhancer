@@ -106,6 +106,51 @@ class TemplateServiceTest {
                 .hasMessageContaining(TEMPLATE_ID.toString());
     }
 
+    // ─── getSharedOrOwnedTemplate ─────────────────────────────────────────────
+
+    @Test
+    void getSharedOrOwnedTemplate_returnsPublishedTemplate_whenPublished() {
+        ResumeTemplate t = buildTemplate("Modern", true);
+        when(templateRepository.findByIdAndIsPublishedTrue(TEMPLATE_ID)).thenReturn(Optional.of(t));
+
+        TemplateDto result = templateService.getSharedOrOwnedTemplate(OWNER_ID, TEMPLATE_ID);
+
+        assertThat(result.name()).isEqualTo("Modern");
+        verify(templateRepository, never()).findByIdAndOwnerId(any(), any());
+    }
+
+    @Test
+    void getSharedOrOwnedTemplate_fallsBackToOwnCustomTemplate_whenNotPublished() {
+        when(templateRepository.findByIdAndIsPublishedTrue(TEMPLATE_ID)).thenReturn(Optional.empty());
+        when(templateRepository.findByIdAndOwnerId(TEMPLATE_ID, OWNER_ID))
+                .thenReturn(Optional.of(buildCustomTemplate("Mine", OWNER_ID)));
+
+        TemplateDto result = templateService.getSharedOrOwnedTemplate(OWNER_ID, TEMPLATE_ID);
+
+        assertThat(result.name()).isEqualTo("Mine");
+        assertThat(result.isPublished()).isFalse();
+    }
+
+    @Test
+    void getSharedOrOwnedTemplate_unknownId_throwsNotFound() {
+        when(templateRepository.findByIdAndIsPublishedTrue(TEMPLATE_ID)).thenReturn(Optional.empty());
+        when(templateRepository.findByIdAndOwnerId(TEMPLATE_ID, OWNER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> templateService.getSharedOrOwnedTemplate(OWNER_ID, TEMPLATE_ID))
+                .isInstanceOf(TemplateNotFoundException.class)
+                .hasMessageContaining(TEMPLATE_ID.toString());
+    }
+
+    @Test
+    void getSharedOrOwnedTemplate_otherUsersPrivateCustom_throwsNotFound() {
+        // Not published, and not owned by the caller → owner-scoped lookup misses → clean 404.
+        when(templateRepository.findByIdAndIsPublishedTrue(TEMPLATE_ID)).thenReturn(Optional.empty());
+        when(templateRepository.findByIdAndOwnerId(TEMPLATE_ID, OWNER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> templateService.getSharedOrOwnedTemplate(OWNER_ID, TEMPLATE_ID))
+                .isInstanceOf(TemplateNotFoundException.class);
+    }
+
     // ─── updateTemplate — CSS unit validation (AC3) ───────────────────────────
 
     @Test
