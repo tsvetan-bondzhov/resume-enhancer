@@ -172,7 +172,9 @@ export default function TemplateGallery({
     }
   }
 
-  const activeTemplate = templates.find(t => t.id === activeTemplateId)
+  const activeTemplate =
+    templates.find((t) => t.id === activeTemplateId) ??
+    customTemplates.find((t) => t.id === activeTemplateId)
 
   function renderDefaultTemplates() {
     if (isLoading) {
@@ -321,7 +323,12 @@ export default function TemplateGallery({
       {activeTemplate && (
         <p className="text-xs text-muted-foreground mb-2">
           Active template:{" "}
-          <span className="font-medium text-foreground">{activeTemplate.name}</span>
+          <span
+            className="font-medium text-foreground"
+            title={activeTemplate.description ?? undefined}
+          >
+            {activeTemplate.name}
+          </span>
         </p>
       )}
       <Tabs value={activeTab} onValueChange={setActiveTab}>

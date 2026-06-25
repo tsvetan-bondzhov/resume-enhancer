@@ -227,6 +227,32 @@ describe("TemplateGallery", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/templates/custom/c1/edit")
   })
 
+  // Active-template indicator shows the name of a selected CUSTOM template
+  it("shows the active custom template's name in the Active template indicator", async () => {
+    mockGalleryFetches(
+      [buildTemplate({ id: "p1", name: "Minimal" })],
+      [buildTemplate({ id: "c1", name: "My Custom", isPrebuilt: false })],
+    )
+    renderGallery("c1")
+    await waitFor(() => {
+      const label = screen.getByText(/active template:/i)
+      expect(label).toHaveTextContent("My Custom")
+    })
+  })
+
+  // Active-template indicator exposes the template description as a hover tooltip (title)
+  it("exposes the active template's description as a hover tooltip", async () => {
+    mockGalleryFetches(
+      [buildTemplate({ id: "p1", name: "Minimal", description: "A clean, minimal layout" })],
+      [],
+    )
+    renderGallery("p1")
+    await waitFor(() => {
+      const name = screen.getByText("Minimal", { selector: "span" })
+      expect(name).toHaveAttribute("title", "A clean, minimal layout")
+    })
+  })
+
   // AC7: delete confirm calls apiClient.delete on the /custom endpoint and removes the card
   it("calls DELETE /custom/{id} when delete is confirmed and removes card from DOM (AC7)", async () => {
     mockGalleryFetches(
