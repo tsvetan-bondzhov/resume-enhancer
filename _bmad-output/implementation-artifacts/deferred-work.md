@@ -179,6 +179,12 @@
 - **W3** `DashboardPage.tsx` `handleExport` — no AbortController or in-flight deduplication; rapid double-click can fire two parallel export fetch requests before `setIsExporting(true)` re-render. Pre-existing pattern across delete/duplicate handlers; address when global request cancellation strategy is introduced.
 - **W4** `EditorPage.tsx` — `exportDocx` and `exportPdf` share `isExporting` Zustand state with no early-return guard; `isExporting` button-disabled state prevents concurrent clicks in normal usage but not in race conditions between button render and click. Pre-existing shared-state pattern; address if concurrent export bugs are observed in production.
 
+## Deferred from: code review of 8-2-custom-template-authoring-ui (2026-06-24)
+
+- **D1** `TemplateGallery.tsx` — Stale `customTemplates` list if concurrent edits/deletes from another session occur while the gallery is mounted. Inherent trade-off of local state management without a server-side cache invalidation strategy; acceptable v1 limitation.
+- **D2** `TemplateEditorPage.tsx` `handleCancel` / `handleSave` success path — `navigate(-1)` on a direct URL load or empty history stack exits the SPA (about:blank). Spec explicitly specifies `navigate(-1)` and Dev Notes confirm it; known SPA limitation; add a fallback `navigate("/")` if a fresh-tab entry point for this route is ever supported.
+- **D3** `TemplateEditorPage.tsx` `handleCancel` — No unsaved-changes warning when user clicks Cancel with edits. Not required by any AC; address if a dirty-state guard is formally specified.
+
 ## Work planned for Phase 2
 - A toast is displayed when a user tries to sign up with an email that is already in use. This is not the best user experience as the error might be missed by the user. TODO: Brainstorm a better way to handle this. 
 

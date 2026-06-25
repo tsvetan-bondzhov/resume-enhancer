@@ -33,7 +33,7 @@ export default function SkillsSectionRenderer({
   onReorderItems,
 }: SkillsSectionRendererProps) {
   const content = (
-    <div className="flex flex-wrap gap-1 items-center group/section">
+    <div className="flex flex-wrap items-center group/section" style={{ gap: "var(--item-spacing, 4px)" }}>
       {items.map((item, index) => {
         // In read-only mode skip items with no name; in editor mode always render
         if (item.name == null && !onFieldChange) return null

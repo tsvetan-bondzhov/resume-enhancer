@@ -28,6 +28,7 @@ vi.mock("@/pages/SettingsPage", () => ({ default: () => <div data-testid="settin
 vi.mock("@/pages/NotFoundPage", () => ({ default: () => <div data-testid="not-found-page" /> }))
 vi.mock("@/pages/AiTestPage", () => ({ default: () => <div data-testid="ai-test-page" /> }))
 vi.mock("@/pages/AdminPage", () => ({ default: () => <div data-testid="admin-page" /> }))
+vi.mock("@/pages/TemplateEditorPage", () => ({ default: () => <div data-testid="template-editor-page" /> }))
 vi.mock("@/components/ui/skeleton", () => ({ Skeleton: () => <div data-testid="skeleton" /> }))
 
 // ProtectedRoute is not exported, so we exercise it via the router config.
@@ -154,5 +155,37 @@ describe("ProtectedRoute via RouterProvider", () => {
     router.navigate("/admin")
     render(<RouterProvider router={router} />)
     await screen.findByTestId("admin-page")
+  })
+
+  it("renders template editor page for authenticated user at /templates/custom/new", async () => {
+    mockToken = "tok"
+    mockUserRole = "USER"
+    router.navigate("/templates/custom/new")
+    render(<RouterProvider router={router} />)
+    await screen.findByTestId("template-editor-page")
+  })
+
+  it("renders template editor page for authenticated user at /templates/custom/:id/edit", async () => {
+    mockToken = "tok"
+    mockUserRole = "USER"
+    router.navigate("/templates/custom/some-id/edit")
+    render(<RouterProvider router={router} />)
+    await screen.findByTestId("template-editor-page")
+  })
+
+  it("redirects unauthenticated user from /templates/custom/new to /login", async () => {
+    mockToken = null
+    mockUserRole = null
+    router.navigate("/templates/custom/new")
+    render(<RouterProvider router={router} />)
+    await screen.findByTestId("login-page")
+  })
+
+  it("redirects unauthenticated user from /templates/custom/:id/edit to /login", async () => {
+    mockToken = null
+    mockUserRole = null
+    router.navigate("/templates/custom/some-id/edit")
+    render(<RouterProvider router={router} />)
+    await screen.findByTestId("login-page")
   })
 })

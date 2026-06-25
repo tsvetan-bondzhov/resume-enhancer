@@ -22,23 +22,23 @@ spring:
       max-request-size: 8MB
   cache:
     type: caffeine
-  opentelemetry:
+
+# Observability — OpenTelemetry / OTLP export + trace sampling.
+# These are ROOT-level Spring Boot 4 keys (NOT under spring:). The OTLP endpoints
+# target the grafana/otel-lgtm collector exposed on :4318 (see compose.yaml).
+management:
+  tracing:
+    sampling:
+      # probability 1.0 = sample every trace for local/dev observability
+      probability: 1.0
+  otlp:
     tracing:
-      export:
-        otlp:
-          endpoint: http://localhost:4318/v1/traces
+      endpoint: http://localhost:4318/v1/traces
     logging:
-      export:
-        otlp:
-          endpoint: http://localhost:4318/v1/logs
+      endpoint: http://localhost:4318/v1/logs
     metrics:
       export:
-        otlp:
-          endpoint: http://localhost:4318/v1/metrics
-  management:
-    tracing:
-      sampling:
-        probability: 1.0
+        url: http://localhost:4318/v1/metrics
 
 app:
   jwt:

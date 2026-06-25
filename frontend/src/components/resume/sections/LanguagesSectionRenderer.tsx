@@ -18,7 +18,7 @@ export default function LanguagesSectionRenderer({
   onReorderItems,
 }: LanguagesSectionRendererProps) {
   const content = (
-    <div className="space-y-1 group/section">
+    <div className="flex flex-col group/section" style={{ gap: "var(--item-spacing, 4px)" }}>
       {items.map((item, index) => (
         <React.Fragment key={item.id}>
           <SortableItemWrapper id={item.id} itemIndex={index} onDeleteItem={onDeleteItem}>

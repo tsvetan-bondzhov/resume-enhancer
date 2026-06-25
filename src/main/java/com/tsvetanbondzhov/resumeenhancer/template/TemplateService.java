@@ -1,6 +1,10 @@
 package com.tsvetanbondzhov.resumeenhancer.template;
 
+import com.tsvetanbondzhov.resumeenhancer.auth.UserRepository;
+import com.tsvetanbondzhov.resumeenhancer.auth.domain.User;
 import com.tsvetanbondzhov.resumeenhancer.template.domain.ResumeTemplate;
+import com.tsvetanbondzhov.resumeenhancer.template.dto.CustomTemplateAdminDto;
+import com.tsvetanbondzhov.resumeenhancer.template.dto.CustomTemplateRequest;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.TemplateDto;
 import com.tsvetanbondzhov.resumeenhancer.template.dto.TemplateRequest;
 import org.springframework.cache.annotation.CacheEvict;
@@ -12,18 +16,23 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class TemplateService {
 
     private static final Pattern DISALLOWED_CSS_UNIT = Pattern.compile("\\d+(rem|em)");
+    private static final String TEMPLATE_NOT_FOUND = "Template not found: ";
 
     private final TemplateRepository templateRepository;
+    private final UserRepository userRepository;
 
-    public TemplateService(TemplateRepository templateRepository) {
+    public TemplateService(TemplateRepository templateRepository, UserRepository userRepository) {
         this.templateRepository = templateRepository;
+        this.userRepository = userRepository;
     }
 
     @Cacheable("templates")
@@ -38,17 +47,162 @@ public class TemplateService {
     public TemplateDto getPublishedTemplate(UUID templateId) {
         return templateRepository.findByIdAndIsPublishedTrue(templateId)
                 .map(this::toDto)
-                .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + templateId));
+                .orElseThrow(() -> new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId));
+    }
+
+    /**
+     * Resolves a template the caller is allowed to view by id, preferring a shared/published
+     * (prebuilt) template and falling back to the caller's own custom (unpublished) template.
+     * Uses Optional lookups for the fallback so a published-template miss produces no error
+     * logging. A request for another user's private custom id simply won't match the
+     * owner-scoped lookup and yields a clean 404 (no 403 leak on this shared GET path).
+     */
+    @Transactional(readOnly = true)
+    public TemplateDto getSharedOrOwnedTemplate(UUID ownerId, UUID templateId) {
+        return templateRepository.findByIdAndIsPublishedTrue(templateId)
+                .or(() -> templateRepository.findByIdAndOwnerId(templateId, ownerId))
+                .map(this::toDto)
+                .orElseThrow(() -> new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId));
+    }
+
+    @CacheEvict(value = "templates", allEntries = true)
+    @Transactional
+    public TemplateDto createTemplate(TemplateRequest request) {
+        validateCssVariables(request.templateDefinition());
+
+        ResumeTemplate template = new ResumeTemplate();
+        template.setName(request.name());
+        template.setDescription(request.description());
+        template.setTemplateDefinition(request.templateDefinition());
+        template.setPrebuilt(true);
+        template.setPublished(false);
+        template.setOwnerId(null);
+        return toDto(templateRepository.save(template));
     }
 
     @CacheEvict(value = "templates", allEntries = true)
     @Transactional
     public TemplateDto updateTemplate(UUID templateId, TemplateRequest request) {
         ResumeTemplate template = templateRepository.findById(templateId)
-                .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + templateId));
+                .orElseThrow(() -> new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId));
 
-        // Validate cssVariables — reject rem/em units
-        Object cssVarsRaw = request.templateDefinition().get("cssVariables");
+        validateCssVariables(request.templateDefinition());
+
+        template.setName(request.name());
+        template.setDescription(request.description());
+        template.setTemplateDefinition(request.templateDefinition());
+        return toDto(templateRepository.save(template));
+    }
+
+    @CacheEvict(value = "templates", allEntries = true)
+    @Transactional
+    public void deleteTemplate(UUID templateId) {
+        ResumeTemplate template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId));
+        templateRepository.delete(template);
+    }
+
+    @CacheEvict(value = "templates", allEntries = true)
+    @Transactional
+    public TemplateDto setPublished(UUID templateId, boolean published) {
+        ResumeTemplate template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId));
+        template.setPublished(published);
+        return toDto(templateRepository.save(template));
+    }
+
+    @Transactional(readOnly = true)
+    public List<TemplateDto> listAllTemplates() {
+        return templateRepository.findAll().stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    /**
+     * Admin-only: lists every custom (user-owned) template across all users, annotated with the
+     * owner's email. Owner emails are resolved in a single batch query to avoid N+1 lookups.
+     */
+    @Transactional(readOnly = true)
+    public List<CustomTemplateAdminDto> listAllCustomTemplates() {
+        List<ResumeTemplate> templates = templateRepository.findAllByOwnerIdIsNotNull();
+        Set<UUID> ownerIds = templates.stream()
+                .map(ResumeTemplate::getOwnerId)
+                .collect(Collectors.toSet());
+        Map<UUID, String> emailsById = userRepository.findAllById(ownerIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getEmail));
+        return templates.stream()
+                .map(template -> toAdminDto(template, emailsById.get(template.getOwnerId())))
+                .toList();
+    }
+
+    // ─── Custom (user-owned) templates ────────────────────────────────────────
+
+    @Transactional
+    public TemplateDto createCustomTemplate(UUID ownerId, CustomTemplateRequest request) {
+        validateCssVariables(request.templateDefinition());
+
+        ResumeTemplate template = new ResumeTemplate();
+        template.setName(request.name());
+        template.setDescription(request.description());
+        template.setTemplateDefinition(request.templateDefinition());
+        template.setOwnerId(ownerId);
+        template.setPrebuilt(false);
+        template.setPublished(false);
+        return toDto(templateRepository.save(template));
+    }
+
+    @Transactional(readOnly = true)
+    public List<TemplateDto> listCustomTemplates(UUID ownerId) {
+        return templateRepository.findAllByOwnerId(ownerId).stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public TemplateDto getCustomTemplate(UUID ownerId, UUID templateId) {
+        return toDto(resolveOwnedTemplate(ownerId, templateId));
+    }
+
+    @Transactional
+    public TemplateDto updateCustomTemplate(UUID ownerId, UUID templateId, CustomTemplateRequest request) {
+        ResumeTemplate template = resolveOwnedTemplate(ownerId, templateId);
+
+        validateCssVariables(request.templateDefinition());
+
+        template.setName(request.name());
+        template.setDescription(request.description());
+        template.setTemplateDefinition(request.templateDefinition());
+        return toDto(templateRepository.save(template));
+    }
+
+    @Transactional
+    public void deleteCustomTemplate(UUID ownerId, UUID templateId) {
+        ResumeTemplate template = resolveOwnedTemplate(ownerId, templateId);
+        templateRepository.delete(template);
+    }
+
+    /**
+     * Resolves a custom template the caller owns. Distinguishes 404 from 403:
+     * not found at all → {@link TemplateNotFoundException} (404); exists but belongs to
+     * another user or is a prebuilt template → {@link TemplateAccessDeniedException} (403).
+     */
+    private ResumeTemplate resolveOwnedTemplate(UUID ownerId, UUID templateId) {
+        return templateRepository.findByIdAndOwnerId(templateId, ownerId)
+                .orElseThrow(() -> {
+                    if (templateRepository.findById(templateId).isPresent()) {
+                        return new TemplateAccessDeniedException(
+                                "Template is not owned by the requesting user: " + templateId);
+                    }
+                    return new TemplateNotFoundException(TEMPLATE_NOT_FOUND + templateId);
+                });
+    }
+
+    /**
+     * Rejects {@code cssVariables} values that use rem/em units. Only px and in are accepted.
+     * Shared by all template create/update paths (admin and custom).
+     */
+    private void validateCssVariables(Map<String, Object> templateDefinition) {
+        Object cssVarsRaw = templateDefinition.get("cssVariables");
         if (cssVarsRaw instanceof Map<?, ?> cssVars) {
             for (Map.Entry<?, ?> entry : cssVars.entrySet()) {
                 String value = String.valueOf(entry.getValue());
@@ -59,11 +213,23 @@ public class TemplateService {
                 }
             }
         }
+    }
 
-        template.setName(request.name());
-        template.setDescription(request.description());
-        template.setTemplateDefinition(request.templateDefinition());
-        return toDto(templateRepository.save(template));
+    private CustomTemplateAdminDto toAdminDto(ResumeTemplate template, String ownerEmail) {
+        return new CustomTemplateAdminDto(
+                template.getId(),
+                template.getName(),
+                template.getDescription(),
+                template.isPrebuilt(),
+                template.isPublished(),
+                template.getTemplateDefinition() != null
+                        ? Collections.unmodifiableMap(new HashMap<>(template.getTemplateDefinition()))
+                        : Map.of(),
+                template.getCreatedAt(),
+                template.getUpdatedAt(),
+                template.getOwnerId(),
+                ownerEmail
+        );
     }
 
     private TemplateDto toDto(ResumeTemplate template) {

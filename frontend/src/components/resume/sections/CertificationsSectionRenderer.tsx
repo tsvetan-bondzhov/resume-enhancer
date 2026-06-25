@@ -25,7 +25,7 @@ export default function CertificationsSectionRenderer({
   }
 
   const content = (
-    <div className="space-y-2 group/section">
+    <div className="flex flex-col group/section" style={{ gap: "var(--item-spacing, 8px)" }}>
       {onAddItem && <AddItemButton onClick={() => onAddItem(0)} isLast={items.length === 0} />}
       {items.map((item, index) => (
         <React.Fragment key={item.id}>

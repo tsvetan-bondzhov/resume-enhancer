@@ -1,4 +1,4 @@
 package com.tsvetanbondzhov.resumeenhancer.auth.dto;
 
-public record AuthResponse(String token) {
+public record AuthResponse(String token, UserDto user) {
 }

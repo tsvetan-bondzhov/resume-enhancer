@@ -4,6 +4,7 @@ import com.tsvetanbondzhov.resumeenhancer.auth.domain.User;
 import com.tsvetanbondzhov.resumeenhancer.auth.dto.AuthResponse;
 import com.tsvetanbondzhov.resumeenhancer.auth.dto.LoginRequest;
 import com.tsvetanbondzhov.resumeenhancer.auth.dto.SignupRequest;
+import com.tsvetanbondzhov.resumeenhancer.auth.dto.UserDto;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -43,8 +44,14 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
+        // Block login for deactivated accounts. Checked AFTER password verification so
+        // it cannot be used as an account-existence/active-state oracle by an attacker.
+        if (!user.isEnabled()) {
+            throw new AccountDeactivatedException();
+        }
+
         String token = tokenService.generateToken(user);
-        return new AuthResponse(token);
+        return new AuthResponse(token, UserDto.fromUser(user));
     }
 
     public AuthResponse signup(SignupRequest request) {
@@ -61,7 +68,7 @@ public class AuthService {
         try {
             User savedUser = userRepository.save(user);
             String token = tokenService.generateToken(savedUser);
-            return new AuthResponse(token);
+            return new AuthResponse(token, UserDto.fromUser(savedUser));
         } catch (DataIntegrityViolationException ex) {
             // Race condition: another request registered the same email between our check and save.
             // The DB unique constraint on `email` prevents double registration — surface as 409.

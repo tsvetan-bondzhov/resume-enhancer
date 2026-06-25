@@ -12,4 +12,10 @@ public interface TemplateRepository extends JpaRepository<ResumeTemplate, UUID> 
     List<ResumeTemplate> findAllByIsPublishedTrue();
 
     Optional<ResumeTemplate> findByIdAndIsPublishedTrue(UUID id);
+
+    List<ResumeTemplate> findAllByOwnerId(UUID ownerId);
+
+    List<ResumeTemplate> findAllByOwnerIdIsNotNull();
+
+    Optional<ResumeTemplate> findByIdAndOwnerId(UUID id, UUID ownerId);
 }

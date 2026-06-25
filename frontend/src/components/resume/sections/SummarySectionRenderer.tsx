@@ -65,7 +65,7 @@ export default function SummarySectionRenderer({
   onReorderItems,
 }: SummarySectionRendererProps) {
   const content = (
-    <div className="group/section">
+    <div className="flex flex-col group/section" style={{ gap: "var(--item-spacing, 8px)" }}>
       {items.map((item, index) => {
         // In read-only mode skip items with no text; in editor mode always render so user can click to add
         if (item.text == null && !onFieldChange) return null

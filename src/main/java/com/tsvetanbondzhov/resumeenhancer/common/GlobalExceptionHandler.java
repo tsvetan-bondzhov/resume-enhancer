@@ -1,11 +1,14 @@
 package com.tsvetanbondzhov.resumeenhancer.common;
 
+import com.tsvetanbondzhov.resumeenhancer.admin.ImpersonationNotAllowedException;
+import com.tsvetanbondzhov.resumeenhancer.admin.UserNotFoundException;
 import com.tsvetanbondzhov.resumeenhancer.ai.InvalidPatchException;
 import com.tsvetanbondzhov.resumeenhancer.ai.OllamaUnavailableException;
 import com.tsvetanbondzhov.resumeenhancer.auth.InvalidCurrentPasswordException;
 import com.tsvetanbondzhov.resumeenhancer.export.UnsupportedExportFormatException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeAccessDeniedException;
 import com.tsvetanbondzhov.resumeenhancer.resume.ResumeNotFoundException;
+import com.tsvetanbondzhov.resumeenhancer.template.TemplateAccessDeniedException;
 import com.tsvetanbondzhov.resumeenhancer.template.TemplateNotFoundException;
 import com.tsvetanbondzhov.resumeenhancer.template.TemplateValidationException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,6 +34,8 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private static final String BAD_REQUEST = "Bad Request";
+    private static final String TITLE_FORBIDDEN = "Forbidden";
+    private static final String TITLE_NOT_FOUND = "Not Found";
 
     @ExceptionHandler(InvalidCurrentPasswordException.class)
     public ProblemDetail handleInvalidCurrentPassword(InvalidCurrentPasswordException ex) {
@@ -90,7 +95,7 @@ public class GlobalExceptionHandler {
         log.warn("Resume access denied for request");
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN, ex.getMessage());
-        problem.setTitle("Forbidden");
+        problem.setTitle(TITLE_FORBIDDEN);
         return problem;
     }
 
@@ -98,7 +103,33 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleResumeNotFound(ResumeNotFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND, ex.getMessage());
-        problem.setTitle("Not Found");
+        problem.setTitle(TITLE_NOT_FOUND);
+        return problem;
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ProblemDetail handleUserNotFound(UserNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle(TITLE_NOT_FOUND);
+        return problem;
+    }
+
+    @ExceptionHandler(ImpersonationNotAllowedException.class)
+    public ProblemDetail handleImpersonationNotAllowed(ImpersonationNotAllowedException ex) {
+        log.warn("Impersonation not allowed for request");
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Conflict");
+        return problem;
+    }
+
+    @ExceptionHandler(TemplateAccessDeniedException.class)
+    public ProblemDetail handleTemplateAccessDenied(TemplateAccessDeniedException ex) {
+        log.warn("Template access denied for request");
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setTitle(TITLE_FORBIDDEN);
         return problem;
     }
 
@@ -106,7 +137,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleTemplateNotFound(TemplateNotFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND, ex.getMessage());
-        problem.setTitle("Not Found");
+        problem.setTitle(TITLE_NOT_FOUND);
         return problem;
     }
 
@@ -169,7 +200,7 @@ public class GlobalExceptionHandler {
         log.warn("Authorization denied");
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN, "Access denied");
-        problem.setTitle("Forbidden");
+        problem.setTitle(TITLE_FORBIDDEN);
         return problem;
     }
 

@@ -18,7 +18,7 @@ export default function GenericSectionRenderer({
   onReorderItems,
 }: GenericSectionRendererProps) {
   const content = (
-    <div className="group/section">
+    <div className="flex flex-col group/section" style={{ gap: "var(--item-spacing, 8px)" }}>
       {onAddItem && <AddItemButton onClick={() => onAddItem(0)} isLast={items.length === 0} />}
       {items.map((item, index) => {
         const visibleEntries = Object.entries(item.fields).filter(([, v]) => Boolean(v))

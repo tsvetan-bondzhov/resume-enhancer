@@ -19,7 +19,7 @@ export default function ProjectsSectionRenderer({
   onReorderItems,
 }: ProjectsSectionRendererProps) {
   const content = (
-    <div className="space-y-3 group/section">
+    <div className="flex flex-col group/section" style={{ gap: "var(--item-spacing, 12px)" }}>
       {onAddItem && <AddItemButton onClick={() => onAddItem(0)} isLast={items.length === 0} />}
       {items.map((item, index) => (
         <React.Fragment key={item.id}>

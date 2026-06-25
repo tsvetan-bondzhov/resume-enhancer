@@ -57,6 +57,10 @@ class AuthServiceTest {
 
         // Then
         assertThat(response.token()).isEqualTo("jwt-token-value");
+        assertThat(response.user()).isNotNull();
+        assertThat(response.user().email()).isEqualTo("test@example.com");
+        assertThat(response.user().role()).isEqualTo("USER");
+        assertThat(response.user().enabled()).isTrue();
         verify(tokenService).generateToken(user);
     }
 
@@ -97,6 +101,28 @@ class AuthServiceTest {
     }
 
     @Test
+    void login_deactivatedUser_throwsAccountDeactivatedException() {
+        // Given a user whose account has been deactivated (enabled=false) with valid credentials
+        LoginRequest request = new LoginRequest("disabled@example.com", "password123");
+
+        User user = new User();
+        user.setEmail("disabled@example.com");
+        user.setPasswordHash("hashed-password");
+        user.setRole("USER");
+        user.setEnabled(false);
+
+        when(userRepository.findByEmail("disabled@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("password123", "hashed-password")).thenReturn(true);
+
+        // When / Then — password is valid but the account is deactivated
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(AccountDeactivatedException.class)
+                .hasMessage("Account is deactivated");
+
+        verify(tokenService, never()).generateToken(any(User.class));
+    }
+
+    @Test
     void signup_happyPath_returnsToken() {
         // Given
         SignupRequest request = new SignupRequest("test@example.com", "password123");
@@ -117,6 +143,11 @@ class AuthServiceTest {
 
         // Then
         assertThat(response.token()).isEqualTo("jwt-token-value");
+
+        assertThat(response.user()).isNotNull();
+        assertThat(response.user().email()).isEqualTo("test@example.com");
+        assertThat(response.user().role()).isEqualTo("USER");
+        assertThat(response.user().enabled()).isTrue();
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
