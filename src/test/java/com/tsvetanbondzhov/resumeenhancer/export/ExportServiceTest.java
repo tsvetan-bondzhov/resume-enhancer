@@ -43,19 +43,39 @@ class ExportServiceTest {
 
     private ExportService exportService;
     private ObjectMapper objectMapper;
+    private DocumentRenderer docxRenderer;
+    private DocumentRenderer docxVisualRenderer;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
         DocumentRenderer pdfRenderer = mock(DocumentRenderer.class);
         when(pdfRenderer.render(any(), any())).thenReturn(new byte[]{1, 2, 3});
+        docxRenderer = mock(DocumentRenderer.class);
+        when(docxRenderer.render(any(), any())).thenReturn(new byte[]{4, 5, 6});
+        docxVisualRenderer = mock(DocumentRenderer.class);
+        when(docxVisualRenderer.render(any(), any())).thenReturn(new byte[]{7, 8, 9});
         exportService = new ExportService(
                 resumeRepository,
                 templateRepository,
                 userRepository,
-                Map.of("pdf", pdfRenderer),
+                Map.of("pdf", pdfRenderer,
+                        "docx", docxRenderer,
+                        "docx-visual", docxVisualRenderer),
                 objectMapper
         );
+    }
+
+    private Resume stubResume() {
+        User user = new User();
+        Resume resume = new Resume();
+        resume.setName("Mode Test");
+        resume.setTemplateId(null);
+        resume.setResumeContent(new ResumeDocument(List.of()));
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+        when(resumeRepository.findByIdAndUser(any(UUID.class), any(User.class)))
+                .thenReturn(Optional.of(resume));
+        return resume;
     }
 
     // ─── ExportResult.equals ─────────────────────────────────────────────────
@@ -133,7 +153,7 @@ class ExportServiceTest {
                 .thenReturn(Optional.of(resume));
 
         ExportService.ExportResult result =
-                exportService.exportResume("user@example.com", UUID.randomUUID(), "pdf");
+                exportService.exportResume("user@example.com", UUID.randomUUID(), "pdf", "ats");
 
         assertThat(result).isNotNull();
         assertThat(result.name()).isEqualTo("Test Resume");
@@ -159,7 +179,7 @@ class ExportServiceTest {
                 .thenReturn(Optional.empty());
 
         ExportService.ExportResult result =
-                exportService.exportResume("user@example.com", UUID.randomUUID(), "pdf");
+                exportService.exportResume("user@example.com", UUID.randomUUID(), "pdf", "ats");
 
         assertThat(result).isNotNull();
         assertThat(result.name()).isEqualTo("Unpublished Template Resume");
@@ -175,7 +195,7 @@ class ExportServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
-                exportService.exportResume("user@example.com", UUID.randomUUID(), "pdf"))
+                exportService.exportResume("user@example.com", UUID.randomUUID(), "pdf", "ats"))
                 .isInstanceOf(ResumeAccessDeniedException.class);
     }
 
@@ -186,7 +206,7 @@ class ExportServiceTest {
         when(userRepository.findByEmail("missing@example.com")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
-                exportService.exportResume("missing@example.com", UUID.randomUUID(), "pdf"))
+                exportService.exportResume("missing@example.com", UUID.randomUUID(), "pdf", "ats"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("not found in database");
     }
@@ -206,7 +226,39 @@ class ExportServiceTest {
                 .thenReturn(Optional.of(resume));
 
         assertThatThrownBy(() ->
-                exportService.exportResume("user@example.com", UUID.randomUUID(), "txt"))
+                exportService.exportResume("user@example.com", UUID.randomUUID(), "txt", "ats"))
                 .isInstanceOf(UnsupportedExportFormatException.class);
+    }
+
+    // ─── exportResume — mode routing ─────────────────────────────────────────
+
+    @Test
+    void exportResume_docxAtsMode_routesToDocxRenderer() {
+        stubResume();
+
+        ExportService.ExportResult result =
+                exportService.exportResume("user@example.com", UUID.randomUUID(), "docx", "ats");
+
+        assertThat(result.content()).containsExactly(4, 5, 6);
+    }
+
+    @Test
+    void exportResume_docxVisualMode_routesToVisualRenderer() {
+        stubResume();
+
+        ExportService.ExportResult result =
+                exportService.exportResume("user@example.com", UUID.randomUUID(), "docx", "visual");
+
+        assertThat(result.content()).containsExactly(7, 8, 9);
+    }
+
+    @Test
+    void exportResume_pdfVisualMode_isRejected() {
+        stubResume();
+
+        assertThatThrownBy(() ->
+                exportService.exportResume("user@example.com", UUID.randomUUID(), "pdf", "visual"))
+                .isInstanceOf(UnsupportedExportFormatException.class)
+                .hasMessageContaining("format/mode");
     }
 }

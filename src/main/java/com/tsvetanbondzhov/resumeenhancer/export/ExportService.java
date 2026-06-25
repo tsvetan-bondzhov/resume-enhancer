@@ -80,10 +80,12 @@ public class ExportService {
      * @param userEmail authenticated user's email
      * @param resumeId  UUID of the resume to export
      * @param format    "pdf" or "docx"
+     * @param mode      "ats" (default, flat) or "visual" (styled). Selects the
+     *                  renderer bean keyed as {@code format} or {@code format + "-visual"}.
      * @return {@link ExportResult} with rendered bytes and the resume's name
      */
     @Transactional(readOnly = true)
-    public ExportResult exportResume(String userEmail, UUID resumeId, String format) {
+    public ExportResult exportResume(String userEmail, UUID resumeId, String format, String mode) {
         User user = resolveUser(userEmail);
         Resume resume = resumeRepository.findByIdAndUser(resumeId, user)
                 .orElseThrow(() -> new ResumeAccessDeniedException(ACCESS_DENIED_MSG));
@@ -94,10 +96,14 @@ public class ExportService {
 
         byte[] content = switch (format.toLowerCase()) {
             case "pdf", "docx" -> {
-                DocumentRenderer renderer = renderers.get(format.toLowerCase());
+                // Visual mode resolves to a "<format>-visual" bean (e.g. "docx-visual").
+                // "pdf-visual" intentionally has no bean — the client renders visual PDFs.
+                String rendererKey = format.toLowerCase()
+                        + ("visual".equals(mode) ? "-visual" : "");
+                DocumentRenderer renderer = renderers.get(rendererKey);
                 if (renderer == null) {
                     throw new UnsupportedExportFormatException(
-                            "Unsupported export format. Use 'pdf' or 'docx'.");
+                            "Unsupported export format/mode combination.");
                 }
                 yield renderer.render(doc, template);
             }

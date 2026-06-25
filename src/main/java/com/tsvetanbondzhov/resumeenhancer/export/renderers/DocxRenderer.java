@@ -25,10 +25,8 @@ import org.springframework.stereotype.Component;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * ATS-compatible DOCX renderer using Apache POI.
@@ -46,9 +44,7 @@ import java.util.stream.Collectors;
 @Component("docx")
 public class DocxRenderer implements DocumentRenderer {
 
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MMM yyyy");
     private static final String SEPARATOR_PIPE = "  |  ";
-    private static final String SEPARATOR_DASH = "  —  ";
     private static final String STYLE_HEADING2 = "Heading2";
 
     private final TemplateDefinitionService templateDefinitionService;
@@ -166,11 +162,7 @@ public class DocxRenderer implements DocumentRenderer {
     }
 
     private void renderSkillsSection(XWPFDocument document, List<ResumeItem> items) {
-        String skills = items.stream()
-                .filter(SkillItem.class::isInstance)
-                .map(i -> ((SkillItem) i).name())
-                .filter(n -> n != null && !n.isBlank())
-                .collect(Collectors.joining(", "));
+        String skills = DocxItemFormatter.skillsJoin(items);
         if (!skills.isBlank()) {
             XWPFParagraph para = document.createParagraph();
             para.createRun().setText(skills);
@@ -193,9 +185,7 @@ public class DocxRenderer implements DocumentRenderer {
     }
 
     private void renderFullName(XWPFDocument document, FullNameItem n) {
-        String fullName = java.util.stream.Stream.of(n.firstName(), n.lastName())
-                .filter(v -> v != null && !v.isBlank())
-                .collect(Collectors.joining(" "));
+        String fullName = DocxItemFormatter.fullName(n);
         if (!fullName.isBlank()) {
             XWPFParagraph para = document.createParagraph();
             XWPFRun run = para.createRun();
@@ -207,13 +197,11 @@ public class DocxRenderer implements DocumentRenderer {
 
     private void renderWorkExperience(XWPFDocument document, WorkExperienceItem w) {
         // Title + company as Heading2 sub-item
-        StringBuilder titleLine = new StringBuilder();
-        if (w.jobTitle() != null) titleLine.append(w.jobTitle());
-        if (w.company() != null) titleLine.append(titleLine.isEmpty() ? "" : SEPARATOR_DASH).append(w.company());
-        if (!titleLine.isEmpty()) {
+        String titleLine = DocxItemFormatter.workTitleLine(w);
+        if (!titleLine.isBlank()) {
             XWPFParagraph para = document.createParagraph();
             para.setStyle(STYLE_HEADING2);
-            para.createRun().setText(titleLine.toString());
+            para.createRun().setText(titleLine);
         }
         // Date range
         String dateRange = formatDateRange(w.startDate(), w.endDate(), w.isCurrent());
@@ -227,14 +215,11 @@ public class DocxRenderer implements DocumentRenderer {
     }
 
     private void renderEducation(XWPFDocument document, EducationItem e) {
-        StringBuilder line = new StringBuilder();
-        if (e.institution() != null) line.append(e.institution());
-        if (e.degree() != null) line.append(line.isEmpty() ? "" : ", ").append(e.degree());
-        if (e.fieldOfStudy() != null) line.append(line.isEmpty() ? "" : ", ").append(e.fieldOfStudy());
-        if (!line.isEmpty()) {
+        String line = DocxItemFormatter.educationLine(e);
+        if (!line.isBlank()) {
             XWPFParagraph para = document.createParagraph();
             para.setStyle(STYLE_HEADING2);
-            para.createRun().setText(line.toString());
+            para.createRun().setText(line);
         }
         String dateRange = formatDateRange(e.startDate(), e.endDate(), false);
         if (!dateRange.isBlank()) {
@@ -243,25 +228,14 @@ public class DocxRenderer implements DocumentRenderer {
     }
 
     private void renderCertification(XWPFDocument document, CertificationItem c) {
-        StringBuilder line = new StringBuilder();
-        if (c.name() != null) line.append(c.name());
-        if (c.issuer() != null) line.append(line.isEmpty() ? "" : " — ").append(c.issuer());
-        if (c.issueDate() != null) line.append(SEPARATOR_PIPE).append(c.issueDate().format(DATE_FMT));
-        if (!line.isEmpty()) {
-            document.createParagraph().createRun().setText(line.toString());
+        String line = DocxItemFormatter.certificationLine(c);
+        if (!line.isBlank()) {
+            document.createParagraph().createRun().setText(line);
         }
     }
 
     private void renderLanguage(XWPFDocument document, LanguageItem l) {
-        // F7 null-guard: only prepend separator when the language portion is non-empty
-        String langPart = l.language() != null ? l.language() : "";
-        String profPart;
-        if (l.proficiency() != null) {
-            profPart = langPart.isEmpty() ? l.proficiency() : SEPARATOR_DASH + l.proficiency();
-        } else {
-            profPart = "";
-        }
-        String line = langPart + profPart;
+        String line = DocxItemFormatter.languageLine(l);
         if (!line.isBlank()) {
             document.createParagraph().createRun().setText(line);
         }
@@ -273,8 +247,9 @@ public class DocxRenderer implements DocumentRenderer {
             para.setStyle(STYLE_HEADING2);
             para.createRun().setText(p.name());
         }
-        if (p.technologies() != null && !p.technologies().isBlank()) {
-            document.createParagraph().createRun().setText(p.technologies());
+        String technologies = DocxItemFormatter.projectTechnologies(p);
+        if (!technologies.isBlank()) {
+            document.createParagraph().createRun().setText(technologies);
         }
         String dateRange = formatDateRange(p.startDate(), p.endDate(), p.isCurrent());
         if (!dateRange.isBlank()) {
@@ -286,20 +261,16 @@ public class DocxRenderer implements DocumentRenderer {
     }
 
     private void renderVolunteering(XWPFDocument document, VolunteeringItem v) {
-        StringBuilder titleLine = new StringBuilder();
-        if (v.role() != null) titleLine.append(v.role());
-        if (v.organization() != null) titleLine.append(titleLine.isEmpty() ? "" : SEPARATOR_DASH).append(v.organization());
-        if (!titleLine.isEmpty()) {
+        String titleLine = DocxItemFormatter.volunteeringTitleLine(v);
+        if (!titleLine.isBlank()) {
             XWPFParagraph para = document.createParagraph();
             para.setStyle(STYLE_HEADING2);
-            para.createRun().setText(titleLine.toString());
+            para.createRun().setText(titleLine);
         }
         String dateRange = formatDateRange(v.startDate(), v.endDate(), v.isCurrent());
-        StringBuilder descLine = new StringBuilder();
-        if (v.description() != null && !v.description().isBlank()) descLine.append(v.description());
-        if (!dateRange.isBlank()) descLine.append(descLine.isEmpty() ? "" : SEPARATOR_PIPE).append(dateRange);
-        if (!descLine.isEmpty()) {
-            document.createParagraph().createRun().setText(descLine.toString());
+        String descLine = DocxItemFormatter.volunteeringDescriptionLine(v, dateRange);
+        if (!descLine.isBlank()) {
+            document.createParagraph().createRun().setText(descLine);
         }
     }
 

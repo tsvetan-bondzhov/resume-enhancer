@@ -34,11 +34,17 @@ public class ExportController {
     public ResponseEntity<byte[]> exportResume(
             Authentication authentication,
             @PathVariable UUID resumeId,
-            @RequestParam String format) {
+            @RequestParam String format,
+            @RequestParam(defaultValue = "ats") String mode) {
 
         String normalizedFormat = format.toLowerCase();
+        String normalizedMode = mode.toLowerCase();
+        if (!"ats".equals(normalizedMode) && !"visual".equals(normalizedMode)) {
+            throw new UnsupportedExportFormatException(
+                    "Unsupported export mode. Use 'ats' or 'visual'.");
+        }
         ExportService.ExportResult result = exportService.exportResume(
-                authentication.getName(), resumeId, normalizedFormat);
+                authentication.getName(), resumeId, normalizedFormat, normalizedMode);
 
         // F1: name and content come from a single DB fetch — no race window.
         // F2: null guard on name in case resume.getName() returns null.
